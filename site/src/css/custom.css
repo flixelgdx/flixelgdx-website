@@ -1,0 +1,411 @@
+/* ============================================================================
+ * FlixelGDX website theme.
+ *
+ * Two colour palettes inspired by the project's pixel-art logo:
+ *   - Primary red:   #ff2a3c   (the bright slab from the F mark)
+ *   - Deep red:      #6b0f15   (the bottom shadow of the F)
+ *   - Pitch black:   #0a0a0c   (default dark background)
+ *
+ * The aim is GitHub-flavoured Javadoc readability: headings, links, lists,
+ * inline code, tables and <p>-spaced paragraphs all map cleanly onto the
+ * markdown that Dokka's GFM output produces.
+ * ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --flx-red: #ff2a3c;
+  --flx-red-strong: #ff5566;
+  --flx-red-deep: #6b0f15;
+  --flx-yellow: #ffc94a;
+  --flx-green: #44d76b;
+
+  --ifm-color-primary: #ff2a3c;
+  --ifm-color-primary-dark: #f10d20;
+  --ifm-color-primary-darker: #e30c1d;
+  --ifm-color-primary-darkest: #ba0a18;
+  --ifm-color-primary-light: #ff4554;
+  --ifm-color-primary-lighter: #ff5462;
+  --ifm-color-primary-lightest: #ff7884;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+
+  --ifm-code-font-size: 92%;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 42, 60, 0.12);
+
+  --ifm-heading-font-weight: 700;
+  --ifm-h1-font-size: 2.4rem;
+  --ifm-h2-font-size: 1.6rem;
+  --ifm-h3-font-size: 1.25rem;
+
+  --ifm-link-color: #d40b1d;
+  --ifm-link-hover-color: #ff2a3c;
+  --ifm-link-decoration: none;
+
+  --ifm-navbar-height: 64px;
+
+  /* GitHub-ish surfaces */
+  --flx-surface: #ffffff;
+  --flx-surface-2: #f6f8fa;
+  --flx-border: #d0d7de;
+  --flx-text-muted: #57606a;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ff2a3c;
+  --ifm-color-primary-dark: #e80f23;
+  --ifm-color-primary-darker: #d80d20;
+  --ifm-color-primary-darkest: #b30a1a;
+  --ifm-color-primary-light: #ff5666;
+  --ifm-color-primary-lighter: #ff6e7c;
+  --ifm-color-primary-lightest: #ff9099;
+
+  --ifm-background-color: #0a0a0c;
+  --ifm-background-surface-color: #0d0d10;
+  --ifm-navbar-background-color: rgba(10, 10, 12, 0.85);
+  --ifm-footer-background-color: #060608;
+
+  --ifm-link-color: #ff5666;
+  --ifm-link-hover-color: #ff8a96;
+
+  --flx-surface: #111114;
+  --flx-surface-2: #1a1a20;
+  --flx-border: #2a2a32;
+  --flx-text-muted: #9aa3b2;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 86, 102, 0.18);
+
+  color-scheme: dark;
+}
+
+/* ----------------------------- Layout polish ----------------------------- */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(107, 15, 21, 0.18), transparent 60%),
+    var(--ifm-background-color);
+}
+
+[data-theme='light'] body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(255, 42, 60, 0.04), transparent 60%),
+    #ffffff;
+}
+
+.navbar {
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  border-bottom: 1px solid var(--flx-border);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom: 1px solid #1a1a20;
+}
+
+.navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.navbar__logo img {
+  image-rendering: pixelated;
+  border-radius: 6px;
+}
+
+/* ------------------------------ Buttons --------------------------------- */
+
+.flx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: transform 80ms ease, box-shadow 120ms ease, background 120ms ease;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.flx-btn:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.flx-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.flx-btn--primary {
+  background: linear-gradient(180deg, #ff3a4d 0%, #d50a1c 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px -8px rgba(255, 42, 60, 0.55),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.flx-btn--primary:hover {
+  background: linear-gradient(180deg, #ff5061 0%, #e51124 100%);
+  color: #fff;
+  box-shadow: 0 14px 32px -10px rgba(255, 42, 60, 0.7),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.flx-btn--ghost {
+  background: transparent;
+  color: var(--ifm-color-content);
+  border: 1px solid var(--flx-border);
+}
+
+.flx-btn--ghost:hover {
+  background: var(--flx-surface-2);
+  color: var(--ifm-color-content);
+  border-color: var(--ifm-color-primary);
+}
+
+/* ----------------------- Article / Markdown content ---------------------- */
+/* GitHub-flavoured javadoc look.                                          */
+
+.markdown {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.markdown h1 {
+  padding-bottom: .3em;
+  border-bottom: 1px solid var(--flx-border);
+}
+
+.markdown h2 {
+  padding-bottom: .3em;
+  border-bottom: 1px solid var(--flx-border);
+  margin-top: 2rem;
+}
+
+.markdown h3 {
+  margin-top: 1.5rem;
+}
+
+.markdown a {
+  color: var(--ifm-link-color);
+  text-underline-offset: 2px;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Paragraph spacing: respect <p></p><p></p> visual rhythm. */
+.markdown p {
+  margin: 0 0 1em 0;
+}
+
+.markdown p + p {
+  margin-top: 0.25em;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 1em 0;
+  padding-left: 2em;
+}
+
+.markdown li + li {
+  margin-top: 0.25em;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  overflow: auto;
+}
+
+.markdown table th,
+.markdown table td {
+  padding: 6px 13px;
+  border: 1px solid var(--flx-border);
+}
+
+.markdown table tr:nth-child(2n) {
+  background: var(--flx-surface-2);
+}
+
+.markdown blockquote {
+  margin: 0 0 1em 0;
+  padding: 0.5em 1em;
+  color: var(--flx-text-muted);
+  border-left: 0.25em solid var(--flx-border);
+  background: var(--flx-surface-2);
+  border-radius: 0 6px 6px 0;
+}
+
+.markdown hr {
+  height: 1px;
+  background: var(--flx-border);
+  border: 0;
+  margin: 1.5rem 0;
+}
+
+.markdown code {
+  background: var(--flx-surface-2);
+  border: 1px solid var(--flx-border);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
+
+.markdown pre {
+  border: 1px solid var(--flx-border);
+}
+
+[data-theme='dark'] .markdown pre {
+  background: #0d0d10 !important;
+}
+
+/* "Class Foo" header card used on Javadoc-ish pages */
+.markdown h1 code,
+.markdown h2 code {
+  font-size: 0.85em;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--ifm-color-primary);
+}
+
+/* ----------------------- Cards / Feature grids -------------------------- */
+
+.flx-card {
+  background: var(--flx-surface);
+  border: 1px solid var(--flx-border);
+  border-radius: 14px;
+  padding: 1.25rem 1.25rem 1rem;
+  transition: transform 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.flx-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 18px 40px -22px rgba(255, 42, 60, 0.45);
+}
+
+.flx-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.flx-card p {
+  margin: 0;
+  color: var(--flx-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* ----------------------- Tooltip / hover hint --------------------------- */
+
+.flx-hint {
+  position: relative;
+  display: inline-block;
+}
+
+.flx-hint__tip {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease, transform 120ms ease;
+  background: #18181c;
+  color: #fff;
+  border: 1px solid #2a2a32;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  width: max-content;
+  max-width: 260px;
+  box-shadow: 0 14px 24px -14px rgba(0, 0, 0, 0.6);
+}
+
+.flx-hint:hover .flx-hint__tip,
+.flx-hint:focus-within .flx-hint__tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ------------------- Scroll-fade-in animation utility -------------------- */
+
+.flx-fade {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 600ms cubic-bezier(.2,.6,.2,1),
+    transform 600ms cubic-bezier(.2,.6,.2,1);
+  will-change: opacity, transform;
+}
+
+.flx-fade.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ------------------- Pixel border accent (logo vibe) -------------------- */
+
+.flx-pixel-rule {
+  height: 8px;
+  width: 100%;
+  background-image:
+    linear-gradient(90deg, var(--flx-red) 0 25%, transparent 25% 50%, var(--flx-yellow) 50% 75%, transparent 75% 100%);
+  background-size: 32px 8px;
+  image-rendering: pixelated;
+  opacity: 0.75;
+  border-radius: 2px;
+}
+
+/* ------------------- Code block tabs ------------------------------------ */
+
+.tabs__item {
+  font-weight: 600;
+}
+
+.tabs__item--active {
+  color: var(--ifm-color-primary);
+  border-bottom-color: var(--ifm-color-primary);
+}
+
+/* ------------------- Focus rings for kid-friendly UX -------------------- */
+
+.flx-btn:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+/* Make Docusaurus admonitions a bit more "GitHub note" looking */
+.theme-admonition {
+  border-radius: 10px;
+  border-left-width: 4px;
+}

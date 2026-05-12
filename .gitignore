@@ -1,0 +1,15 @@
+# Build artefacts produced by scripts/build-api.sh
+build/
+
+# Docusaurus
+site/.docusaurus/
+site/build/
+site/node_modules/
+site/.cache-loader/
+
+# OS / editor noise
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.iml
