@@ -3,17 +3,16 @@
 # Generate the FlixelGDX API reference from the framework's Java sources.
 #
 # Pipeline:
-#   1. Use `git clone --filter=blob:none --no-checkout` + `git sparse-checkout`
-#      to pull ONLY the Java source folders (and a couple of metadata files)
-#      out of flixelgdx/flixelgdx@master. We never download Gradle scripts,
-#      tests, gradle wrappers, doc images or any other blobs, which keeps the
-#      working tree tiny (a few MB) instead of cloning the whole repo.
-#   2. Drop a small, self-contained Dokka build under build/dokka-runner that
-#      points its source-roots at the sparse checkout and uses the official
-#      Dokka GFM plugin to emit GitHub-Flavoured Markdown.
-#   3. Massage the generated tree into the layout Docusaurus expects under
-#      site/api/, prepending YAML front-matter so the docs render with our
-#      theme.
+#   1. Sparse-checkout ONLY the Java source folders out of
+#      flixelgdx/flixelgdx@master into build/flixelgdx-src/. We never download
+#      Gradle scripts, tests, doc images or any other blobs, so the working
+#      tree stays at ~3 MB.
+#   2. Invoke the bundled Gradle wrapper to run `:dokka:dokkaGfm`. The wrapper
+#      and the Dokka project ship inside this repository — contributors do
+#      NOT need to install Gradle, Dokka, or the FlixelGDX framework.
+#   3. Massage the generated Markdown tree into the layout Docusaurus expects
+#      under site/api/, prepending YAML front-matter so each page renders
+#      with our theme.
 #
 # Knobs:
 #   FLIXELGDX_REPO    Git URL of the framework (default: GitHub HTTPS).
@@ -25,7 +24,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="${ROOT}/build"
 SRC_DIR="${BUILD_DIR}/flixelgdx-src"
-DOKKA_DIR="${BUILD_DIR}/dokka-runner"
 OUT_DIR="${BUILD_DIR}/dokka-out"
 SITE_API_DIR="${ROOT}/site/api"
 
@@ -39,11 +37,9 @@ mkdir -p "${BUILD_DIR}"
 # ----------------------------------------------------------------------------
 # 1. Sparse checkout — pull ONLY Java source dirs + the framework's own README
 #    and llms.txt (so we can show contextual prose at the top of the API).
-#
-# `--filter=blob:none` tells git to defer file downloads to checkout time, so
-# the initial clone only fetches commit metadata. The follow-up sparse-checkout
-# init+set narrows what `git checkout` will materialise to disk.
 # ----------------------------------------------------------------------------
+# Directories only — git sparse-checkout cone mode does not accept file
+# patterns. The framework's README and llms.txt are not needed for Dokka.
 SPARSE_PATHS=(
   "flixelgdx-core/src/main"
   "flixelgdx-common/src/main"
@@ -54,8 +50,6 @@ SPARSE_PATHS=(
   "flixelgdx-teavm/src/main"
   "flixelgdx-teavm-plugin/src/main"
   "flixelgdx-logging-plugin/src/main"
-  "README.md"
-  "llms.txt"
 )
 
 if [ ! -d "${SRC_DIR}/.git" ]; then
@@ -71,7 +65,6 @@ else
   git -C "${SRC_DIR}" fetch --filter=blob:none --depth 1 origin "${FRAMEWORK_BRANCH}"
 fi
 
-# Land the requested ref (or branch tip) into the working tree.
 if [ -n "${FRAMEWORK_REF}" ]; then
   echo "==> Checking out pinned ref ${FRAMEWORK_REF}"
   git -C "${SRC_DIR}" fetch --filter=blob:none --depth 1 origin "${FRAMEWORK_REF}" || true
@@ -80,99 +73,75 @@ else
   git -C "${SRC_DIR}" checkout --quiet "origin/${FRAMEWORK_BRANCH}"
 fi
 
-echo "==> Working tree size (should be small):"
+echo "==> Working tree size:"
 du -sh "${SRC_DIR}" 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
-# 2. Generate the Dokka GFM build script.
+# 2. Run the bundled Dokka build.
 # ----------------------------------------------------------------------------
-MODULES=()
-for dir in "${SRC_DIR}"/flixelgdx-*; do
-  [ -d "${dir}/src/main" ] || continue
-  MODULES+=("$(basename "${dir}")")
-done
-
-if [ "${#MODULES[@]}" -eq 0 ]; then
-  echo "!! No flixelgdx-* modules with src/main found, aborting." >&2
-  exit 1
-fi
-
-echo "==> Modules: ${MODULES[*]}"
-
-echo "==> Writing self-contained Dokka build"
-mkdir -p "${DOKKA_DIR}"
-cat > "${DOKKA_DIR}/settings.gradle.kts" <<'EOF'
-rootProject.name = "flixelgdx-api-docs"
-EOF
-
-MODULE_BLOCKS=""
-for mod in "${MODULES[@]}"; do
-  src_main="${SRC_DIR}/${mod}/src/main"
-  if [ -d "${src_main}/java" ]; then
-    rel="${src_main}/java"
-  elif [ -d "${src_main}/kotlin" ]; then
-    rel="${src_main}/kotlin"
-  else
-    rel="$(find "${src_main}" -maxdepth 1 -mindepth 1 -type d | head -n1)"
-  fi
-  [ -z "${rel}" ] && continue
-  MODULE_BLOCKS+="
-    register(\"${mod}\") {
-      displayName.set(\"${mod}\")
-      sourceRoots.from(file(\"${rel}\"))
-      jdkVersion.set(17)
-      noStdlibLink.set(true)
-      noJdkLink.set(false)
-      reportUndocumented.set(false)
-    }"
-done
-
-cat > "${DOKKA_DIR}/build.gradle.kts" <<EOF
-plugins {
-  id("org.jetbrains.dokka") version "1.9.20"
-}
-
-repositories { mavenCentral() }
-
-dependencies {
-  dokkaGfmPlugin("org.jetbrains.dokka:gfm-plugin:1.9.20")
-}
-
-tasks.dokkaGfm {
-  outputDirectory.set(file("${OUT_DIR}"))
-  moduleName.set("FlixelGDX")
-  dokkaSourceSets {
-${MODULE_BLOCKS}
-  }
-}
-EOF
-
-echo "==> Running Dokka GFM"
-pushd "${DOKKA_DIR}" >/dev/null
+echo "==> Running Dokka GFM via bundled Gradle wrapper"
 rm -rf "${OUT_DIR}"
-gradle --no-daemon -q dokkaGfm
-popd >/dev/null
+(cd "${ROOT}" && ./gradlew --no-daemon -q :dokka:dokkaGfm)
 
-if [ ! -d "${OUT_DIR}" ]; then
-  echo "!! Dokka did not produce output at ${OUT_DIR}" >&2
+# Dokka emits the module under a kebab-cased directory derived from the
+# moduleName property ("FlixelGDX" -> "-flixel-g-d-x"). Pick whichever single
+# subdirectory it produced so we don't hard-code that mangled name.
+DOKKA_INNER="$(find "${OUT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+if [ -z "${DOKKA_INNER}" ]; then
+  echo "!! Dokka did not produce a module directory under ${OUT_DIR}" >&2
   exit 1
 fi
+echo "==> Dokka rendered into ${DOKKA_INNER}"
 
 # ----------------------------------------------------------------------------
 # 3. Massage output for Docusaurus.
 # ----------------------------------------------------------------------------
 echo "==> Massaging output for Docusaurus"
-rm -rf "${SITE_API_DIR}.staging"
-mkdir -p "${SITE_API_DIR}.staging"
-for mod in "${MODULES[@]}"; do
-  if [ -d "${OUT_DIR}/${mod}" ]; then
-    cp -R "${OUT_DIR}/${mod}" "${SITE_API_DIR}.staging/${mod}"
-  fi
-done
+STAGE="${SITE_API_DIR}.staging"
+rm -rf "${STAGE}"
+mkdir -p "${STAGE}"
+cp -R "${DOKKA_INNER}/." "${STAGE}/"
 
-python3 - "${SITE_API_DIR}.staging" <<'PY'
+python3 - "${STAGE}" <<'PY'
+# Post-process Dokka's GFM so it parses cleanly as MDX.
+#
+# Dokka emits some HTML inside table cells (notably bare <br> and {} curly
+# braces in javadoc snippets) that MDX rejects. We do a minimal sanitization
+# pass: self-close <br>, escape stray { / } inside table data, and prepend
+# a Docusaurus YAML front-matter block.
 import os, re, sys
+
 root = sys.argv[1]
+
+BR_RE = re.compile(r'<br\s*>', re.IGNORECASE)
+HEADING_RE = re.compile(r'^#\s+(.*?)\s*$', re.MULTILINE)
+
+
+def escape_curly_braces(text: str) -> str:
+    """MDX treats `{` / `}` as JSX expression delimiters. Dokka never wants
+    that — it just passes raw javadoc text like `{@value #FOO}` through.
+    Escape every stray curly brace except inside code spans (`...`) and
+    fenced code blocks (```...```)."""
+    out = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        if line.lstrip().startswith('```'):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if in_fence:
+            out.append(line)
+            continue
+        # Outside fences: split on inline code spans so we leave them alone.
+        parts = re.split(r'(`[^`]*`)', line)
+        for i, p in enumerate(parts):
+            if i % 2 == 0:  # not inside a code span
+                p = p.replace('{', r'\{').replace('}', r'\}')
+            parts[i] = p
+        out.append(''.join(parts))
+    return ''.join(out)
+
+
 for base, dirs, files in os.walk(root):
     for f in files:
         if not f.endswith('.md'):
@@ -182,10 +151,25 @@ for base, dirs, files in os.walk(root):
             text = fh.read()
         if text.startswith('---\n'):
             continue
-        m = re.search(r'^#\s+(.*?)\s*$', text, re.MULTILINE)
+
+        # Sanitize: self-close <br>, escape stray curlies everywhere outside
+        # code spans / fenced blocks.
+        text = BR_RE.sub('<br />', text)
+        text = escape_curly_braces(text)
+
+        m = HEADING_RE.search(text)
         title = m.group(1).strip() if m else os.path.splitext(f)[0]
+        # Strip any inline markdown / HTML from the title so YAML stays valid.
+        title = re.sub(r'\[(.*?)\]\([^)]*\)', r'\1', title)
+        title = re.sub(r'<[^>]+>', '', title).strip()
         title = title.replace('"', "'")
-        fm = f"---\ntitle: \"{title}\"\nhide_title: false\nsidebar_label: \"{title}\"\n---\n\n"
+        fm = (
+            "---\n"
+            f"title: \"{title}\"\n"
+            "hide_title: false\n"
+            f"sidebar_label: \"{title}\"\n"
+            "---\n\n"
+        )
         with open(p, 'w', encoding='utf-8') as fh:
             fh.write(fm + text)
 PY
@@ -198,8 +182,8 @@ if [ -f "${SITE_API_DIR}/index.md" ]; then
   cp "${SITE_API_DIR}/index.md" "${INDEX_BACKUP}"
 fi
 find "${SITE_API_DIR}" -mindepth 1 -maxdepth 1 ! -name "index.md" -exec rm -rf {} +
-cp -R "${SITE_API_DIR}.staging/." "${SITE_API_DIR}/"
-rm -rf "${SITE_API_DIR}.staging"
+cp -R "${STAGE}/." "${SITE_API_DIR}/"
+rm -rf "${STAGE}"
 if [ -n "${INDEX_BACKUP}" ]; then
   cp "${INDEX_BACKUP}" "${SITE_API_DIR}/index.md"
   rm -f "${INDEX_BACKUP}"

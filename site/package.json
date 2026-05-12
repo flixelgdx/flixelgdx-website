@@ -48,5 +48,9 @@
   },
   "engines": {
     "node": ">=20.0"
+  },
+  "//": "Pin transitive dependencies to plug security advisories. serialize-javascript pre-7.0.5 has a high-severity vulnerability pulled in by webpack plugins via Docusaurus.",
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }

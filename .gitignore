@@ -1,5 +1,12 @@
-# Build artefacts produced by scripts/build-api.sh
+# Build artefacts produced by scripts/build-api.sh + Gradle
 build/
+.gradle/
+
+# Generated API markdown. Run `./scripts/build-api.sh` to populate
+# locally. site/api/index.md is hand-written and IS tracked (see
+# the corresponding negation rule in site/.gitignore).
+site/api/**
+!site/api/index.md
 
 # Docusaurus
 site/.docusaurus/

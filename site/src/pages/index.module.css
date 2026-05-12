@@ -84,21 +84,20 @@
   background: var(--flx-surface);
 }
 
-/* Pixel stars / glow background — pulled straight from the HaxeFlixel
- * brand palette (yellow / salmon / lime green / sky blue / white). */
+/* Pixel stars / glow background — the deep HaxeFlixel palette (yellow /
+ * salmon / lime green / sky blue), kept muted so the dark background still
+ * dominates and the hero text stays readable. */
 .heroBackdrop {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(2px 2px at 12% 22%, rgba(247, 247, 247, 0.75), transparent 55%),
-    radial-gradient(1.5px 1.5px at 25% 80%, rgba(252, 214, 71, 0.85), transparent 60%),
-    radial-gradient(2px 2px at 60% 35%, rgba(255, 105, 100, 0.75), transparent 60%),
-    radial-gradient(1.5px 1.5px at 85% 65%, rgba(157, 206, 54, 0.7), transparent 60%),
-    radial-gradient(2px 2px at 40% 65%, rgba(95, 180, 245, 0.7), transparent 60%),
-    radial-gradient(2px 2px at 92% 18%, rgba(247, 247, 247, 0.6), transparent 60%),
-    radial-gradient(1.5px 1.5px at 8% 60%, rgba(252, 214, 71, 0.55), transparent 60%),
-    radial-gradient(2px 2px at 72% 88%, rgba(157, 206, 54, 0.55), transparent 60%);
+    radial-gradient(1.5px 1.5px at 25% 80%, rgba(184, 133, 26, 0.55), transparent 60%),
+    radial-gradient(2px 2px at 60% 35%, rgba(176, 61, 61, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 85% 65%, rgba(88, 143, 26, 0.5), transparent 60%),
+    radial-gradient(2px 2px at 40% 65%, rgba(44, 87, 128, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 8% 60%, rgba(184, 133, 26, 0.4), transparent 60%),
+    radial-gradient(2px 2px at 72% 88%, rgba(88, 143, 26, 0.4), transparent 60%);
   animation: twinkle 6s linear infinite;
   z-index: 1;
 }

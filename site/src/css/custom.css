@@ -17,13 +17,13 @@
   --flx-red: #ff2a3c;
   --flx-red-strong: #ff5566;
   --flx-red-deep: #6b0f15;
-  /* HaxeFlixel-inspired accent palette, used in the pixel rule and the
-   * hero backdrop stars to nod to the classic Flixel look. */
-  --hxflx-yellow: #fcd647;
-  --hxflx-salmon: #ff6964;
-  --hxflx-green: #9dce36;
-  --hxflx-blue: #5fb4f5;
-  --hxflx-white: #f7f7f7;
+  /* HaxeFlixel-inspired accent palette, deepened so the colours sit
+   * comfortably on the pitch-black dark theme without blowing out the
+   * contrast. Used in the pixel rule and the hero backdrop stars. */
+  --hxflx-yellow: #b8851a;
+  --hxflx-salmon: #b03d3d;
+  --hxflx-green: #588f1a;
+  --hxflx-blue: #2c5780;
   /* Aliases kept for backwards-compat with older rules in this file. */
   --flx-yellow: var(--hxflx-yellow);
   --flx-green: var(--hxflx-green);
@@ -379,27 +379,31 @@ body {
 
 /* ------------------- Pixel border accent (logo vibe) -------------------- */
 
-/* Pixel rule: a row of HaxeFlixel-coloured blocks, like the squares on the
- * classic Flixel logo. Cycles yellow → salmon → green → blue → white. */
+/* Pixel rule: a row of HaxeFlixel-coloured squares spaced apart, evoking the
+ * classic Flixel logo bar. Cycles deep yellow → salmon → green → blue and
+ * leaves the white slot empty so the gaps look like real spacing.
+ *
+ * The block is 12 px wide with an 8 px transparent gap between each pair,
+ * tiled across the width via a single linear-gradient + background-size. */
 .flx-pixel-rule {
   height: 10px;
   width: 100%;
   background-image:
     linear-gradient(
       90deg,
-      var(--hxflx-yellow) 0 20%,
-      transparent 20% 20%,
-      var(--hxflx-salmon) 20% 40%,
-      transparent 40% 40%,
-      var(--hxflx-green) 40% 60%,
-      transparent 60% 60%,
-      var(--hxflx-blue) 60% 80%,
-      transparent 80% 80%,
-      var(--hxflx-white) 80% 100%
+      var(--hxflx-yellow) 0 12px,
+      transparent 12px 20px,
+      var(--hxflx-salmon) 20px 32px,
+      transparent 32px 40px,
+      var(--hxflx-green) 40px 52px,
+      transparent 52px 60px,
+      var(--hxflx-blue) 60px 72px,
+      transparent 72px 80px
     );
+  background-repeat: repeat-x;
   background-size: 80px 10px;
   image-rendering: pixelated;
-  opacity: 0.9;
+  opacity: 0.85;
   border-radius: 2px;
 }
 

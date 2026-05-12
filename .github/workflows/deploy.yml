@@ -45,8 +45,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+      # No `gradle/actions/setup-gradle` here — the repo ships its own
+      # Gradle wrapper, so we just need a JDK on PATH for the bundled
+      # `./gradlew` to bootstrap Gradle on its own.
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -55,7 +56,7 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
 
-      - name: Build API markdown (Dokka GFM)
+      - name: Build API markdown (Dokka GFM via bundled wrapper)
         run: ./scripts/build-api.sh
 
       - name: Install Docusaurus deps
