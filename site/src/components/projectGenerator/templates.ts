@@ -12,6 +12,12 @@ export type Language = 'java' | 'groovy' | 'kotlin';
 export type IDE = 'idea' | 'eclipse' | 'vscode' | 'none';
 export type Template = 'blank' | 'platformer';
 export type Platform = 'desktop' | 'web' | 'android' | 'ios';
+export type JdkVendor =
+  | 'semeru'        // IBM Semeru / Eclipse OpenJ9 — recommended for game dev (low mem)
+  | 'graalvm'       // GraalVM Community — fast startup, JIT/AOT options
+  | 'temurin'       // Eclipse Temurin (Adoptium) — standard Hotspot
+  | 'corretto'      // Amazon Corretto — long-term-supported Hotspot
+  | 'zulu';         // Azul Zulu — broad version coverage
 
 export interface GeneratorOptions {
   gameName: string;
@@ -23,10 +29,25 @@ export interface GeneratorOptions {
   ide: IDE;
   template: Template;
   platforms: Platform[];
+  jdkVendor: JdkVendor;
   expert: boolean;
   heapMb: number;
   jvmFlags: string;
   gradleConfig: string;
+}
+
+/**
+ * Gradle `JvmVendorSpec` enum value matching a `JdkVendor`. See
+ * https://docs.gradle.org/current/javadoc/org/gradle/jvm/toolchain/JvmVendorSpec.html
+ */
+export function gradleVendorSpec(v: JdkVendor): string {
+  switch (v) {
+    case 'semeru': return 'IBM_SEMERU';
+    case 'graalvm': return 'GRAAL_VM';
+    case 'temurin': return 'ADOPTIUM';
+    case 'corretto': return 'AMAZON';
+    case 'zulu': return 'AZUL';
+  }
 }
 
 const GROOVY_LINE = "\n";
@@ -55,10 +76,28 @@ function settingsGradle(o: GeneratorOptions): string {
   const subs = ['core'];
   if (o.platforms.includes('desktop')) subs.push('lwjgl3');
   if (o.platforms.includes('web')) subs.push('teavm');
-  // Android & iOS modules are scaffolded only when selected.
   if (o.platforms.includes('android')) subs.push('android');
   if (o.platforms.includes('ios')) subs.push('ios');
   return [
+    `// pluginManagement runs before settings: it tells Gradle where to fetch`,
+    `// the plugins declared in our build scripts. We need JitPack so that the`,
+    `// flixelgdx-teavm Gradle plugin resolves, and gradlePluginPortal for`,
+    `// stock plugins (Kotlin, application, foojay-resolver, …).`,
+    `pluginManagement {`,
+    `  repositories {`,
+    `    mavenLocal()`,
+    `    maven { url 'https://jitpack.io' }`,
+    `    gradlePluginPortal()`,
+    `  }`,
+    `}`,
+    ``,
+    `// Auto-provision the selected JDK at build time.`,
+    `// The Foojay Toolchains Resolver lets Gradle download a matching JDK on`,
+    `// demand, so users only need a JDK to *bootstrap* Gradle itself.`,
+    `plugins {`,
+    `  id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'`,
+    `}`,
+    ``,
     `rootProject.name = "${o.gameId}"`,
     ...subs.map((s) => `include "${s}"`),
     ``,
@@ -125,6 +164,11 @@ function coreBuildGradle(o: GeneratorOptions): string {
     `}`,
     ``,
     `java {`,
+    `  // Gradle will auto-download a matching JDK from the configured vendor.`,
+    `  toolchain {`,
+    `    languageVersion = JavaLanguageVersion.of(${o.javaVersion})`,
+    `    vendor          = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
+    `  }`,
     `  sourceCompatibility = JavaVersion.VERSION_${o.javaVersion}`,
     `  targetCompatibility = JavaVersion.VERSION_${o.javaVersion}`,
     `}`,
@@ -151,6 +195,13 @@ function lwjgl3BuildGradle(o: GeneratorOptions): string {
   return [
     `plugins {`,
     `  ${langPlugin}`,
+    `}`,
+    ``,
+    `java {`,
+    `  toolchain {`,
+    `    languageVersion = JavaLanguageVersion.of(${o.javaVersion})`,
+    `    vendor          = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
+    `  }`,
     `}`,
     ``,
     `application {`,
@@ -689,7 +740,26 @@ function gitignore(): string {
   ].join('\n');
 }
 
+function gradleWrapperProperties(): string {
+  // Pin the wrapper to Gradle 8.10 (the version we shipped the jar for).
+  return [
+    `distributionBase=GRADLE_USER_HOME`,
+    `distributionPath=wrapper/dists`,
+    `distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10-bin.zip`,
+    `networkTimeout=10000`,
+    `validateDistributionUrl=true`,
+    `zipStoreBase=GRADLE_USER_HOME`,
+    `zipStorePath=wrapper/dists`,
+    ``,
+  ].join('\n');
+}
+
 /* --------------------------- public entry point --------------------------- */
+/**
+ * Build the *text* files for a project. The Gradle wrapper jar (binary) is
+ * added separately by {@link generateProjectZip} so JSZip can write it with
+ * the right encoding.
+ */
 export function buildProjectFiles(o: GeneratorOptions): Record<string, string> {
   const files: Record<string, string> = {};
   files['README.md'] = readme(o);
@@ -708,5 +778,8 @@ export function buildProjectFiles(o: GeneratorOptions): Record<string, string> {
     files['teavm/build.gradle'] = teavmBuildGradle(o);
   }
   Object.assign(files, ideFiles(o));
+
+  // Gradle wrapper (text portion). The jar itself is added by the caller.
+  files['gradle/wrapper/gradle-wrapper.properties'] = gradleWrapperProperties();
   return files;
 }

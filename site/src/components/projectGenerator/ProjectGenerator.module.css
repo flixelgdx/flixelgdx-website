@@ -235,3 +235,23 @@
   font-weight: 700;
   cursor: help;
 }
+
+.recommend {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--ifm-color-primary);
+  color: #fff;
+  margin-left: 0.35rem;
+}
+
+.subnote {
+  font-size: 0.78rem;
+  color: var(--flx-text-muted);
+  line-height: 1.45;
+  margin-top: 0.25rem;
+}

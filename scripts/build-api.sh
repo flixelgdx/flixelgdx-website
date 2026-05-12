@@ -2,22 +2,23 @@
 # ----------------------------------------------------------------------------
 # Generate the FlixelGDX API reference from the framework's Java sources.
 #
-# This script:
-#   1. Clones (or refreshes) the flixelgdx/flixelgdx master branch into
-#      build/flixelgdx-src.
-#   2. Drops a self-contained Dokka GFM build under build/dokka-runner that
-#      pulls in every flixelgdx-* module's `src/main` directory as a Dokka
-#      source-root and outputs GitHub-Flavoured Markdown.
-#   3. Runs Dokka via the standalone Gradle build, producing a tree of
-#      `Class.md`/`package.md` files.
-#   4. Massages the generated tree into the layout Docusaurus expects under
+# Pipeline:
+#   1. Use `git clone --filter=blob:none --no-checkout` + `git sparse-checkout`
+#      to pull ONLY the Java source folders (and a couple of metadata files)
+#      out of flixelgdx/flixelgdx@master. We never download Gradle scripts,
+#      tests, gradle wrappers, doc images or any other blobs, which keeps the
+#      working tree tiny (a few MB) instead of cloning the whole repo.
+#   2. Drop a small, self-contained Dokka build under build/dokka-runner that
+#      points its source-roots at the sparse checkout and uses the official
+#      Dokka GFM plugin to emit GitHub-Flavoured Markdown.
+#   3. Massage the generated tree into the layout Docusaurus expects under
 #      site/api/, prepending YAML front-matter so the docs render with our
-#      red/black, Javadoc-flavoured theme.
+#      theme.
 #
-# We intentionally use Dokka's `dokka-gradle-plugin` + `dokka-gfm-plugin`
-# in a *separate* tiny Gradle build so we do not have to fork the framework's
-# own build script. Java sources are analyzed via Dokka's built-in Java
-# support (which produces Java-flavoured signatures in the GFM output).
+# Knobs:
+#   FLIXELGDX_REPO    Git URL of the framework (default: GitHub HTTPS).
+#   FLIXELGDX_BRANCH  Branch / tag to read (default: master).
+#   FLIXELGDX_REF     Explicit commit SHA. Overrides FLIXELGDX_BRANCH when set.
 # ----------------------------------------------------------------------------
 set -euo pipefail
 
@@ -30,21 +31,61 @@ SITE_API_DIR="${ROOT}/site/api"
 
 FRAMEWORK_REPO="${FLIXELGDX_REPO:-https://github.com/flixelgdx/flixelgdx.git}"
 FRAMEWORK_BRANCH="${FLIXELGDX_BRANCH:-master}"
+FRAMEWORK_REF="${FLIXELGDX_REF:-}"
 
 echo "==> Preparing build directories"
 mkdir -p "${BUILD_DIR}"
 
-if [ -d "${SRC_DIR}/.git" ]; then
-  echo "==> Refreshing existing framework checkout"
-  git -C "${SRC_DIR}" fetch --depth 1 origin "${FRAMEWORK_BRANCH}"
-  git -C "${SRC_DIR}" reset --hard "origin/${FRAMEWORK_BRANCH}"
-else
-  echo "==> Cloning ${FRAMEWORK_REPO} (${FRAMEWORK_BRANCH})"
+# ----------------------------------------------------------------------------
+# 1. Sparse checkout — pull ONLY Java source dirs + the framework's own README
+#    and llms.txt (so we can show contextual prose at the top of the API).
+#
+# `--filter=blob:none` tells git to defer file downloads to checkout time, so
+# the initial clone only fetches commit metadata. The follow-up sparse-checkout
+# init+set narrows what `git checkout` will materialise to disk.
+# ----------------------------------------------------------------------------
+SPARSE_PATHS=(
+  "flixelgdx-core/src/main"
+  "flixelgdx-common/src/main"
+  "flixelgdx-jvm/src/main"
+  "flixelgdx-lwjgl3/src/main"
+  "flixelgdx-android/src/main"
+  "flixelgdx-ios/src/main"
+  "flixelgdx-teavm/src/main"
+  "flixelgdx-teavm-plugin/src/main"
+  "flixelgdx-logging-plugin/src/main"
+  "README.md"
+  "llms.txt"
+)
+
+if [ ! -d "${SRC_DIR}/.git" ]; then
+  echo "==> Sparse-cloning ${FRAMEWORK_REPO} (${FRAMEWORK_REF:-${FRAMEWORK_BRANCH}})"
   rm -rf "${SRC_DIR}"
-  git clone --depth 1 --branch "${FRAMEWORK_BRANCH}" "${FRAMEWORK_REPO}" "${SRC_DIR}"
+  git clone --filter=blob:none --no-checkout --depth 1 \
+    --branch "${FRAMEWORK_BRANCH}" "${FRAMEWORK_REPO}" "${SRC_DIR}"
+  git -C "${SRC_DIR}" sparse-checkout init --cone
+  git -C "${SRC_DIR}" sparse-checkout set "${SPARSE_PATHS[@]}"
+else
+  echo "==> Refreshing existing framework checkout"
+  git -C "${SRC_DIR}" sparse-checkout set "${SPARSE_PATHS[@]}" || true
+  git -C "${SRC_DIR}" fetch --filter=blob:none --depth 1 origin "${FRAMEWORK_BRANCH}"
 fi
 
-# Collect modules.
+# Land the requested ref (or branch tip) into the working tree.
+if [ -n "${FRAMEWORK_REF}" ]; then
+  echo "==> Checking out pinned ref ${FRAMEWORK_REF}"
+  git -C "${SRC_DIR}" fetch --filter=blob:none --depth 1 origin "${FRAMEWORK_REF}" || true
+  git -C "${SRC_DIR}" checkout --quiet "${FRAMEWORK_REF}"
+else
+  git -C "${SRC_DIR}" checkout --quiet "origin/${FRAMEWORK_BRANCH}"
+fi
+
+echo "==> Working tree size (should be small):"
+du -sh "${SRC_DIR}" 2>/dev/null || true
+
+# ----------------------------------------------------------------------------
+# 2. Generate the Dokka GFM build script.
+# ----------------------------------------------------------------------------
 MODULES=()
 for dir in "${SRC_DIR}"/flixelgdx-*; do
   [ -d "${dir}/src/main" ] || continue
@@ -52,11 +93,11 @@ for dir in "${SRC_DIR}"/flixelgdx-*; do
 done
 
 if [ "${#MODULES[@]}" -eq 0 ]; then
-  echo "!! No flixelgdx-* modules with src/main found, aborting."
+  echo "!! No flixelgdx-* modules with src/main found, aborting." >&2
   exit 1
 fi
 
-echo "==> Found modules: ${MODULES[*]}"
+echo "==> Modules: ${MODULES[*]}"
 
 echo "==> Writing self-contained Dokka build"
 mkdir -p "${DOKKA_DIR}"
@@ -64,11 +105,9 @@ cat > "${DOKKA_DIR}/settings.gradle.kts" <<'EOF'
 rootProject.name = "flixelgdx-api-docs"
 EOF
 
-# Build module blocks for build.gradle.kts.
 MODULE_BLOCKS=""
 for mod in "${MODULES[@]}"; do
   src_main="${SRC_DIR}/${mod}/src/main"
-  # Pick java or kotlin sub-folder; prefer "java", fall back to first child.
   if [ -d "${src_main}/java" ]; then
     rel="${src_main}/java"
   elif [ -d "${src_main}/kotlin" ]; then
@@ -115,23 +154,22 @@ gradle --no-daemon -q dokkaGfm
 popd >/dev/null
 
 if [ ! -d "${OUT_DIR}" ]; then
-  echo "!! Dokka did not produce output at ${OUT_DIR}"
+  echo "!! Dokka did not produce output at ${OUT_DIR}" >&2
   exit 1
 fi
 
+# ----------------------------------------------------------------------------
+# 3. Massage output for Docusaurus.
+# ----------------------------------------------------------------------------
 echo "==> Massaging output for Docusaurus"
 rm -rf "${SITE_API_DIR}.staging"
 mkdir -p "${SITE_API_DIR}.staging"
-# Copy module subtrees, drop Dokka's own top-level index (we keep our own).
 for mod in "${MODULES[@]}"; do
   if [ -d "${OUT_DIR}/${mod}" ]; then
     cp -R "${OUT_DIR}/${mod}" "${SITE_API_DIR}.staging/${mod}"
   fi
 done
 
-# Add Docusaurus YAML front-matter to every generated markdown file, otherwise
-# Docusaurus picks up the first line as a heading and the routing slug becomes
-# unstable when packages are renamed.
 python3 - "${SITE_API_DIR}.staging" <<'PY'
 import os, re, sys
 root = sys.argv[1]
@@ -142,10 +180,8 @@ for base, dirs, files in os.walk(root):
         p = os.path.join(base, f)
         with open(p, 'r', encoding='utf-8') as fh:
             text = fh.read()
-        # Skip if already has frontmatter
         if text.startswith('---\n'):
             continue
-        # Title = first markdown heading, fallback to filename
         m = re.search(r'^#\s+(.*?)\s*$', text, re.MULTILINE)
         title = m.group(1).strip() if m else os.path.splitext(f)[0]
         title = title.replace('"', "'")
@@ -155,14 +191,12 @@ for base, dirs, files in os.walk(root):
 PY
 
 echo "==> Replacing site/api content"
-# Preserve the hand-written index.md so we keep the welcome content
 mkdir -p "${SITE_API_DIR}"
 INDEX_BACKUP=""
 if [ -f "${SITE_API_DIR}/index.md" ]; then
   INDEX_BACKUP="$(mktemp)"
   cp "${SITE_API_DIR}/index.md" "${INDEX_BACKUP}"
 fi
-# Remove old module dirs (anything other than index.md)
 find "${SITE_API_DIR}" -mindepth 1 -maxdepth 1 ! -name "index.md" -exec rm -rf {} +
 cp -R "${SITE_API_DIR}.staging/." "${SITE_API_DIR}/"
 rm -rf "${SITE_API_DIR}.staging"

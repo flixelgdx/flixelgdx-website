@@ -6,10 +6,14 @@ import {
   buildProjectFiles,
   type GeneratorOptions,
   type IDE,
+  type JdkVendor,
   type Language,
   type Platform,
   type Template,
 } from './templates';
+import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
+import {GRADLEW_SH, GRADLEW_BAT} from './gradleWrapperScripts';
+import JdkSetupGuide from './JdkSetupGuide';
 
 /* ----------------------------------------------------------------------------
  * Per-option hover descriptions. Kept centralized so they read consistently
@@ -19,6 +23,18 @@ import {
 const HINTS = {
   expert:
     "For advanced developers who want more controls over their game's configs and setup.",
+  jdk: {
+    semeru:
+      'Recommended for FlixelGDX. Eclipse OpenJ9 (shipped as IBM Semeru) has a tiny heap and process footprint — perfect for low-end hardware and game jams.',
+    graalvm:
+      "Oracle's GraalVM. Fast JIT, optional native-image AOT. Great if you want short startup times or to bundle a single executable later.",
+    temurin:
+      'Eclipse Temurin (Adoptium). The standard, well-tested HotSpot JVM. Picks up the most IDE support out of the box.',
+    corretto:
+      "Amazon Corretto. Long-term-supported HotSpot build with security patches from AWS — a safe pick for production servers and CI.",
+    zulu:
+      'Azul Zulu. Broad coverage of JDK versions, including older LTS releases. Handy when you need to match a legacy environment.',
+  },
   gameName:
     "The name shown on the Window title bar when your game is running. Spaces are fine.",
   gameId:
@@ -85,6 +101,14 @@ async function fetchVersions(): Promise<string[]> {
   }
 }
 
+const VENDOR_LABELS: Record<JdkVendor, string> = {
+  semeru: 'Eclipse OpenJ9 (IBM Semeru)',
+  graalvm: 'GraalVM Community',
+  temurin: 'Eclipse Temurin (Adoptium)',
+  corretto: 'Amazon Corretto',
+  zulu: 'Azul Zulu',
+};
+
 function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   return (
     <Hint tip={tip}>
@@ -104,11 +128,24 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   ide: 'idea',
   template: 'blank',
   platforms: ['desktop'],
+  jdkVendor: 'semeru',
   expert: false,
   heapMb: 16,
   jvmFlags: '',
   gradleConfig: '',
 };
+
+/**
+ * Decode the embedded base64 wrapper jar to a Uint8Array. Done lazily inside
+ * the download handler so the bytes never live in memory until the user
+ * actually clicks the button.
+ */
+function decodeWrapperJar(): Uint8Array {
+  const binary = atob(GRADLE_WRAPPER_JAR_BASE64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 function validate(o: GeneratorOptions): string | null {
   if (!o.gameName.trim()) return 'Game name cannot be empty.';
@@ -160,9 +197,17 @@ function GeneratorBody(): JSX.Element {
     const {saveAs} = await import('file-saver');
     const zip = new JSZip();
     Object.entries(files).forEach(([path, contents]) => zip.file(path, contents));
-    const blob = await zip.generateAsync({type: 'blob'});
+    // Bundle the Gradle wrapper so users can run `./gradlew :lwjgl3:run`
+    // immediately. The wrapper jar is a real binary, written via Uint8Array.
+    zip.file('gradle/wrapper/gradle-wrapper.jar', decodeWrapperJar());
+    // POSIX shell wrapper — mark it executable (unix permission 0o755).
+    zip.file('gradlew', GRADLEW_SH, {unixPermissions: 0o755});
+    zip.file('gradlew.bat', GRADLEW_BAT);
+    const blob = await zip.generateAsync({type: 'blob', platform: 'UNIX'});
     saveAs(blob, `${opts.gameId}.zip`);
-    setStatus('Downloaded! Unzip it and run `gradle wrapper` once, then `./gradlew :lwjgl3:run`.');
+    setStatus(
+      'Downloaded! Unzip it and run ./gradlew :lwjgl3:run — Gradle will auto-install the selected JDK on first run.'
+    );
   }
 
   return (
@@ -283,6 +328,33 @@ function GeneratorBody(): JSX.Element {
               </select>
             </div>
           </div>
+          <div className={styles.field} style={{marginTop: '1rem'}}>
+            <label className={styles.label}>
+              JDK vendor{' '}
+              <HelpIcon tip={HINTS.jdk[opts.jdkVendor]} />
+              {opts.jdkVendor === 'semeru' && (
+                <span className={styles.recommend} title="Recommended for FlixelGDX">
+                  Recommended
+                </span>
+              )}
+            </label>
+            <select
+              className={styles.select}
+              value={opts.jdkVendor}
+              onChange={(e) => set('jdkVendor', e.target.value as JdkVendor)}
+            >
+              <option value="semeru">Eclipse OpenJ9 / IBM Semeru — recommended (low memory)</option>
+              <option value="graalvm">GraalVM Community — fast startup, AOT-ready</option>
+              <option value="temurin">Eclipse Temurin (Adoptium) — standard HotSpot</option>
+              <option value="corretto">Amazon Corretto — LTS HotSpot</option>
+              <option value="zulu">Azul Zulu — broad version coverage</option>
+            </select>
+            <div className={styles.subnote}>
+              Gradle will auto-download a matching JDK on first build using the
+              Foojay Toolchains Resolver — you only need a Gradle-compatible
+              bootstrap JDK on PATH (any modern JDK 8+ works).
+            </div>
+          </div>
         </div>
 
         <div className={styles.panel}>
@@ -338,8 +410,18 @@ function GeneratorBody(): JSX.Element {
         </div>
 
         <div className={styles.panel}>
+          <h3 className={styles.panelTitle}>4. JDK setup</h3>
+          <p style={{margin: '0 0 0.5rem', fontSize: '0.9rem', color: 'var(--flx-text-muted)'}}>
+            Pick your operating system to see step-by-step instructions for
+            installing the JDK you chose above. The generated project's Gradle
+            wrapper can then auto-download the matching toolchain on first run.
+          </p>
+          <JdkSetupGuide vendor={opts.jdkVendor} vendorLabel={VENDOR_LABELS[opts.jdkVendor]} />
+        </div>
+
+        <div className={styles.panel}>
           <h3 className={styles.panelTitle}>
-            4. Expert mode{' '}
+            5. Expert mode{' '}
             <Hint tip={HINTS.expert}>
               <span className={styles.helpIcon}>?</span>
             </Hint>
@@ -412,6 +494,7 @@ function GeneratorBody(): JSX.Element {
           <dt>Package</dt><dd>{opts.packageName}</dd>
           <dt>Lang</dt><dd>{opts.language}</dd>
           <dt>Java</dt><dd>{opts.javaVersion}</dd>
+          <dt>JDK</dt><dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
           <dt>Flixel</dt><dd>{opts.flixelVersion}</dd>
           <dt>Template</dt><dd>{opts.template}</dd>
           <dt>IDE</dt><dd>{opts.ide}</dd>

@@ -7,6 +7,7 @@ description: Build the classic Pong game in FlixelGDX. A friendly, step-by-step 
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import JdkSetupGuide from '@site/src/components/projectGenerator/JdkSetupGuide';
 
 # Your First Project: Pong! 🏓
 
@@ -27,11 +28,13 @@ FlixelGDX idea:
 - ⏱ Working with **elapsed / delta timing** so your game feels the same on every computer.
 - 🪵 Using the **logging API** to peek at what your game is doing.
 
-:::tip Pick your language
+:::tip[Pick your language]
+
 Every code block on this page has tabs for **Java**, **Groovy** and
 **Kotlin** — the same three languages the [project generator](./getting-started)
 supports. Pick whichever matches the project you generated, and stick
 with it for the whole tutorial.
+
 :::
 
 ## A quick mental model
@@ -56,7 +59,24 @@ your head.
 
 Easy, right? Let's build the show.
 
-## 0. Generate the project
+## 0. Install a JDK
+
+Pick the JDK you want and follow the snippet for your operating system.
+For FlixelGDX we recommend **Eclipse OpenJ9 (IBM Semeru)** — same Java,
+much smaller memory footprint, perfect for games.
+
+<JdkSetupGuide vendor="semeru" vendorLabel="Eclipse OpenJ9 (IBM Semeru) — recommended" />
+
+:::info[Want a different JDK?]
+
+If you would rather use **GraalVM**, **Adoptium Temurin**, **Amazon
+Corretto** or **Azul Zulu**, head to the
+[project generator](./getting-started) — picking a vendor there will
+show you the matching install instructions for every OS.
+
+:::
+
+## 1. Generate the project
 
 Head to **[Getting Started](./getting-started)** and generate a project
 with these settings:
@@ -67,9 +87,21 @@ with these settings:
 - **Template:** **Blank play state**
 - **Platforms:** **Desktop**
 - **Language:** Java *(or Groovy / Kotlin — your choice)*
+- **JDK vendor:** Eclipse OpenJ9 *(or whichever you installed above)*
 
-Download the zip, unzip it, run `gradle wrapper` once, and confirm that
-`./gradlew :lwjgl3:run` shows the empty 640×480 window. ✅
+Download the zip, unzip it, and run:
+
+```bash
+./gradlew :lwjgl3:run
+```
+
+(Use `gradlew.bat :lwjgl3:run` on Windows.)
+
+That is it — no `gradle wrapper`, no installer prompts. The zip already
+ships with the Gradle wrapper, and Gradle will auto-download the
+matching JDK toolchain on the first build via the Foojay Toolchains
+Resolver. After a brief first-time download you should see the empty
+640×480 window. ✅
 
 The generator already created two files for you:
 
@@ -85,7 +117,7 @@ file.
 
 We will edit only `PlayState` and add one tiny extra file later.
 
-## 1. Make some paddles
+## 2. Make some paddles
 
 The first thing every Pong game needs is two **paddles** — one for the
 player on the left, one for the enemy on the right. In FlixelGDX, the
@@ -206,7 +238,7 @@ class PlayState : FlixelState() {
 
 Run the game (`./gradlew :lwjgl3:run`). Two white paddles! 🎉
 
-## 2. Move the player paddle with the keyboard
+## 3. Move the player paddle with the keyboard
 
 Right now both paddles are statues. Let's teach the left one to listen
 to **W** (up) and **S** (down). FlixelGDX's input lives on `Flixel.keys`,
@@ -294,7 +326,7 @@ override fun update(elapsed: Float) {
 There is also `justPressed` (true for **one frame only**, the frame the
 key went down) which we will use in a moment.
 
-## 3. Add the ball, with collision
+## 4. Add the ball, with collision
 
 Now the fun part — a bouncing ball. We will give it a tiny `vx` / `vy`
 velocity and bounce it off the top, bottom, and any paddle it touches.
@@ -413,7 +445,7 @@ have `exists == false`, so your collision code stays one line.
 
 Run the game. A red ball bounces between the paddles. 🟥
 
-## 4. Give the enemy a brain
+## 5. Give the enemy a brain
 
 The enemy paddle should track the ball — but slowly enough that you can
 beat it. We just slide it toward the ball's vertical center each frame:
@@ -464,7 +496,7 @@ if (enemy.y > 480f - 64f) enemy.y = 480f - 64f
 `Math.min(a, b)` keeps us from overshooting the ball when it is close —
 nicer than a wobbly tracker.
 
-## 5. Score! — using `FlixelText`
+## 6. Score! — using `FlixelText`
 
 A Pong game with no score is just an animation. Let's add two big white
 numbers at the top using **`FlixelText`**, the framework's text widget.
@@ -625,7 +657,7 @@ Notice the `Flixel.log.info(...)` call — that is the **logging API** in
 action. Every score is now printed to the terminal *and* to the
 framework's log file. We'll lean on it again in the next step to debug.
 
-## 6. A pause substate
+## 7. A pause substate
 
 Finally, let's wire up a **pause screen** as a `FlixelSubState`. Press
 **SPACE** to toggle pause; while paused, the gameplay freezes and a big
@@ -764,7 +796,7 @@ again, the ball picks up exactly where it left off.
 That right there — `justPressed` vs `pressed`, `openSubState` /
 `close()` — is the whole input + state-stack story.
 
-## 7. Game over → `Flixel.switchState`
+## 8. Game over → `Flixel.switchState`
 
 For the cherry on top, when somebody reaches **5 points**, we will
 **switch states** into a tiny "Game Over" screen, which sits there until

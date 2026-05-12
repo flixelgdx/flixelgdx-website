@@ -1,6 +1,6 @@
-import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import {githubLight, githubDark} from './src/prismThemes';
 
 const config: Config = {
   title: 'FlixelGDX',
@@ -143,9 +143,9 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} FlixelGDX. Built with Docusaurus. Not affiliated with HaxeFlixel or libGDX.`,
     },
     prism: {
-      theme: prismThemes.oneLight,
-      darkTheme: prismThemes.oneDark,
-      additionalLanguages: ['java', 'groovy', 'kotlin', 'gradle', 'bash', 'markup', 'properties'],
+      theme: githubLight,
+      darkTheme: githubDark,
+      additionalLanguages: ['java', 'groovy', 'kotlin', 'gradle', 'bash', 'markup', 'properties', 'powershell', 'batch'],
     },
   } satisfies Preset.ThemeConfig,
 };

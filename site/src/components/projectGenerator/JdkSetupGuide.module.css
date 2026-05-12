@@ -1,0 +1,112 @@
+.wrap {
+  background: var(--flx-surface);
+  border: 1px solid var(--flx-border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 1.25rem 0;
+}
+
+.tabRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px;
+  background: var(--flx-surface-2);
+  border-bottom: 1px solid var(--flx-border);
+}
+
+.tab {
+  background: transparent;
+  color: var(--ifm-color-content);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.tab:hover {
+  background: var(--flx-surface);
+}
+
+.tabActive {
+  background: var(--flx-surface);
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.body {
+  padding: 1rem 1.1rem 1.25rem;
+}
+
+.intro {
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.code {
+  background: #0d1117;
+  color: #e6edf3;
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--flx-border);
+  margin: 0 0 0.6rem;
+  overflow-x: auto;
+}
+
+[data-theme='light'] .code {
+  background: #f6f8fa;
+  color: #1f2328;
+}
+
+.code code {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.notes {
+  margin: 0 0 0.6rem;
+  padding-left: 1.2rem;
+}
+
+.notes li {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0.15rem 0;
+}
+
+.dlBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0.6rem;
+  padding: 0.5rem 0.85rem;
+  background: linear-gradient(180deg, #ff3a4d 0%, #d50a1c 100%);
+  color: #fff;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  box-shadow: 0 6px 18px -10px rgba(255, 42, 60, 0.55);
+}
+
+.dlBtn:hover {
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(180deg, #ff5061 0%, #e51124 100%);
+}
+
+.verify {
+  margin-top: 0.5rem;
+  font-size: 0.83rem;
+  color: var(--flx-text-muted);
+  border-top: 1px dashed var(--flx-border);
+  padding-top: 0.6rem;
+}
