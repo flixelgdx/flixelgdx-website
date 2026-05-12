@@ -93,12 +93,7 @@ const config: Config = {
         {to: '/api/', label: 'API', position: 'left'},
         {
           href: 'https://github.com/flixelgdx/flixelgdx',
-          label: 'Source',
-          position: 'right',
-        },
-        {
-          href: 'https://github.com/flixelgdx/flixelgdx-website',
-          label: 'Website Repo',
+          label: 'View source',
           position: 'right',
         },
       ],

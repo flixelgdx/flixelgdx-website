@@ -16,7 +16,7 @@
 #
 # We intentionally use Dokka's `dokka-gradle-plugin` + `dokka-gfm-plugin`
 # in a *separate* tiny Gradle build so we do not have to fork the framework's
-# own build script. Java sources are analysed via Dokka's built-in Java
+# own build script. Java sources are analyzed via Dokka's built-in Java
 # support (which produces Java-flavoured signatures in the GFM output).
 # ----------------------------------------------------------------------------
 set -euo pipefail
