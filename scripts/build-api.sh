@@ -102,77 +102,7 @@ rm -rf "${STAGE}"
 mkdir -p "${STAGE}"
 cp -R "${DOKKA_INNER}/." "${STAGE}/"
 
-python3 - "${STAGE}" <<'PY'
-# Post-process Dokka's GFM so it parses cleanly as MDX.
-#
-# Dokka emits some HTML inside table cells (notably bare <br> and {} curly
-# braces in javadoc snippets) that MDX rejects. We do a minimal sanitization
-# pass: self-close <br>, escape stray { / } inside table data, and prepend
-# a Docusaurus YAML front-matter block.
-import os, re, sys
-
-root = sys.argv[1]
-
-BR_RE = re.compile(r'<br\s*>', re.IGNORECASE)
-HEADING_RE = re.compile(r'^#\s+(.*?)\s*$', re.MULTILINE)
-
-
-def escape_curly_braces(text: str) -> str:
-    """MDX treats `{` / `}` as JSX expression delimiters. Dokka never wants
-    that — it just passes raw javadoc text like `{@value #FOO}` through.
-    Escape every stray curly brace except inside code spans (`...`) and
-    fenced code blocks (```...```)."""
-    out = []
-    in_fence = False
-    for line in text.splitlines(keepends=True):
-        if line.lstrip().startswith('```'):
-            in_fence = not in_fence
-            out.append(line)
-            continue
-        if in_fence:
-            out.append(line)
-            continue
-        # Outside fences: split on inline code spans so we leave them alone.
-        parts = re.split(r'(`[^`]*`)', line)
-        for i, p in enumerate(parts):
-            if i % 2 == 0:  # not inside a code span
-                p = p.replace('{', r'\{').replace('}', r'\}')
-            parts[i] = p
-        out.append(''.join(parts))
-    return ''.join(out)
-
-
-for base, dirs, files in os.walk(root):
-    for f in files:
-        if not f.endswith('.md'):
-            continue
-        p = os.path.join(base, f)
-        with open(p, 'r', encoding='utf-8') as fh:
-            text = fh.read()
-        if text.startswith('---\n'):
-            continue
-
-        # Sanitize: self-close <br>, escape stray curlies everywhere outside
-        # code spans / fenced blocks.
-        text = BR_RE.sub('<br />', text)
-        text = escape_curly_braces(text)
-
-        m = HEADING_RE.search(text)
-        title = m.group(1).strip() if m else os.path.splitext(f)[0]
-        # Strip any inline markdown / HTML from the title so YAML stays valid.
-        title = re.sub(r'\[(.*?)\]\([^)]*\)', r'\1', title)
-        title = re.sub(r'<[^>]+>', '', title).strip()
-        title = title.replace('"', "'")
-        fm = (
-            "---\n"
-            f"title: \"{title}\"\n"
-            "hide_title: false\n"
-            f"sidebar_label: \"{title}\"\n"
-            "---\n\n"
-        )
-        with open(p, 'w', encoding='utf-8') as fh:
-            fh.write(fm + text)
-PY
+python3 "${ROOT}/scripts/postprocess_api.py" "${STAGE}"
 
 echo "==> Replacing site/api content"
 mkdir -p "${SITE_API_DIR}"

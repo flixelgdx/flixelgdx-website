@@ -17,13 +17,13 @@
   --flx-red: #ff2a3c;
   --flx-red-strong: #ff5566;
   --flx-red-deep: #6b0f15;
-  /* HaxeFlixel-inspired accent palette, deepened so the colours sit
-   * comfortably on the pitch-black dark theme without blowing out the
-   * contrast. Used in the pixel rule and the hero backdrop stars. */
-  --hxflx-yellow: #b8851a;
-  --hxflx-salmon: #b03d3d;
-  --hxflx-green: #588f1a;
-  --hxflx-blue: #2c5780;
+  /* The exact colours from the HaxeFlixel mascot/logo (salmon red, golden
+   * yellow, lime green, sky blue). Used in the pixel rule and as the
+   * "Flixel red" accent across the site (e.g. the check-list bullets). */
+  --hxflx-red: #f86973;
+  --hxflx-yellow: #fcd647;
+  --hxflx-green: #9dce36;
+  --hxflx-blue: #5fb4f5;
   /* Aliases kept for backwards-compat with older rules in this file. */
   --flx-yellow: var(--hxflx-yellow);
   --flx-green: var(--hxflx-green);
@@ -379,21 +379,18 @@ body {
 
 /* ------------------- Pixel border accent (logo vibe) -------------------- */
 
-/* Pixel rule: a row of HaxeFlixel-coloured squares spaced apart, evoking the
- * classic Flixel logo bar. Cycles deep yellow → salmon → green → blue and
- * leaves the white slot empty so the gaps look like real spacing.
- *
- * The block is 12 px wide with an 8 px transparent gap between each pair,
- * tiled across the width via a single linear-gradient + background-size. */
+/* Pixel rule: a row of HaxeFlixel-logo-coloured squares spaced apart.
+ * Cycles salmon red → golden yellow → lime green → sky blue with real
+ * gaps between every block. Tiled via background-size. */
 .flx-pixel-rule {
   height: 10px;
   width: 100%;
   background-image:
     linear-gradient(
       90deg,
-      var(--hxflx-yellow) 0 12px,
+      var(--hxflx-red) 0 12px,
       transparent 12px 20px,
-      var(--hxflx-salmon) 20px 32px,
+      var(--hxflx-yellow) 20px 32px,
       transparent 32px 40px,
       var(--hxflx-green) 40px 52px,
       transparent 52px 60px,
@@ -403,7 +400,7 @@ body {
   background-repeat: repeat-x;
   background-size: 80px 10px;
   image-rendering: pixelated;
-  opacity: 0.85;
+  opacity: 0.95;
   border-radius: 2px;
 }
 
@@ -433,4 +430,77 @@ textarea:focus-visible {
 .theme-admonition {
   border-radius: 10px;
   border-left-width: 4px;
+}
+
+/* -------------------- API reference (Dokka-driven pages) ---------------- */
+
+/* Suppress Docusaurus's default breadcrumb on API pages — we render our
+ * own Java-shaped one via the post-processor. Looks for the body class
+ * Docusaurus puts on docs pages under the `api` plugin instance. */
+.plugin-docs[class*="docs-doc-id-"] .theme-doc-breadcrumbs,
+nav[class*="docsBreadcrumbs"] {
+  display: none;
+}
+
+/* Java-shaped breadcrumb the post-processor injects at the top of every
+ * API page (e.g. "me.stringdotjar.flixelgdx » FlixelSprite"). */
+.flx-breadcrumb {
+  display: inline-block;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  color: var(--flx-text-muted);
+  background: var(--flx-surface-2);
+  border: 1px solid var(--flx-border);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.flx-breadcrumb a {
+  color: var(--ifm-link-color);
+  text-decoration: none;
+}
+
+.flx-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* Hide Dokka's per-member .md files from the sidebar. We still want the
+ * pages reachable (search, deep links from H3 anchors on the class page),
+ * but they should not litter the navigation tree. */
+.flx-hidden-sidebar {
+  display: none !important;
+}
+
+/* The post-processor turns the Properties / Functions tables into H3
+ * blocks. Tighten those up so the page reads like a clean API ref. */
+.markdown h3 + p > code,
+.markdown h3 + code {
+  display: inline-block;
+  margin-top: -0.25rem;
+}
+
+.markdown h3 > a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.markdown h3 > a:hover {
+  text-decoration: underline;
+  color: var(--ifm-color-primary);
+}
+
+/* "Inheritors" / "See also" lists Dokka leaves as 1-column tables — make
+ * them look like a flat list rather than a giant misaligned table. */
+.markdown table:has(td:only-child) {
+  border: 0;
+}
+
+.markdown table:has(td:only-child) tr {
+  background: transparent !important;
+}
+
+.markdown table:has(td:only-child) td {
+  border: 0;
+  padding: 0.25rem 0;
 }
