@@ -31,20 +31,23 @@ getting started.
 
 ## After you download
 
-1. **Install a JDK** — Java 17 or newer. We recommend
-   [Adoptium Temurin](https://adoptium.net/) for a friction-free install.
+1. **Install a JDK** — Java 17 or newer. The generated `README.txt`
+   has step-by-step install instructions for the JDK and operating
+   system you picked above. The [Pong tutorial's Step 0](./your-first-project#0-install-a-jdk)
+   has the same walk-through embedded if you'd rather scroll than
+   open a separate file.
 2. **Unzip** the downloaded archive anywhere on your computer.
-3. From a terminal in that folder, generate the Gradle wrapper once:
+3. From a terminal in that folder, run your game on the desktop:
 
    ```bash
-   gradle wrapper
+   ./gradlew :lwjgl3:run        # macOS / Linux
+   gradlew.bat :lwjgl3:run      # Windows
    ```
 
-4. Then run your game on the desktop:
-
-   ```bash
-   ./gradlew :lwjgl3:run
-   ```
+   The zip already ships the Gradle wrapper, and the build script
+   tells Gradle's [Foojay Toolchains Resolver](https://github.com/gradle/foojay-toolchains)
+   to auto-download the matching JDK on first run — so the very first
+   build takes a minute, every build after that is instant.
 
 A red square (or your platformer player) should appear in a 640×480
 window. You are running a real FlixelGDX game. 🎉

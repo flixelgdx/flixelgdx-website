@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # ----------------------------------------------------------------------------
-# Generate the FlixelGDX API reference from the framework's Java sources.
+# Generate the FlixelGDX API reference (one tree per module) and drop the
+# result under `site/api/<module>/` ready for Docusaurus to consume.
 #
 # Pipeline:
-#   1. Sparse-checkout ONLY the Java source folders out of
-#      flixelgdx/flixelgdx@master into build/flixelgdx-src/. We never download
-#      Gradle scripts, tests, doc images or any other blobs, so the working
-#      tree stays at ~3 MB.
-#   2. Invoke the bundled Gradle wrapper to run `:dokka:dokkaGfm`. The wrapper
-#      and the Dokka project ship inside this repository — contributors do
-#      NOT need to install Gradle, Dokka, or the FlixelGDX framework.
-#   3. Massage the generated Markdown tree into the layout Docusaurus expects
-#      under site/api/, prepending YAML front-matter so each page renders
-#      with our theme.
+#   1. Sparse-clone Java sources from flixelgdx/flixelgdx@master into
+#      build/flixelgdx-src/  (≈ 3 MB instead of the whole repo).
+#   2. Run `./gradlew :dokka:dokkaGfmAll` to render five GFM trees under
+#      build/dokka-out/{core, lwjgl3, teavm, android, ios}. Each uses
+#      `kotlin-as-java-plugin` so signatures come out as real Java
+#      (`public class Foo extends Bar implements Baz`).
+#   3. Run `scripts/postprocess_api.py` which restructures the folders
+#      into a short nested layout, rewrites internal links, inlines each
+#      member's full doc onto the owning class page, adds View-Source
+#      buttons, etc. (see the script's docstring for the full list).
 #
 # Knobs:
 #   FLIXELGDX_REPO    Git URL of the framework (default: GitHub HTTPS).
@@ -35,11 +36,8 @@ echo "==> Preparing build directories"
 mkdir -p "${BUILD_DIR}"
 
 # ----------------------------------------------------------------------------
-# 1. Sparse checkout — pull ONLY Java source dirs + the framework's own README
-#    and llms.txt (so we can show contextual prose at the top of the API).
+# 1. Sparse checkout — pull ONLY Java source dirs from each module.
 # ----------------------------------------------------------------------------
-# Directories only — git sparse-checkout cone mode does not accept file
-# patterns. The framework's README and llms.txt are not needed for Dokka.
 SPARSE_PATHS=(
   "flixelgdx-core/src/main"
   "flixelgdx-common/src/main"
@@ -77,43 +75,33 @@ echo "==> Working tree size:"
 du -sh "${SRC_DIR}" 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
-# 2. Run the bundled Dokka build.
+# 2. Run Dokka per-module (kotlin-as-java-plugin + GFM).
 # ----------------------------------------------------------------------------
 echo "==> Running Dokka GFM via bundled Gradle wrapper"
 rm -rf "${OUT_DIR}"
-(cd "${ROOT}" && ./gradlew --no-daemon -q :dokka:dokkaGfm)
+(cd "${ROOT}" && ./gradlew --no-daemon -q :dokka:dokkaGfmAll)
 
-# Dokka emits the module under a kebab-cased directory derived from the
-# moduleName property ("FlixelGDX" -> "-flixel-g-d-x"). Pick whichever single
-# subdirectory it produced so we don't hard-code that mangled name.
-DOKKA_INNER="$(find "${OUT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-if [ -z "${DOKKA_INNER}" ]; then
-  echo "!! Dokka did not produce a module directory under ${OUT_DIR}" >&2
+if [ ! -d "${OUT_DIR}" ]; then
+  echo "!! Dokka did not produce output at ${OUT_DIR}" >&2
   exit 1
 fi
-echo "==> Dokka rendered into ${DOKKA_INNER}"
 
 # ----------------------------------------------------------------------------
-# 3. Massage output for Docusaurus.
+# 3. Restructure + post-process. Backup index.md so the hand-written
+#    landing page survives the wipe.
 # ----------------------------------------------------------------------------
-echo "==> Massaging output for Docusaurus"
-STAGE="${SITE_API_DIR}.staging"
-rm -rf "${STAGE}"
-mkdir -p "${STAGE}"
-cp -R "${DOKKA_INNER}/." "${STAGE}/"
-
-python3 "${ROOT}/scripts/postprocess_api.py" "${STAGE}"
-
-echo "==> Replacing site/api content"
-mkdir -p "${SITE_API_DIR}"
 INDEX_BACKUP=""
 if [ -f "${SITE_API_DIR}/index.md" ]; then
   INDEX_BACKUP="$(mktemp)"
   cp "${SITE_API_DIR}/index.md" "${INDEX_BACKUP}"
 fi
-find "${SITE_API_DIR}" -mindepth 1 -maxdepth 1 ! -name "index.md" -exec rm -rf {} +
-cp -R "${STAGE}/." "${SITE_API_DIR}/"
-rm -rf "${STAGE}"
+mkdir -p "${SITE_API_DIR}"
+# Wipe per-module subtrees (the Python script also does this, but doing
+# it here means stale modules from a previous run also get cleared).
+find "${SITE_API_DIR}" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+
+python3 "${ROOT}/scripts/postprocess_api.py" "${OUT_DIR}" "${SITE_API_DIR}" "${SRC_DIR}"
+
 if [ -n "${INDEX_BACKUP}" ]; then
   cp "${INDEX_BACKUP}" "${SITE_API_DIR}/index.md"
   rm -f "${INDEX_BACKUP}"

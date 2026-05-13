@@ -1,30 +1,35 @@
 /*
  * Dokka build for the FlixelGDX API reference.
  *
- * This subproject is self-contained: it does NOT depend on the framework
- * itself being on the classpath. We just point Dokka at the framework's
- * java sources (cloned under `${rootDir}/build/flixelgdx-src/`) and tell it
- * to emit GitHub-Flavoured Markdown. The shell wrapper
- * `scripts/build-api.sh` does the cloning before invoking
- * `:dokka:dokkaGfm`.
+ * Generates one GFM markdown tree **per framework module** so the
+ * website can expose a "Module" dropdown (Core / Desktop / Web / …)
+ * and so each module's sidebar lists only its own packages.
  *
- * The expected layout under the framework checkout is:
+ * Two key Dokka features are wired in:
  *
- *   build/flixelgdx-src/
- *     flixelgdx-core/src/main/java/...
- *     flixelgdx-jvm/src/main/java/...
- *     flixelgdx-lwjgl3/src/main/java/...
- *     ...
+ *  • **kotlin-as-java-plugin**: makes Dokka render every declaration
+ *    using Java syntax. The framework IS Java, but Dokka's default
+ *    renderer still emits Kotlin-shape (`var x: Int`, `fun foo(): X`,
+ *    `class A : B`). The official `kotlin-as-java-plugin` flips that
+ *    so we get real `int x;`, `X foo()`, `class A extends B
+ *    implements C` etc. — including the right keyword for interfaces.
  *
- * Override the location with the gradle property `flixelgdxSrc`:
- *   ./gradlew :dokka:dokkaGfm -PflixelgdxSrc=/abs/path/to/flixelgdx
+ *  • **sourceLink**: every declaration in the rendered Markdown gets
+ *    a link back to its exact line in `flixelgdx/flixelgdx@master` on
+ *    GitHub. The post-processor surfaces those as "View Source"
+ *    buttons.
+ *
+ * Why we register one task per module instead of using `dokkaSourceSets`
+ * inside a single task: Dokka merges multiple source-sets into a SINGLE
+ * documentation model, so the rendered Markdown ends up flat with no
+ * way for the website to tell which module a given class came from.
+ * Per-module tasks give us per-module folders we can map onto the
+ * "Module" dropdown one-to-one.
  */
 import org.jetbrains.dokka.gradle.DokkaTask
+import java.net.URI
 
 plugins {
-  // The classic Dokka plugin auto-registers `dokkaHtml` / `dokkaJavadoc` /
-  // `dokkaGfm` / `dokkaJekyll` tasks. The GFM and Javadoc tasks are
-  // activated by the corresponding format plugin dependency below.
   id("org.jetbrains.dokka") version "1.9.20"
 }
 
@@ -32,83 +37,119 @@ repositories {
   mavenCentral()
 }
 
-// The `dokkaGfmPlugin` configuration is exposed by the Dokka Gradle plugin
-// specifically for the dokkaGfm task. Adding the official gfm-plugin
-// artifact here is what makes `dokkaGfm` produce real Markdown output.
+// Plugin classpath shared by every Dokka task we register. We need BOTH:
+//
+//   1. dokka-gfm-plugin   — provides the GFM renderer
+//   2. kotlin-as-java     — converts Kotlin AST into Java-shaped output
+//
+// Each per-module task gets these jars attached via `plugins.from(...)`.
+val dokkaPluginClasspath: Configuration = configurations.create("dokkaPluginClasspath") {
+  isCanBeResolved = true
+  isCanBeConsumed = false
+}
+
 dependencies {
-  dokkaGfmPlugin("org.jetbrains.dokka:gfm-plugin:1.9.20")
+  dokkaPluginClasspath("org.jetbrains.dokka:gfm-plugin:1.9.20")
+  dokkaPluginClasspath("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
 }
 
 val flixelgdxSrcPath = (project.findProperty("flixelgdxSrc") as String?)
   ?: "${rootDir}/build/flixelgdx-src"
-
 val flixelgdxSrc = file(flixelgdxSrcPath)
 
-// Auto-discover every flixelgdx-* module that has a src/main directory.
-// We pick `java` first (the framework is Java 17) but fall back to other
-// sub-folders so the build keeps working if a Kotlin/groovy source set
-// gets added later.
-data class Mod(val name: String, val sourceRoot: java.io.File)
+/**
+ * The five framework modules we expose as separate API trees. Order
+ * matters: it controls the dropdown order on the website.
+ */
+val modules: List<Pair<String, String>> = listOf(
+  "core"    to "flixelgdx-core",
+  "lwjgl3"  to "flixelgdx-lwjgl3",
+  "teavm"   to "flixelgdx-teavm",
+  "android" to "flixelgdx-android",
+  "ios"     to "flixelgdx-ios",
+)
 
-val modules: List<Mod> = if (flixelgdxSrc.isDirectory) {
-  flixelgdxSrc.listFiles { f -> f.isDirectory && f.name.startsWith("flixelgdx-") }
-    .orEmpty()
-    .toList()
-    .mapNotNull { dir ->
-      val mainDir = file("${dir}/src/main")
-      if (!mainDir.exists()) return@mapNotNull null
-      val javaDir = file("${mainDir}/java")
-      val kotlinDir = file("${mainDir}/kotlin")
-      val root = when {
-        javaDir.isDirectory -> javaDir
-        kotlinDir.isDirectory -> kotlinDir
-        else -> mainDir.listFiles { f -> f.isDirectory }?.firstOrNull()
-      } ?: return@mapNotNull null
-      Mod(dir.name, root)
-    }
-    .sortedBy { it.name }
-} else {
-  emptyList()
+fun srcRoot(moduleDir: String): File? {
+  val main = file("${flixelgdxSrc}/${moduleDir}/src/main")
+  if (!main.exists()) return null
+  val candidates = listOf(file("${main}/java"), file("${main}/kotlin"))
+  candidates.firstOrNull { it.isDirectory }?.let { return it }
+  return main.listFiles { f -> f.isDirectory }?.firstOrNull()
 }
 
-tasks.named<DokkaTask>("dokkaGfm") {
-  outputDirectory.set(file("${rootDir}/build/dokka-out"))
-  moduleName.set("FlixelGDX")
-
-  if (modules.isEmpty()) {
-    // No source checkout yet — leave a friendly hint instead of failing.
-    doFirst {
-      throw GradleException(
-        "No flixelgdx-* modules found under $flixelgdxSrc.\n" +
-        "Run scripts/build-api.sh, or pass -PflixelgdxSrc=/path/to/flixelgdx."
-      )
-    }
-  }
-
-  dokkaSourceSets {
-    modules.forEach { mod ->
-      register(mod.name) {
-        displayName.set(mod.name)
-        sourceRoots.from(mod.sourceRoot)
+/**
+ * Register one Dokka task per module. We attach both the GFM renderer
+ * and the kotlin-as-java transformer to each task's plugin classpath.
+ */
+val perModuleTasks: List<TaskProvider<DokkaTask>> = modules.mapNotNull { (slug, dir) ->
+  val src = srcRoot(dir) ?: return@mapNotNull null
+  val taskName = "dokkaGfm_${slug}"
+  val task = tasks.register<DokkaTask>(taskName) {
+    description = "Generate Dokka GFM for the $dir module."
+    outputDirectory.set(file("${rootDir}/build/dokka-out/${slug}"))
+    moduleName.set(dir)
+    // Attach GFM renderer + kotlin-as-java transformer to this task.
+    // `plugins` on AbstractDokkaTask is a Configuration we extend.
+    (this.plugins as org.gradle.api.artifacts.Configuration)
+      .dependencies.add(project.dependencies.create(dokkaPluginClasspath))
+    dokkaSourceSets {
+      register(dir) {
+        displayName.set(dir)
+        sourceRoots.from(src)
         jdkVersion.set(17)
         noStdlibLink.set(true)
         noJdkLink.set(false)
         reportUndocumented.set(false)
         skipEmptyPackages.set(true)
+        sourceLink {
+          localDirectory.set(src)
+          remoteUrl.set(
+            URI("https://github.com/flixelgdx/flixelgdx/blob/master/${dir}/src/main/java").toURL()
+          )
+          remoteLineSuffix.set("#L")
+        }
       }
+    }
+  }
+  task
+}
+
+// Disable the default `dokkaGfm` task — we use per-module tasks aggregated
+// by `dokkaGfmAll` below. Leaving the default enabled would re-render the
+// HTML/GFM merge at the root and cost ~20 s for nothing.
+tasks.named<DokkaTask>("dokkaGfm") { enabled = false }
+tasks.named<DokkaTask>("dokkaHtml") { enabled = false }
+tasks.named<DokkaTask>("dokkaJavadoc") { enabled = false }
+tasks.named<DokkaTask>("dokkaJekyll") { enabled = false }
+
+/**
+ * Aggregator task — running `./gradlew :dokka:dokkaGfmAll` builds every
+ * module. The shell wrapper `scripts/build-api.sh` invokes this.
+ */
+tasks.register("dokkaGfmAll") {
+  group = "documentation"
+  description = "Build the GFM API reference for every FlixelGDX module."
+  dependsOn(perModuleTasks)
+  doLast {
+    if (perModuleTasks.isEmpty()) {
+      throw GradleException(
+        "No flixelgdx-* modules found under $flixelgdxSrc.\n" +
+        "Run scripts/build-api.sh, or pass -PflixelgdxSrc=/path/to/flixelgdx."
+      )
+    }
+    perModuleTasks.forEach {
+      logger.lifecycle("  ✓ ${it.name} → build/dokka-out/${it.name.removePrefix("dokkaGfm_")}")
     }
   }
 }
 
-// Print the discovered modules at configuration time so contributors get a
-// clear "this is what I'm about to render" line in the build log.
 gradle.taskGraph.whenReady {
-  if (allTasks.any { it.name == "dokkaGfm" }) {
+  if (allTasks.any { it.name == "dokkaGfmAll" }) {
     logger.lifecycle("FlixelGDX Dokka source: $flixelgdxSrcPath")
-    if (modules.isEmpty()) {
+    if (perModuleTasks.isEmpty()) {
       logger.lifecycle("  (no modules discovered — clone the framework first)")
     } else {
-      modules.forEach { logger.lifecycle("  • ${it.name} -> ${it.sourceRoot}") }
+      logger.lifecycle("  Modules: " + perModuleTasks.joinToString { it.name.removePrefix("dokkaGfm_") })
     }
   }
 }

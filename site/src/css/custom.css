@@ -504,3 +504,88 @@ nav[class*="docsBreadcrumbs"] {
   border: 0;
   padding: 0.25rem 0;
 }
+
+/* "View source" button rendered above every API class page.
+ *
+ * The post-processor emits this as a plain Markdown link pointing at
+ * the framework's GitHub blob — we use an attribute selector to style
+ * just those particular links as a pill button, so we don't need to
+ * embed a JSX `<a>` element (which would put MDX in strict-JSX mode
+ * and break parsing of the rest of the page). */
+.markdown a[href*="github.com/flixelgdx/flixelgdx/blob/master/"]:not(.flx-card a) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 1rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--flx-border);
+  border-radius: 999px;
+  background: var(--flx-surface-2);
+  color: var(--ifm-color-content);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.markdown a[href*="github.com/flixelgdx/flixelgdx/blob/master/"]::before {
+  content: "⟨/⟩";
+  font-weight: 700;
+  color: var(--ifm-color-primary);
+}
+
+.markdown a[href*="github.com/flixelgdx/flixelgdx/blob/master/"]:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+/* Module picker grid on /api/. */
+.flx-module-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin: 1.5rem 0 2rem;
+}
+
+.flx-module-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem 1.1rem;
+  background: var(--flx-surface);
+  border: 1px solid var(--flx-border);
+  border-radius: 12px;
+  text-decoration: none !important;
+  color: var(--ifm-color-content) !important;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.flx-module-card:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+}
+
+.flx-module-card strong {
+  color: var(--ifm-color-primary);
+  font-size: 1.05rem;
+}
+
+.flx-module-card span {
+  font-size: 0.88rem;
+  color: var(--flx-text-muted);
+  line-height: 1.45;
+}
+
+.flx-module-card--soon::after {
+  content: 'Coming soon';
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--hxflx-yellow);
+  color: #1c1c20;
+  border-radius: 999px;
+  padding: 2px 8px;
+}

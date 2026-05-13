@@ -245,8 +245,10 @@ class PlayState : FlixelState() {
 
 - `create()` is the method FlixelGDX calls when your state first appears.
   Think of it as the **set-up scene** of the episode.
-- `new FlixelSprite(x, y)` creates an actor at a position. The numbers are
-  pixels from the **top-left** of the screen.
+- `new FlixelSprite(x, y)` creates an actor at a position. The numbers
+  are the **`x` / `y` of the sprite's upper-left corner in world
+  space** (as documented on
+  [`FlixelObject`](/api/core/-flixel-object/#x) in the API reference).
 - `makeGraphic(8, 64, 0xFFFFFFFF)` paints a tall thin **white** rectangle.
   `0xFFFFFFFF` is a color written in `0xAARRGGBB` — that's `FF` alpha,
   `FF` red, `FF` green, `FF` blue → opaque white.
@@ -591,11 +593,13 @@ velocity and bounce it off the top, bottom, and any paddle it touches.
 > wants to move"*. To move the ball, we add `velocity * elapsed` to its
 > position. Same delta-time trick as the paddle.
 
-> **No DIY collision needed!** Every `FlixelSprite` already inherits an
-> `overlaps(other)` method from `FlixelObject`, so we get a proper AABB
-> overlap check from the framework — no copy-pasted math. (If you peek
-> at the [API reference](/api/), you will find it under
-> `FlixelObject#overlaps(FlixelObject)`.)
+> **No DIY collision needed!** FlixelGDX exposes overlap and collision
+> checks as static methods on the `Flixel` class — `Flixel.overlap`
+> for AABB intersection tests, `Flixel.collide` for overlap + auto-
+> separation. They accept any combination of objects and groups, so
+> the same call works whether you're checking two sprites or a sprite
+> against an entire enemy group. The API reference page for
+> [`Flixel#overlap`](/api/core/-flixel/#overlap) has the full signature.
 
 Add a ball and two velocity fields, then use the built-in `overlaps`:
 
@@ -627,8 +631,8 @@ if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy; }
 if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy; }
 
 // Bounce off paddles using the framework's AABB overlap check.
-if (ball.overlaps(player) && ballVx < 0) ballVx = -ballVx;
-if (ball.overlaps(enemy)  && ballVx > 0) ballVx = -ballVx;
+if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
+if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 ```
 
 </TabItem>
@@ -655,8 +659,8 @@ ball.y += ballVy * elapsed
 if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy }
 if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy }
 
-if (ball.overlaps(player) && ballVx < 0) ballVx = -ballVx
-if (ball.overlaps(enemy)  && ballVx > 0) ballVx = -ballVx
+if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx
+if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
 ```
 
 </TabItem>
@@ -682,8 +686,8 @@ ball.y += ballVy * elapsed
 if (ball.y < 0f)        { ball.y = 0f;          ballVy = -ballVy }
 if (ball.y > 480f - 8f) { ball.y = 480f - 8f;   ballVy = -ballVy }
 
-if (ball.overlaps(player) && ballVx < 0) ballVx = -ballVx
-if (ball.overlaps(enemy)  && ballVx > 0) ballVx = -ballVx
+if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx
+if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
 ```
 
 </TabItem>
@@ -807,8 +811,8 @@ public class PlayState extends FlixelState {
     if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy; }
     if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy; }
 
-    if (ball.overlaps(player) && ballVx < 0) ballVx = -ballVx;
-    if (ball.overlaps(enemy)  && ballVx > 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 
     float targetY = ball.y - 28;
     if (enemy.y < targetY) enemy.y += Math.min(ENEMY_SPEED * elapsed, targetY - enemy.y);
@@ -1317,8 +1321,8 @@ public class PlayState extends FlixelState {
     if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy; }
     if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy; }
 
-    if (ball.overlaps(player) && ballVx < 0) ballVx = -ballVx;
-    if (ball.overlaps(enemy)  && ballVx > 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 
     float targetY = ball.y - 28;
     if (enemy.y < targetY) enemy.y += Math.min(ENEMY_SPEED * elapsed, targetY - enemy.y);
@@ -1363,8 +1367,8 @@ Take a breath. In one afternoon you used:
 - `FlixelGame` + `FlixelState` for the main loop.
 - `FlixelSubState` for the pause overlay.
 - `FlixelSprite` + `makeGraphic` for everything you can see.
-- `FlixelObject#overlaps` for AABB collision — straight from the
-  framework, no hand-rolled math.
+- `Flixel.overlap(a, b)` for AABB collision — the same static helper
+  works for single objects and groups.
 - `Flixel.keys` (`pressed`, `justPressed`) and `FlixelKeys` for input.
 - The **delta time** pattern (`speed * elapsed`) so the game runs the
   same on every machine.

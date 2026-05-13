@@ -29,6 +29,11 @@ const config: Config = {
 
   markdown: {
     mermaid: false,
+    // 'detect' = .mdx → MDX (JSX-aware), .md → CommonMark. Our hand-
+    // written pages live in .mdx files (they import React components);
+    // every auto-generated API page is .md so they're never run through
+    // MDX's strict JSX parser, which rejects Dokka's link-heavy syntax.
+    format: 'detect',
     hooks: {
       onBrokenMarkdownLinks: 'warn',
     },
@@ -54,6 +59,17 @@ const config: Config = {
   ],
 
   plugins: [
+    // Single docs plugin for the entire API reference (welcome page +
+    // every module's generated content). Per-module sidebars are still
+    // distinct because each top-level module folder (core / lwjgl3 /
+    // teavm / android / ios) gets its own auto-generated tree. The
+    // "Module" dropdown in the navbar just links to those URLs.
+    //
+    // Hand-written `api/index.mdx` runs through MDX (it imports React).
+    // Every Dokka-generated `.md` file under `api/<module>/...` runs
+    // through CommonMark (selected automatically by `markdown.format:
+    // 'detect'` in this config) so MDX 3's strict JSX parser doesn't
+    // choke on Dokka's link-heavy output.
     [
       '@docusaurus/plugin-content-docs',
       {
@@ -90,7 +106,19 @@ const config: Config = {
       items: [
         {to: '/docs/getting-started', label: 'Getting Started', position: 'left'},
         {to: '/docs/your-first-project', label: 'Your First Project', position: 'left'},
-        {to: '/api/', label: 'API', position: 'left'},
+        {
+          type: 'dropdown',
+          label: 'API',
+          position: 'left',
+          items: [
+            {to: '/api/core/', label: 'Core'},
+            {to: '/api/lwjgl3/', label: 'Desktop (LWJGL3)'},
+            {to: '/api/teavm/', label: 'Web (TeaVM)'},
+            {to: '/api/android/', label: 'Android'},
+            {to: '/api/ios/', label: 'iOS (MobiVM)'},
+            {to: '/api/', label: 'About the reference'},
+          ],
+        },
         {
           href: 'https://github.com/flixelgdx/flixelgdx',
           label: 'View source',

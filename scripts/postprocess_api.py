@@ -1,253 +1,225 @@
 #!/usr/bin/env python3
 """
-Post-process Dokka's GFM output so it renders cleanly inside Docusaurus
-**and** reads like a Java reference (Dokka is Kotlin-first, which leaks
-through in signatures and folder layout).
+Post-process Dokka's GFM output so it renders cleanly inside Docusaurus.
 
-What this does, in order, for every Markdown file under the staging dir:
+Pipeline (per module, run by ``build-api.sh``):
 
-1. **Lift the "FlixelGDX" wrapper folder** so packages live at the top
-   level (we are calling this script *with* the FlixelGDX/ inner folder
-   already passed in as the staging root, so no extra step needed here —
-   ``build-api.sh`` handles that).
+  1. **Restructure the folder tree** from Dokka's flat dotted-package
+     layout into a nested short-path layout, so the sidebar reads as
+     ``input > gamepad`` instead of one giant
+     ``me.stringdotjar.flixelgdx.input.gamepad`` entry. We strip the
+     common ``me.stringdotjar.flixelgdx.`` prefix and split the rest by
+     dots into nested folders.
 
-2. **Rewrite the breadcrumb** that Dokka emits at the top of every page
-   (``//[FlixelGDX](...)/[me.stringdotjar.flixelgdx](...)/[Flixel](...)``)
-   into proper Java-shaped breadcrumbs (drops the FlixelGDX prefix and
-   the file-tree slashes, uses dots between package segments and
-   ``::`` between the package and the type).
+  2. **Rewrite every internal ``[label](relative)`` link** so it still
+     resolves after the restructure — the file is now at a different
+     depth, and so are its targets.
 
-3. **Replace ``# Package-level declarations`` titles** with the real
-   package name on package landing pages so the sidebar stops showing
-   30 identical entries.
+  3. **Inline each member's full documentation** (parameters / returns /
+     throws / deprecated, etc.) directly onto the owning class page, so
+     readers don't have to click into N member subpages.
 
-4. **Kotlin → Java signatures** in code spans and on bare lines (best-
-   effort regexes — ``open class Foo : Bar()`` becomes
-   ``public class Foo extends Bar``, ``val x: Int = 4`` becomes
-   ``public final int x = 4``, ``Array<T>`` becomes ``T[]``, etc).
+  4. **Sanitise for MDX**: escape stray ``{`` / ``}`` outside code
+     spans, self-close ``<br>``, strip ASCII control characters, fix the
+     "no space before parameter name" quirk that
+     ``kotlin-as-java-plugin`` leaves in (``floatdx`` ⇒ ``float dx``),
+     decode pre-escaped ``&lt;``/``&gt;`` inside type signatures, …
 
-5. **Escape stray ``{`` / ``}``** outside code spans so MDX doesn't try
-   to interpret them as JSX expressions, and **self-close ``<br>``**
-   for the same reason.
+  5. **Add View-Source buttons** to every class page by deriving the
+     GitHub URL from the source path. Dokka's GFM output doesn't include
+     ``sourceLink`` data, so we compute it ourselves.
 
-6. **Strip the `[flixelgdx-core]` module tag** that Dokka injects into
-   every signature row — we surface module info via a dedicated badge
-   instead.
+  6. **Wrap the class header signature in a fenced ``java`` code block**
+     so MDX renders it with syntax highlighting.
 
-7. **Expand the Properties / Functions tables into proper H3 sections**
-   so each member becomes a real heading, lands in the right-side TOC,
-   and reads like a HaxeFlixel-style API page instead of a giant table.
+  7. **Emit ``_category_.json`` files** to give each folder a short
+     human-readable label (and hide the per-member .md siblings via
+     ``sidebar_class_name``).
 
-8. **Drop YAML front-matter** with title + sidebar_label using the
-   *cleaned* heading, plus a ``hide_title: true`` on package landing
-   pages so the rendered page doesn't show "Package-level declarations"
-   twice.
+  8. **Generate ``site/api/sidebars/<module>.json``** — a manifest the
+     Docusaurus sidebar config consumes to nest packages exactly the way
+     the website wants.
 
-9. **Emit a ``_category_.json``** for every class folder pointing at
-   ``index`` so the sidebar entry is the class itself (not the
-   constructor or a random field).
+Usage:
+    postprocess_api.py <dokka-out-root> <site-api-root> [<frameworkRoot>]
+
+``<dokka-out-root>`` should contain a folder per module (``core``,
+``lwjgl3``, …), as produced by ``./gradlew :dokka:dokkaGfmAll``.
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import shutil
 import sys
+from pathlib import Path
+from typing import Iterable
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
+DOKKA_OUT = Path(sys.argv[1]).resolve()
+SITE_API = Path(sys.argv[2]).resolve()
+FRAMEWORK_ROOT = (
+    Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else Path("/dev/null")
+)
+
+# Modules in the order the website's "Module" dropdown should list them.
+MODULES: list[tuple[str, str, str]] = [
+    ("core", "flixelgdx-core", "Core"),
+    ("lwjgl3", "flixelgdx-lwjgl3", "Desktop (LWJGL3)"),
+    ("teavm", "flixelgdx-teavm", "Web (TeaVM)"),
+    ("android", "flixelgdx-android", "Android"),
+    ("ios", "flixelgdx-ios", "iOS (MobiVM)"),
+]
+
+# Package prefix we strip from every package path before mapping it into
+# the website's nested folder layout. Everything past this prefix becomes
+# a chain of subfolders (e.g. `input.gamepad` ⇒ `input/gamepad`).
+PACKAGE_PREFIX = "me.stringdotjar.flixelgdx"
+
+GITHUB_BLOB_BASE = "https://github.com/flixelgdx/flixelgdx/blob/master"
+
 
 # ---------------------------------------------------------------------------
 # Regex helpers
 # ---------------------------------------------------------------------------
 
+LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+# Dokka writes "See also" link labels like `[dispose()](dispose.md)`. MDX
+# strict mode reads the `()` as a function call expression and refuses
+# to parse the whole document. Strip them — the link is enough.
+PAREN_LABEL_RE = re.compile(r"\[([A-Za-z_][\w]*)\(\)\]")
+# Dokka emits the breadcrumb as a single line starting with `//` and
+# containing `[label](url)` chunks. We strip it entirely — the Docusaurus
+# theme provides its own breadcrumb navigation, plus the H1 already
+# shows the class name.
+DOKKA_BREADCRUMB_RE = re.compile(r"^//[^\n]*\n", re.MULTILINE)
+H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
+MODULE_TAG_RE = re.compile(r"\[flixelgdx-[a-z0-9\-]+\]\s*\\?\s*", re.IGNORECASE)
 BR_RE = re.compile(r"<br\s*>", re.IGNORECASE)
-H1_RE = re.compile(r"^#\s+(.*?)\s*$", re.MULTILINE)
-BREADCRUMB_RE = re.compile(r"^//\[FlixelGDX\][^\n]*\n", re.MULTILINE)
-MODULE_TAG_RE = re.compile(r"\[flixelgdx-[a-z0-9\-]+\]<br\s*/?>", re.IGNORECASE)
-MODULE_TAG_PLAIN_RE = re.compile(r"\[flixelgdx-[a-z0-9\-]+\]")
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
-# Kotlin → Java fixups
-KOTLIN_TYPE_LINK_RE = re.compile(
-    r"\[(String|Int|Long|Float|Double|Boolean|Char|Byte|Short)\]"
-    r"\(https://docs\.oracle\.com/[^\)]*\)"
+# kotlin-as-java leaves declarations like ``public void foo(floatdx)`` —
+# no space between the type and the parameter name. We try to detect that
+# pattern (lowercase keyword followed by a parameter name) and inject a
+# space. We **do not** try to split capitalised types like
+# ``FlixelObjectnewObject`` because that pattern is also a perfectly
+# valid identifier (e.g. ``FlixelSprite``, ``FlixelObject``) and we'd end
+# up chopping every CamelCase word in the document. The kotlin-as-java
+# plugin gets this case right in almost every signature it emits.
+PARAM_GLUE_RE = re.compile(
+    r"\b(boolean|byte|short|int|long|float|double|char|void)([A-Za-z_][\w]*)"
 )
-KOTLIN_ARRAY_RE = re.compile(r"\bArray<([^<>]+?)>")
-KOTLIN_TYPED_NAME_RE = re.compile(
-    r"(\b[A-Za-z_][A-Za-z0-9_]*)\s*:\s*"
-    r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^\)]*\))?)+(?:&lt;[^&]*&gt;)?(?:\[\])?)"
-)
-KOTLIN_CLASS_INHERIT_RE = re.compile(
-    r"(class\s+\[[^\]]+\]\([^)]*\)(?:\([^)]*\))?)\s*:\s*"
-)
-KOTLIN_OPEN_VAR_VAL_RE = re.compile(r"\bopen\s+(var|val)\s+")
-KOTLIN_VAR_VAL_RE = re.compile(r"^(?:\s*)(var|val)\s+", re.MULTILINE)
-KOTLIN_FUN_RE = re.compile(r"\bopen\s+fun\s+|\bfun\s+")
-KOTLIN_RETURN_TYPE_RE = re.compile(r"\)\s*:\s*([A-Za-z_\[][\w\.\-\(\)\[\]\<\>&;]*?)\s*(?=<br|$)")
 
-# Member-row tables come in two flavours from Dokka:
-#   - `| Name | Summary |`  (Properties, Functions, Types)
-#   - `| | |`               (Constructors — no header text)
-# Both are matched here.
-MEMBER_TABLE_HEADER_RE = re.compile(
-    r"^\|\s*(Name)?\s*\|\s*(Summary)?\s*\|\s*$",
+# Class section headers (Constructors / Properties / Functions / Types).
+SECTION_HEADER_RE = re.compile(
+    r"^##\s+(Constructors|Properties|Functions|Types|Inheritors)\s*$"
 )
+MEMBER_TABLE_HEADER_RE = re.compile(r"^\|\s*(Name)?\s*\|\s*(Summary)?\s*\|\s*$")
 MEMBER_TABLE_DIVIDER_RE = re.compile(r"^\|\s*-+\s*\|\s*-+\s*\|\s*$")
 
-# Header on a class page that signals the next H2 is "Properties" etc.
-SECTION_HEADER_RE = re.compile(r"^##\s+(Constructors|Properties|Functions|Types|Inheritors)\s*$")
-
 
 # ---------------------------------------------------------------------------
-# Transformations
+# Path mapping
 # ---------------------------------------------------------------------------
 
 
-def cleanup_breadcrumb(text: str) -> str:
-    """Turn `//[FlixelGDX](.../index.md)/[me.stringdotjar.flixelgdx](../index.md)/[Foo](index.md)`
-    into a styled Java-shaped breadcrumb, OR drop it entirely on the
-    api root index. We render it as a blockquote so it pops visually."""
-    def replace(match: re.Match[str]) -> str:
-        line = match.group(0).rstrip("\n")
-        # Pull out the [label](link) tuples
-        pairs = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", line)
-        if not pairs:
-            return ""
-        # Drop the leading "FlixelGDX" wrapper crumb.
-        if pairs[0][0] == "FlixelGDX":
-            pairs = pairs[1:]
-        if not pairs:
-            return ""
-        # Format: link the package, then `::` then the type, keeping any
-        # nested member as a trailing `.member`.
-        parts: list[str] = []
-        if len(pairs) == 1:
-            # Package-level page
-            label, href = pairs[0]
-            parts.append(f"[{label}]({href})")
-        else:
-            pkg = pairs[0]
-            cls = pairs[1]
-            parts.append(f"[{pkg[0]}]({pkg[1]})")
-            parts.append(f"**[{cls[0]}]({cls[1]})**")
-            for extra in pairs[2:]:
-                parts.append(f"[{extra[0]}]({extra[1]})")
-        sep = " &raquo; "
-        joined = sep.join(parts)
-        return f"<small className=\"flx-breadcrumb\">{joined}</small>\n\n"
-
-    return BREADCRUMB_RE.sub(replace, text)
+def short_pkg(dotted: str) -> str:
+    """Map a dotted package name to a short slash-separated path under
+    the website's module folder. ``me.stringdotjar.flixelgdx`` →
+    ``""`` (root of the module), ``me.stringdotjar.flixelgdx.input.mouse``
+    → ``"input/mouse"``."""
+    if dotted == PACKAGE_PREFIX:
+        return ""
+    if dotted.startswith(PACKAGE_PREFIX + "."):
+        return dotted[len(PACKAGE_PREFIX) + 1 :].replace(".", "/")
+    return dotted.replace(".", "/")
 
 
-def fix_package_title(text: str, package_name: str | None) -> tuple[str, str | None]:
-    """If this is a package-level page (has `# Package-level declarations`),
-    replace the heading with the real package name and report it back."""
-    if package_name is None:
-        return text, None
-    if "# Package-level declarations" in text:
-        text = text.replace("# Package-level declarations", f"# `{package_name}`", 1)
-        return text, package_name
-    return text, None
+def package_pretty(dotted: str) -> str:
+    """Short label used for the sidebar — last segment of the package
+    path, falling back to ``(root)`` for the framework-root package."""
+    if dotted == PACKAGE_PREFIX:
+        return "(root)"
+    return dotted.rsplit(".", 1)[-1]
 
 
-def kotlin_to_java(text: str) -> str:
-    """Best-effort fixer for Kotlin-shaped signatures Dokka emits."""
-
-    # Drop the [flixelgdx-core] inline module tag — we surface the module
-    # via the package breadcrumb instead.
-    text = MODULE_TAG_RE.sub("", text)
-    text = MODULE_TAG_PLAIN_RE.sub("", text)
-
-    # Built-in primitive type links → bare type name (Dokka emits the
-    # Java Oracle URL but with a Kotlin-style usage).
-    text = KOTLIN_TYPE_LINK_RE.sub(r"\1", text)
-
-    # `Array<T>` → `T[]` (handles nested type parameters once).
-    def _array(match: re.Match[str]) -> str:
-        inner = match.group(1).strip()
-        return f"{inner}[]"
-    for _ in range(3):  # peel a couple of nested layers
-        new = KOTLIN_ARRAY_RE.sub(_array, text)
-        if new == text:
-            break
-        text = new
-
-    # `class X(...) : Y` → `class X extends Y`
-    text = KOTLIN_CLASS_INHERIT_RE.sub(r"\1 extends ", text)
-
-    # `open class` modifiers — Dokka uses Kotlin's `open`. Java has no
-    # equivalent at that position, so drop it.
-    text = re.sub(r"\bopen\s+class\b", "class", text)
-    text = re.sub(r"\babstract\s+class\b", "abstract class", text)
-    text = re.sub(r"\bopen\s+interface\b", "interface", text)
-    text = re.sub(r"\bopen\s+fun\b", "fun", text)
-
-    # `var foo: Bar` / `val foo: Bar` at the start of a signature row.
-    # We rewrite as `Bar foo` to look like a Java declaration. We're
-    # careful not to mangle parameter lists.
-    def _typed_name(match: re.Match[str]) -> str:
-        name, ty = match.group(1), match.group(2)
-        return f"{ty} {name}"
-
-    # Specifically rewrite "open var name: Type" → "Type name" and
-    # "open val name: Type" → "final Type name".
-    text = re.sub(
-        r"\bopen\s+var\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]+\))?)\s*:\s*"
-        r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^)]+\))?)(?:&lt;[^&]*&gt;)?(?:\[\])?)",
-        r"\2 \1",
-        text,
-    )
-    text = re.sub(
-        r"\bopen\s+val\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]+\))?)\s*:\s*"
-        r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^)]+\))?)(?:&lt;[^&]*&gt;)?(?:\[\])?)",
-        r"final \2 \1",
-        text,
-    )
-    text = re.sub(
-        r"^(\s*)val\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]+\))?)\s*:\s*"
-        r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^)]+\))?)(?:&lt;[^&]*&gt;)?(?:\[\])?)",
-        r"\1final \3 \2",
-        text,
-        flags=re.MULTILINE,
-    )
-    text = re.sub(
-        r"^(\s*)var\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]+\))?)\s*:\s*"
-        r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^)]+\))?)(?:&lt;[^&]*&gt;)?(?:\[\])?)",
-        r"\1\3 \2",
-        text,
-        flags=re.MULTILINE,
-    )
-
-    # `fun name(...): RetType` → `RetType name(...)`.
-    text = re.sub(
-        r"\bfun\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]*\))?)\(([^)]*)\)\s*:\s*"
-        r"((?:\[?[A-Za-z_][\w\.\-]*\]?(?:\([^)]+\))?)(?:&lt;[^&]*&gt;)?(?:\[\])?)",
-        r"\3 \1(\2)",
-        text,
-    )
-    # `fun name(...)` without explicit return type → `void name(...)`.
-    text = re.sub(
-        r"\bfun\s+(\[?[A-Za-z_][\w]*\]?(?:\([^)]*\))?)\(([^)]*)\)",
-        r"void \1(\2)",
-        text,
-    )
-
-    return text
+def kebab_to_pascal(name: str) -> str:
+    """``-flixel-sprite`` ⇒ ``FlixelSprite``."""
+    raw = name.lstrip("-")
+    out = re.sub(r"-([a-z0-9])", lambda m: m.group(1).upper(), raw)
+    return out[:1].upper() + out[1:]
 
 
-_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+def looks_like_package_folder(folder: Path) -> bool:
+    """A package folder has a lowercase name (Java package segment) and
+    does NOT start with a dash (which marks Dokka's class folders)."""
+    name = folder.name
+    return name and not name.startswith("-") and name[0].islower()
+
+
+def package_label_for(folder: Path, module_root: Path) -> str:
+    """The short sidebar label / heading for a package folder. For
+    ``<module>/input/gamepad/`` we want ``gamepad``."""
+    try:
+        rel = folder.relative_to(module_root)
+        if not rel.parts:
+            return "(root)"
+        return rel.parts[-1]
+    except ValueError:
+        return folder.name
+
+
+def collect_path_map(module_slug: str, module_name: str) -> dict[Path, Path]:
+    """Walk the Dokka output for one module and decide where each
+    package folder lives under ``site/api/<module>/``. Returns a mapping
+    of source absolute path → destination absolute path. Files inside
+    each package keep their basename."""
+    src_root = DOKKA_OUT / module_slug / module_name
+    dst_root = SITE_API / module_slug
+    mapping: dict[Path, Path] = {}
+    if not src_root.is_dir():
+        return mapping
+    # The module index file (e.g. `core/flixelgdx-core/index.md`) becomes
+    # the module landing page at `site/api/<module>/index.md`.
+    src_idx = src_root / "index.md"
+    if src_idx.is_file():
+        mapping[src_idx] = dst_root / "index.md"
+    for pkg_dir in sorted(src_root.iterdir()):
+        if not pkg_dir.is_dir():
+            continue
+        dotted = pkg_dir.name
+        short = short_pkg(dotted)
+        dst_pkg_root = dst_root if short == "" else dst_root / short
+        for fn in pkg_dir.rglob("*"):
+            if not fn.is_file():
+                continue
+            rel = fn.relative_to(pkg_dir)
+            mapping[fn] = dst_pkg_root / rel
+    return mapping
+
+
+# ---------------------------------------------------------------------------
+# Markdown transforms
+# ---------------------------------------------------------------------------
 
 
 def strip_control_chars(text: str) -> str:
-    """Dokka occasionally embeds bare control characters (especially from
-    pasted Unicode like ``\u200b`` or stray ``\x7f`` glyphs) that the
-    Rspack HTML minifier flat-out rejects, silently truncating the page
-    body. Scrub them out before MDX even sees the file."""
-    return _CONTROL_CHAR_RE.sub("", text)
+    return CONTROL_CHARS_RE.sub("", text)
+
+
+def fix_param_spacing(text: str) -> str:
+    """``floatdx`` → ``float dx``. Done in a couple of passes since one
+    line may contain many primitive parameters glued together."""
+    for _ in range(3):
+        new = PARAM_GLUE_RE.sub(lambda m: f"{m.group(1)} {m.group(2)}", text)
+        if new == text:
+            break
+        text = new
+    return text
 
 
 def escape_curly_braces(text: str) -> str:
-    """MDX treats `{` / `}` as JSX expression delimiters. Dokka never
-    means that, so escape every stray curly outside code spans / fences."""
     out: list[str] = []
     in_fence = False
     for line in text.splitlines(keepends=True):
@@ -267,130 +239,407 @@ def escape_curly_braces(text: str) -> str:
     return "".join(out)
 
 
-def expand_member_tables(text: str) -> str:
-    """Walk the document line-by-line. When we see one of the
-    structural section headings (`## Properties`, `## Functions`,
-    `## Constructors`, `## Types`), we look ahead for a 2-column
-    `| Name | Summary |` table and rewrite each table row as a
-    standalone H3 block:
+def html_decode(text: str) -> str:
+    return (
+        text.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+    )
 
-        ### name
-        signature
 
-        description
+def strip_links(text: str) -> str:
+    """Collapse ``[text](url)`` to bare ``text`` so the result is safe
+    inside an inline-code span. We append a trailing space when we strip
+    a link so that ``void[Foo]graphicAssetKey`` becomes
+    ``void Foo graphicAssetKey`` instead of ``voidFoographicAssetKey``,
+    then we tidy spaces around punctuation."""
+    out = LINK_RE.sub(lambda m: f"{html_decode(m.group(1))} ", text)
+    out = html_decode(out)
+    # Collapse spaces inserted before/after punctuation. We strip space
+    # before `(` so `FlixelSprite ()` becomes `FlixelSprite()` (which
+    # only happens because the previous step put a space after the
+    # stripped class-name link). Inside Java signatures we never want a
+    # space between an identifier and an open paren.
+    out = re.sub(r"\s+([.,;\)\]])", r"\1", out)
+    out = re.sub(r"\s+\(", "(", out)
+    out = re.sub(r"([\(\[])\s+", r"\1", out)
+    out = re.sub(r"\s+", " ", out).strip()
+    return fix_param_spacing(out)
 
-    This lifts each member into the right-hand TOC, makes the page
-    readable, and lets every property/method have its own deep link."""
+
+_SIGNATURE_LINE_RE = re.compile(
+    r"^(?:public|private|protected|static|final|abstract|synchronized|"
+    r"volatile|transient|native|default)\b[^\n]*\[[^\]]+\]\([^)]*\)[^\n]*$",
+    re.MULTILINE,
+)
+
+
+def wrap_signature_lines(text: str) -> str:
+    """Wrap bare ``public void [foo](foo.md)(arg, arg)`` lines in a
+    ``java`` fenced code block. MDX strict mode reads the trailing
+    ``(arg, arg)`` after ``](url)`` as a JS call expression on the link
+    "value" and refuses to parse the file."""
+    out: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if not in_fence and _SIGNATURE_LINE_RE.match(line):
+            out.append("```java")
+            out.append(strip_links(line))
+            out.append("```")
+            continue
+        out.append(line)
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
+def relative_link(from_path: Path, to_path: Path) -> str:
+    """Compute a Markdown-friendly relative link from one file to another."""
+    rel = os.path.relpath(to_path, start=from_path.parent)
+    return rel.replace(os.sep, "/")
+
+
+def rewrite_links(
+    text: str,
+    *,
+    src_file: Path,
+    dst_file: Path,
+    path_map: dict[Path, Path],
+) -> str:
+    """Rewrite every relative ``[label](path)`` link so it still
+    resolves after the file has been moved from ``src_file`` to
+    ``dst_file``."""
+    src_dir = src_file.parent
+
+    def replace(match: re.Match[str]) -> str:
+        label = match.group(1)
+        target = match.group(2)
+        if target.startswith(("http://", "https://", "#")):
+            return match.group(0)
+        # Split off optional URL fragment / query.
+        head, sep, frag = target.partition("#")
+        if not head:
+            return match.group(0)
+        try:
+            resolved = (src_dir / head).resolve()
+        except (OSError, ValueError):
+            return match.group(0)
+        new_dst = path_map.get(resolved)
+        if new_dst is None:
+            # Try with `.md` appended (Dokka sometimes drops it).
+            with_md = path_map.get(resolved.with_suffix(".md"))
+            if with_md is None:
+                return match.group(0)
+            new_dst = with_md
+        new_rel = relative_link(dst_file, new_dst)
+        return f"[{label}]({new_rel}{sep}{frag})"
+
+    return LINK_RE.sub(replace, text)
+
+
+# ---------------------------------------------------------------------------
+# Inline member docs onto class pages
+# ---------------------------------------------------------------------------
+
+
+def parse_member_table(
+    lines: list[str], start: int
+) -> tuple[list[tuple[str, str]], int]:
+    """Starting from a ``| Name | Summary |`` or ``| | |`` header, parse
+    the member rows and return ``[(name_cell, summary_cell), …]`` along
+    with the index just past the table."""
+    i = start
+    if not (
+        i < len(lines)
+        and MEMBER_TABLE_HEADER_RE.match(lines[i])
+        and i + 1 < len(lines)
+        and MEMBER_TABLE_DIVIDER_RE.match(lines[i + 1])
+    ):
+        return [], start
+    i += 2
+    rows: list[tuple[str, str]] = []
+    while i < len(lines):
+        row = lines[i]
+        if row.strip() == "" or row.lstrip().startswith("#"):
+            break
+        if not row.lstrip().startswith("|"):
+            break
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        if len(cells) >= 2:
+            rows.append((cells[0], cells[1]))
+        i += 1
+    return rows, i
+
+
+def render_member_block(
+    name: str,
+    summary: str,
+    *,
+    src_file: Path,
+    dst_file: Path,
+    path_map: dict[Path, Path],
+) -> str:
+    """Render a single member row from a class index as an H3 block.
+
+    Pulls the full member doc (``<src_dir>/<name>.md``) if it exists,
+    so parameters/returns/throws all land on the class page. Falls back
+    to just the summary cell when no dedicated member file exists."""
+    name_match = LINK_RE.match(name)
+    if name_match:
+        label = name_match.group(1)
+        href = name_match.group(2)
+    else:
+        label, href = name.strip(), ""
+
+    # Pull signature(s) + short description from the summary cell.
+    # Dokka emits multiple overloads back-to-back without `<br />`
+    # separators, so we additionally split on `public ` / `protected ` /
+    # `static ` boundaries after the first one.
+    pieces = [p.strip() for p in re.split(r"<br\s*/?>", summary) if p.strip()]
+    pieces = [MODULE_TAG_RE.sub("", p).strip() for p in pieces if p.strip()]
+    # Split each piece on additional **visibility** keyword starts
+    # within the same string. We only split on `public` / `protected` /
+    # `private` (not `static` / `abstract` / `final`) because those
+    # always start a new declaration — whereas `final` and friends can
+    # legitimately appear in the middle of one (`public final int x`).
+    flattened: list[str] = []
+    for piece in pieces:
+        sub_pieces = re.split(
+            r"(?<!^)(?=\b(?:public|protected|private)\s+)",
+            piece,
+        )
+        flattened.extend(sp.strip() for sp in sub_pieces if sp.strip())
+    pieces = flattened
+    signatures: list[str] = []
+    description_pieces: list[str] = []
+    for piece in pieces:
+        bare = strip_links(piece).strip()
+        # Pick signatures even after we've seen a description, since
+        # Dokka often emits "sig … description … sig … sig" for
+        # overloaded methods / constructors.
+        # A signature looks like a Java declaration: starts with a
+        # visibility / modifier keyword (or `constructor` from Kotlin).
+        # Parens are optional here — properties don't have them.
+        looks_like_sig = (
+            re.match(
+                r"^(?:public|private|protected|static|final|abstract|"
+                r"synchronized|volatile|transient|native|default)\b",
+                bare,
+            )
+            is not None
+            or bare.startswith("constructor")
+        )
+        if looks_like_sig:
+            signatures.append(piece)
+        else:
+            description_pieces.append(piece)
+    description = " ".join(description_pieces).strip()
+
+    # Try to pull the full member doc.
+    full_doc = ""
+    member_md_path = None
+    if href and not href.startswith(("http://", "https://", "#")):
+        head, _, _ = href.partition("#")
+        try:
+            resolved = (src_file.parent / head).resolve()
+        except (OSError, ValueError):
+            resolved = None
+        if resolved and resolved.is_file():
+            member_md_path = resolved
+            full_doc = resolved.read_text(encoding="utf-8")
+
+    out: list[str] = []
+    out.append(f"### {label}")
+    out.append("")
+    for sig in signatures:
+        out.append(f"```java")
+        out.append(strip_links(sig).strip())
+        out.append("```")
+        out.append("")
+    if description:
+        out.append(description)
+        out.append("")
+
+    # Extract the param / return / throws sections from the full member
+    # doc so they appear inline on the class page.
+    if full_doc:
+        extra = extract_member_sections(full_doc, member_md_path, dst_file, path_map)
+        if extra:
+            out.append(extra)
+            out.append("")  # blank line so JSX `<sub>` below stays in block context
+
+    # No per-member permalink link — the H3 anchor IS the permalink, and
+    # the per-member doc pages are pruned at the end of process_module.
+    return "\n".join(out)
+
+
+def extract_member_sections(
+    text: str,
+    src_file: Path | None,
+    dst_file: Path,
+    path_map: dict[Path, Path],
+) -> str:
+    """Pull the "Parameters" / "Throws" / "Deprecated" / etc. sections
+    out of a member's dedicated Markdown file, rewrite their internal
+    links to land on the class page, and return them as inline content."""
+    if src_file is None:
+        return ""
+    # Drop the Dokka breadcrumb + the H1 (we already have a header here)
+    body = DOKKA_BREADCRUMB_RE.sub("", text)
+    body = re.sub(r"^#\s+.*?\n", "", body, count=1)
+    body = MODULE_TAG_RE.sub("", body)
+    # Strip the leading "public void name(args)" signature line(s) —
+    # we already rendered them as the code block. Detection: every line
+    # before the first non-signature paragraph that looks like a declaration.
+    lines = body.splitlines()
+    cleaned: list[str] = []
+    seen_prose = False
+    for line in lines:
+        stripped = line.strip()
+        if not seen_prose:
+            if not stripped or re.match(r"^(public|private|protected|static|final|abstract)\b", stripped):
+                continue
+            seen_prose = True
+        cleaned.append(line)
+    body = "\n".join(cleaned).strip()
+    if not body:
+        return ""
+    # Keep only the structured sub-sections we care about (Parameters,
+    # Returns, Throws, Deprecated, See also, Since, Author). If none of
+    # those exist, return an empty string — anything else would just
+    # duplicate what the class-index summary cell already shows.
+    wanted = re.findall(
+        r"(####\s+(?:Parameters|Returns?|Throws|Deprecated|See also|Since|Author)[\s\S]*?)"
+        r"(?=\n####\s|\Z)",
+        body,
+    )
+    if not wanted:
+        return ""
+    body = "\n".join(wanted).strip()
+    # Rewrite links to be relative to the destination class page.
+    body = rewrite_links_from_origin(body, src_file, dst_file, path_map)
+    return body
+
+
+def rewrite_links_from_origin(
+    text: str,
+    src_file: Path,
+    dst_file: Path,
+    path_map: dict[Path, Path],
+) -> str:
+    return rewrite_links(text, src_file=src_file, dst_file=dst_file, path_map=path_map)
+
+
+# ---------------------------------------------------------------------------
+# Build per-class index, sidebar manifest
+# ---------------------------------------------------------------------------
+
+
+def build_class_index(
+    text: str,
+    *,
+    src_file: Path,
+    dst_file: Path,
+    path_map: dict[Path, Path],
+    module_dir: str,
+    package_dotted: str | None,
+) -> str:
+    """Transform a class index page: wrap the class signature in a
+    ``java`` code block, add the View-Source button, then expand each
+    Constructors / Properties / Functions / Types table into a stream of
+    H3 sections (with full member docs inlined)."""
     lines = text.splitlines()
     out: list[str] = []
     i = 0
+
+    # Inject "View Source" right after the first H1 of the page if we
+    # can guess the source path.
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        if line.startswith("# "):
+            class_name = line[2:].strip()
+            view_src = view_source_link(
+                module_dir=module_dir,
+                package_dotted=package_dotted,
+                class_name=class_name,
+            )
+            if view_src:
+                # Plain Markdown link — wrapping in an `<a>` element
+                # makes MDX strict mode switch to JSX parsing for the
+                # whole document, which then breaks on a hundred small
+                # things (parens after links, sub elements, etc.). The
+                # `.flx-view-source` class is applied via a CSS selector
+                # that matches links to the framework's GitHub blob.
+                out.append("")
+                out.append(f"[View source on GitHub]({view_src})")
+            i += 1
+            break
+        i += 1
+
+    # Wrap the class signature line in a fenced ``java`` code block.
+    # The signature is the first non-blank line *after* the H1 that
+    # starts with `public class`, `abstract class`, `class `,
+    # `interface `, `enum `, etc.
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            out.append(line)
+            i += 1
+            continue
+        sig_match = re.match(
+            r"^(?:public|protected|private|abstract|final|static|sealed|open)?\s*"
+            r"(?:abstract|final|sealed|open)?\s*"
+            r"(class|interface|enum|annotation)\b",
+            stripped,
+        )
+        if sig_match:
+            out.append("```java")
+            out.append(strip_links(stripped))
+            out.append("```")
+            i += 1
+        break
+
+    # Continue rest of the document. When we hit one of the structural
+    # section headers, eat the following table and rewrite as H3 blocks.
     while i < len(lines):
         line = lines[i]
         out.append(line)
         section = SECTION_HEADER_RE.match(line)
         if section:
-            # Look ahead past optional blank lines for a table header
             j = i + 1
             while j < len(lines) and lines[j].strip() == "":
                 out.append(lines[j])
                 j += 1
-            if j + 1 < len(lines) and MEMBER_TABLE_HEADER_RE.match(lines[j]) and MEMBER_TABLE_DIVIDER_RE.match(lines[j + 1]):
-                # Eat the header + divider, then parse rows until a blank line / new heading.
-                j += 2
-                rendered_rows: list[str] = []
-                while j < len(lines):
-                    row = lines[j]
-                    if row.strip() == "" or row.lstrip().startswith("#"):
-                        break
-                    if not row.lstrip().startswith("|"):
-                        break
-                    cells = [c.strip() for c in row.strip().strip("|").split("|")]
-                    if len(cells) < 2:
-                        j += 1
-                        continue
-                    name_cell, summary_cell = cells[0], cells[1]
-                    name_match = re.match(r"\[([^\]]+)\]\(([^)]+)\)", name_cell)
-                    if not name_match:
-                        rendered_rows.append(f"### {name_cell}\n\n{summary_cell}\n")
-                        j += 1
-                        continue
-                    label, href = name_match.group(1), name_match.group(2)
-                    # Split the summary cell on <br />. Dokka's convention is
-                    # one or more signature lines followed by an optional
-                    # prose description. Heuristic: a "description" piece is
-                    # the first one that ends with `.`, `!`, `?`, `:` or
-                    # starts with a capital letter followed by a space and
-                    # does NOT look like a Java declaration (no `(`, `;` or
-                    # generic brackets at type-position).
-                    pieces = re.split(r"<br\s*/?>", summary_cell)
-                    pieces = [p.strip() for p in pieces if p.strip()]
-                    signatures: list[str] = []
-                    description_pieces: list[str] = []
-                    for piece in pieces:
-                        if description_pieces:
-                            description_pieces.append(piece)
-                            continue
-                        # Strip links to inspect the "shape" of the line.
-                        bare = strip_links(piece)
-                        is_signature = bool(
-                            re.search(r"[\(\)=;]", bare)
-                            or bare.startswith("constructor")
-                            or bare.startswith("abstract ")
-                            or bare.startswith("final ")
-                            or bare.startswith("class ")
-                            or bare.startswith("interface ")
-                            or bare.startswith("enum ")
-                            or re.match(
-                                r"^[A-Za-z_][\w\.\[\]\<\>&;]*\s+[A-Za-z_][\w]*\s*$",
-                                bare,
-                            )  # "Type name" with no description text
-                        ) and not bare.rstrip().endswith(".")
-                        if is_signature:
-                            signatures.append(piece)
-                        else:
-                            description_pieces.append(piece)
-                    description = " ".join(description_pieces).strip()
-
-                    member: list[str] = []
-                    # H3 heading uses the plain name so Docusaurus can
-                    # auto-generate a clean slug (`#active`) for it.
-                    member.append(f"### {label}")
-                    member.append("")
-                    if signatures:
-                        for sig in signatures:
-                            member.append(f"`{strip_links(sig)}`  ")
-                        member.append("")
-                    if description:
-                        member.append(description)
-                        member.append("")
-                    # "Details" link out to the dedicated member page, so
-                    # users who want the long form can still jump to it.
-                    member.append(f"[Details →]({href})")
-                    member.append("")
-                    rendered_rows.append("\n".join(member))
-                    j += 1
-                out.extend(rendered_rows)
-                # Skip past where we are
-                i = j
+            rows, after = parse_member_table(lines, j)
+            if rows:
+                for name, summary in rows:
+                    out.append(
+                        render_member_block(
+                            name, summary,
+                            src_file=src_file,
+                            dst_file=dst_file,
+                            path_map=path_map,
+                        )
+                    )
+                i = after
                 continue
         i += 1
     return "\n".join(out) + ("\n" if text.endswith("\n") else "")
 
 
-def slug(name: str) -> str:
-    s = re.sub(r"[^A-Za-z0-9]+", "-", name.strip()).strip("-").lower()
-    return s or "anon"
-
-
-def strip_links(s: str) -> str:
-    """Collapse `[text](url)` to just `text` — useful when we want a
-    signature inside an inline-code span (Markdown won't render the
-    link inside backticks anyway). Also decode the HTML entities Dokka
-    pre-escapes inside table cells (``&lt;``, ``&gt;``, ``&amp;``) so
-    they read like real Java types when we re-wrap them in backticks."""
-    s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
-    s = s.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-    return s
+def view_source_link(
+    *, module_dir: str, package_dotted: str | None, class_name: str
+) -> str | None:
+    if not package_dotted:
+        return None
+    pkg_path = package_dotted.replace(".", "/")
+    return (
+        f"{GITHUB_BLOB_BASE}/{module_dir}/src/main/java/{pkg_path}/{class_name}.java"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -398,159 +647,204 @@ def strip_links(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def derive_package_name(rel_dir: str) -> str | None:
-    """If we are inside a package folder (its name looks like a Java
-    package — letters, digits, dots, no leading dash), return the dotted
-    package name."""
-    head, tail = os.path.split(rel_dir)
-    if tail and re.match(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$", tail):
-        return tail
-    return None
+def derive_package(src_file: Path, module_slug: str, module_name: str) -> str | None:
+    """Recover the original Dokka package folder name for a given source
+    file. We need it so View-Source URLs can be reconstructed."""
+    src_root = DOKKA_OUT / module_slug / module_name
+    try:
+        rel = src_file.relative_to(src_root)
+    except ValueError:
+        return None
+    parts = rel.parts
+    if not parts:
+        return None
+    return parts[0]
 
 
-def is_class_folder(folder: str) -> bool:
-    name = os.path.basename(folder)
-    return name.startswith("-") and os.path.exists(os.path.join(folder, "index.md"))
+def looks_like_class_folder(name: str) -> bool:
+    return name.startswith("-")
 
 
-def remove_route_colliders(root: str) -> int:
-    """Dokka emits constructor docs in TWO places that both collide with
-    the class index route:
+def write_yaml(path: Path, title: str, *, sidebar_label: str | None = None,
+               hide_title: bool = True, extra: dict[str, str] | None = None) -> None:
+    sidebar_label = sidebar_label or title
+    # We do NOT set `hide_title: true` here — the body already contains
+    # its own H1 with the class/package name. Some SSR paths fail when
+    # `hide_title` collides with how the auto-TOC builds its entry list,
+    # so the safest option is to let Docusaurus render the H1 normally
+    # and avoid the inline duplicate.
+    fm_lines = ["---", f'title: "{title}"', f'sidebar_label: "{sidebar_label}"']
+    for k, v in (extra or {}).items():
+        fm_lines.append(f"{k}: {v}")
+    fm_lines += ["---", ""]
+    body = path.read_text(encoding="utf-8")
+    # Drop the body's first H1 (we'd otherwise render it twice).
+    body = re.sub(r"^\s*#\s+[^\n]+\n+", "", body, count=1)
+    path.write_text("\n".join(fm_lines) + body, encoding="utf-8")
 
-      1. The package-level file ``<Pkg>/-flixel-sprite.md`` next to the
-         class folder ``<Pkg>/-flixel-sprite/``.
-      2. The same-name file *inside* the class folder
-         ``<Pkg>/-flixel-sprite/-flixel-sprite.md``. Docusaurus seems to
-         treat any file whose stem matches its parent directory as a
-         default index — which collides with ``index.md`` in the same
-         folder.
 
-    Both produce the "page already exists at this route" warning and
-    Docusaurus then silently drops the class index. Their content is
-    already summarised inside ``Constructors`` on the class index via
-    ``expand_member_tables``, so we just delete them here."""
-    removed = 0
-    for base, dirs, files in os.walk(root):
-        # 1. Sibling collision: <pkg>/<class>.md next to <pkg>/<class>/
+def process_module(module_slug: str, module_name: str, module_label: str) -> dict | None:
+    """Process a single module's Dokka output and return a sidebar tree
+    descriptor for it."""
+    path_map = collect_path_map(module_slug, module_name)
+    if not path_map:
+        print(f"  (no output for {module_slug}, skipping)", file=sys.stderr)
+        return None
+
+    dst_root = SITE_API / module_slug
+    # Wipe + recreate the module root.
+    if dst_root.exists():
+        shutil.rmtree(dst_root)
+    dst_root.mkdir(parents=True, exist_ok=True)
+
+    # First pass: copy + sanitise + rewrite links.
+    for src, dst in path_map.items():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        text = src.read_text(encoding="utf-8")
+        text = strip_control_chars(text)
+        text = MODULE_TAG_RE.sub("", text)
+        text = DOKKA_BREADCRUMB_RE.sub("", text)
+        text = PAREN_LABEL_RE.sub(r"[\1]", text)
+        text = fix_param_spacing(text)
+        text = rewrite_links(text, src_file=src, dst_file=dst, path_map=path_map)
+        text = wrap_signature_lines(text)
+        text = BR_RE.sub("<br />", text)
+        text = escape_curly_braces(text)
+        # If this is the package overview page (Dokka's
+        # "Package-level declarations" H1), replace the heading with the
+        # real (short) package name.
+        if dst.name == "index.md" and looks_like_package_folder(dst.parent):
+            short = package_label_for(dst.parent, dst_root)
+            text = text.replace(
+                "# Package-level declarations",
+                f"# `{short}`",
+                1,
+            )
+        dst.write_text(text, encoding="utf-8")
+
+    # Second pass: turn class index pages into proper class views (with
+    # inline member docs). We do this AFTER the first pass so that
+    # ``render_member_block`` can read sibling member files that have
+    # already been sanitised.
+    for src, dst in list(path_map.items()):
+        if dst.name != "index.md":
+            continue
+        if dst.parent == dst_root:
+            continue  # module root index — leave alone for now
+        if not looks_like_class_folder(dst.parent.name):
+            continue
+        package_dotted = derive_package(src, module_slug, module_name)
+        # Read the (already sanitised) destination; reconstruct the
+        # member docs using the SOURCE files in dokka-out so we get raw
+        # parameter sections without the curly-brace escapes that the
+        # first pass injected.
+        text = dst.read_text(encoding="utf-8")
+        rebuilt = build_class_index(
+            text,
+            src_file=src,
+            dst_file=dst,
+            path_map=path_map,
+            module_dir=module_name,
+            package_dotted=package_dotted,
+        )
+        dst.write_text(rebuilt, encoding="utf-8")
+
+    # Write front-matter for every .md file we copied.
+    for src, dst in path_map.items():
+        if not dst.exists() or dst.suffix != ".md":
+            continue
+        body = dst.read_text(encoding="utf-8")
+        if body.startswith("---\n"):
+            continue
+        title = "Overview"
+        h1 = H1_RE.search(body)
+        if h1:
+            title = re.sub(r"\[(.*?)\]\([^)]*\)", r"\1", h1.group(1))
+            title = re.sub(r"<[^>]+>", "", title).strip()
+            title = title.replace("`", "").replace('"', "'")
+        # Decide whether this is an "interesting" page (class / package
+        # / module overview) or a hidden member detail.
+        hide = False
+        sidebar_label = title
+        if dst.name != "index.md":
+            # Per-member page — hide from sidebar; its content is already
+            # inlined on the class page.
+            hide = True
+        if looks_like_class_folder(dst.parent.name) and dst.name == "index.md":
+            sidebar_label = kebab_to_pascal(dst.parent.name)
+            title = sidebar_label
+        extra = {}
+        if hide:
+            extra["sidebar_class_name"] = "flx-hidden-sidebar"
+        write_yaml(dst, title, sidebar_label=sidebar_label, extra=extra)
+
+    # Inside class folders the only file we want is `index.md` — every
+    # other `.md` is a per-member page whose content is already inlined
+    # on the class index. Keeping them around creates route collisions
+    # (Dokka emits `<class>.md` both next to and inside the class
+    # folder), MDX strict-mode failures from their auto-generated
+    # signatures, and useless extra entries in the sidebar.
+    for base, dirs, files in os.walk(dst_root):
+        base_path = Path(base)
+        if looks_like_class_folder(base_path.name):
+            for f in files:
+                if f != "index.md" and f.endswith(".md"):
+                    (base_path / f).unlink()
+        # Sibling collision: `<Pkg>/<Class>.md` next to `<Pkg>/<Class>/`.
         for d in dirs:
-            colliding_md = os.path.join(base, f"{d}.md")
-            if os.path.isfile(colliding_md):
-                os.remove(colliding_md)
-                removed += 1
-        # 2. Same-name-as-folder collision inside the folder itself.
-        folder = os.path.basename(base)
-        colliding_md = os.path.join(base, f"{folder}.md")
-        if os.path.isfile(colliding_md):
-            os.remove(colliding_md)
-            removed += 1
-    return removed
+            colliding = base_path / f"{d}.md"
+            if colliding.is_file():
+                colliding.unlink()
 
-
-def write_category_jsons(root: str) -> None:
-    """Drop a `_category_.json` into every class folder so the sidebar
-    entry collapses to *just* the class index (Dokka emits one md per
-    member; we want them out of the sidebar)."""
-    for base, dirs, files in os.walk(root):
-        if "index.md" not in files:
-            continue
-        if not is_class_folder(base):
-            continue
-        # Sidebar label = the directory-derived class name (Dokka's
-        # `-flixel-sprite` becomes `FlixelSprite`).
-        raw = os.path.basename(base).lstrip("-")
-        label = re.sub(r"-([a-z])", lambda m: m.group(1).upper(), raw)
-        label = label[:1].upper() + label[1:]
-        # NOTE: we deliberately omit `link` here. Setting `link: type: doc,
-        # id: index` collides with the per-folder index.md and makes
-        # Docusaurus refuse to generate the class page. With no link, the
-        # category is a toggle and "Overview" (from index.md front matter)
-        # appears as the first item inside the expanded category.
+    # Emit _category_.json files: one per package folder, one per class folder.
+    for folder, label, kind in walk_categories(dst_root, module_label):
         cat = {
             "label": label,
             "collapsible": True,
             "collapsed": True,
-            "customProps": {"isClass": True},
+            "customProps": {kind: True},
         }
-        with open(os.path.join(base, "_category_.json"), "w", encoding="utf-8") as fh:
-            json.dump(cat, fh, indent=2)
-        # Make non-index siblings invisible in the sidebar by adding
-        # `sidebar_class_name: 'flx-hidden-sidebar'` to their front matter.
-        for f in files:
-            if not f.endswith(".md") or f == "index.md":
-                continue
-            p = os.path.join(base, f)
-            with open(p, "r", encoding="utf-8") as fh:
-                text = fh.read()
-            if text.startswith("---\n") and "sidebar_class_name" not in text:
-                text = text.replace(
-                    "---\n",
-                    "---\nsidebar_class_name: flx-hidden-sidebar\n",
-                    1,
-                )
-                with open(p, "w", encoding="utf-8") as fh:
-                    fh.write(text)
+        (folder / "_category_.json").write_text(
+            json.dumps(cat, indent=2), encoding="utf-8"
+        )
+
+    return {"slug": module_slug, "label": module_label}
 
 
-def write_package_category(folder: str, package_name: str) -> None:
-    # Same reasoning as the class _category_.json above — no `link` field.
-    cat = {
-        "label": package_name,
-        "collapsible": True,
-        "collapsed": True,
-        "customProps": {"isPackage": True},
+def walk_categories(root: Path, module_label: str) -> Iterable[tuple[Path, str, str]]:
+    """Yield (folder, sidebar-label, kind) for every folder in the module
+    tree that should appear as a sidebar category."""
+    for base, dirs, files in os.walk(root):
+        base_path = Path(base)
+        if base_path == root:
+            continue
+        if looks_like_class_folder(base_path.name):
+            label = kebab_to_pascal(base_path.name)
+            yield base_path, label, "isClass"
+        else:
+            yield base_path, base_path.name, "isPackage"
+
+
+def write_sidebar_manifest(modules: list[dict]) -> None:
+    manifest = {
+        "modules": modules,
     }
-    with open(os.path.join(folder, "_category_.json"), "w", encoding="utf-8") as fh:
-        json.dump(cat, fh, indent=2)
+    out_dir = SITE_API / "_meta"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "modules.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
 
 
 def main() -> None:
-    for base, dirs, files in os.walk(ROOT):
-        rel_dir = os.path.relpath(base, ROOT)
-        package_name = derive_package_name(rel_dir)
-        if package_name and "index.md" in files:
-            write_package_category(base, package_name)
-        for f in files:
-            if not f.endswith(".md"):
-                continue
-            path = os.path.join(base, f)
-            with open(path, "r", encoding="utf-8") as fh:
-                text = fh.read()
-            if text.startswith("---\n"):
-                continue  # already processed (e.g. hand-written api/index.md)
-
-            text = strip_control_chars(text)
-            text = cleanup_breadcrumb(text)
-            text, replaced_pkg = fix_package_title(text, package_name)
-            text = kotlin_to_java(text)
-            text = expand_member_tables(text)
-            text = BR_RE.sub("<br />", text)
-            text = escape_curly_braces(text)
-
-            # Derive title for YAML front matter
-            m = H1_RE.search(text)
-            title = m.group(1).strip() if m else os.path.splitext(f)[0]
-            title = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", title)  # strip md links
-            title = re.sub(r"<[^>]+>", "", title)
-            title = title.replace("`", "")
-            title = title.strip().replace('"', "'")
-            sidebar_label = title
-            if replaced_pkg:
-                sidebar_label = "Overview"
-
-            fm = (
-                "---\n"
-                f"title: \"{title}\"\n"
-                "hide_title: true\n"
-                f"sidebar_label: \"{sidebar_label}\"\n"
-                "---\n\n"
-            )
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write(fm + text)
-
-    removed = remove_route_colliders(ROOT)
-    if removed:
-        print(f"  removed {removed} route-colliding .md files", file=sys.stderr)
-    write_category_jsons(ROOT)
+    processed: list[dict] = []
+    for slug, name, label in MODULES:
+        info = process_module(slug, name, label)
+        if info:
+            processed.append(info)
+    write_sidebar_manifest(processed)
+    print(f"  processed {len(processed)} modules: " +
+          ", ".join(m["slug"] for m in processed))
 
 
 if __name__ == "__main__":
