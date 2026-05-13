@@ -7,7 +7,7 @@
  * package managers where they exist (so the user gets updates), and a
  * fall-back tarball/installer link otherwise.
  */
-import {useState} from 'react';
+import {useState, type JSX} from 'react';
 import type {JdkVendor} from './templates';
 import styles from './JdkSetupGuide.module.css';
 
@@ -28,52 +28,6 @@ interface InstallSteps {
  * on an OS, we fall back to the vendor's downloads page.
  * ------------------------------------------------------------------------- */
 const INSTRUCTIONS: Record<JdkVendor, Record<OS, InstallSteps>> = {
-  semeru: {
-    windows: {
-      intro:
-        'Eclipse OpenJ9 is shipped as IBM Semeru. The Windows installer registers the JDK on PATH for you.',
-      download: {
-        label: 'Download IBM Semeru for Windows',
-        href: 'https://developer.ibm.com/languages/java/semeru-runtimes/downloads/',
-      },
-      notes: [
-        'Pick "Open Edition 17 LTS" or higher.',
-        'During install, tick "Set JAVA_HOME variable" and "Add to PATH".',
-      ],
-    },
-    macos: {
-      intro: 'Install via Homebrew (one command, auto-updates with `brew upgrade`).',
-      commands: ['brew install --cask semeru-jdk-open'],
-    },
-    ubuntu: {
-      intro:
-        'Use IBM\'s apt repository so future security updates flow through `apt upgrade`.',
-      commands: [
-        '# 1. Add the Semeru apt repository',
-        'wget -qO- https://public.dhe.ibm.com/ibmdl/export/pub/software/ibm-semeru-runtimes/public.gpg \\',
-        '  | sudo gpg --dearmor -o /usr/share/keyrings/ibm-semeru-keyring.gpg',
-        'echo "deb [signed-by=/usr/share/keyrings/ibm-semeru-keyring.gpg] \\',
-        '  https://public.dhe.ibm.com/ibmdl/export/pub/software/ibm-semeru-runtimes/jdk/deb/ \\',
-        '  $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ibm-semeru.list',
-        '',
-        '# 2. Install JDK 17',
-        'sudo apt update && sudo apt install -y ibm-semeru-open-17-jdk',
-      ],
-    },
-    fedora: {
-      intro: 'Grab the official RPM from IBM and install with dnf.',
-      download: {
-        label: 'Download Semeru RPM for Fedora',
-        href: 'https://developer.ibm.com/languages/java/semeru-runtimes/downloads/',
-      },
-      commands: ['sudo dnf install ./ibm-semeru-open-jdk-*.rpm'],
-    },
-    arch: {
-      intro: 'Available on the AUR as `jdk17-openj9-bin` (or any other JDK version).',
-      commands: ['yay -S jdk17-openj9-bin'],
-      notes: ['Then make it the active JDK:', '  sudo archlinux-java set java-17-openj9'],
-    },
-  },
   graalvm: {
     windows: {
       intro:

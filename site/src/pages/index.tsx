@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import {JSX, ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -190,8 +190,8 @@ function LowEndCallout(): JSX.Element {
           <p className={styles.ctaLead}>
             FlixelGDX is engineered for memory-efficient, frame-stable
             gameplay even on low-end PCs and old laptops. The default project
-            template ships with a 16 MB JVM heap — that is all a typical
-            FlixelGDX game needs to run smoothly.
+            template ships with a 16 MB JVM heap — that is more than plenty
+            for a FlixelGDX game to run smoothly.
           </p>
           <div className={styles.heroButtons}>
             <Link className="flx-btn flx-btn--primary" to="/docs/getting-started">
@@ -207,6 +207,9 @@ function LowEndCallout(): JSX.Element {
   );
 }
 
+// Docusaurus treats every module under src/pages as a route: it must export
+// exactly one React component as `export default`, or you'll get "This page
+// crashed … doesn't have a default export".
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (

@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState, type CSSProperties, type ReactNode} from 'react';
+import {useEffect, useRef, useState, type CSSProperties, type ReactNode, JSX} from 'react';
 
 interface FadeInProps {
   children: ReactNode;

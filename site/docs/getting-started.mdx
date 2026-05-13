@@ -31,7 +31,7 @@ getting started.
 
 ## After you download
 
-1. **Install a JDK** — Java 17 or newer. The generated `README.txt`
+1. **Install a JDK** — Java 17 or newer. The generated `README.md`
    has step-by-step install instructions for the JDK and operating
    system you picked above. The [Pong tutorial's Step 0](./your-first-project#0-install-a-jdk)
    has the same walk-through embedded if you'd rather scroll than
@@ -51,6 +51,17 @@ getting started.
 
 A red square (or your platformer player) should appear in a 640×480
 window. You are running a real FlixelGDX game. 🎉
+
+:::tip[JitPack vs Gradle plugin IDs]
+
+The framework JARs resolve as `com.github.flixelgdx.flixelgdx:…` from JitPack,
+but the published **Gradle plugins** keep their `me.stringdotjar.flixelgdx.*`
+IDs. Generated `settings.gradle` wires those IDs to the right JitPack
+artifacts automatically; if you hand-edit Gradle files, mirror the snippet in the
+framework’s [COMPILING.md](https://github.com/flixelgdx/flixelgdx/blob/master/COMPILING.md)
+so plugins keep resolving.
+
+:::
 
 ## Where to go next
 

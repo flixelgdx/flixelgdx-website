@@ -11,7 +11,7 @@ import JdkSetupGuide from '@site/src/components/projectGenerator/JdkSetupGuide';
 
 # Your First Project: Pong! 🏓
 
-:::warning[Some coding experience helps]
+:::warning[Some coding experience helps!]
 
 This tutorial is written for people who are new to **FlixelGDX**, not
 new to programming. If you have never written code before, we strongly
@@ -23,12 +23,18 @@ Anywhere is fine; some good free starting points:
 - [Kotlin Koans](https://play.kotlinlang.org/koans/overview) (Kotlin)
 - [The Apache Groovy Quick Start](https://groovy-lang.org/documentation.html#gettingstarted) (Groovy)
 
+Or if those are too scary for you, W3Schools is a great option too:
+
+- [Java](https://www.w3schools.com/java/default.asp)
+- [Kotlin](https://www.w3schools.com/kotlin/index.php)
+-
+
 You don't need to be an expert — just comfortable reading a simple
 class with a field, a constructor, and a method.
 
 :::
 
-Hi there! 👋 In this tutorial we are going to build the classic **Pong**
+Hi there! In this tutorial we are going to build the classic Pong
 game in FlixelGDX. You know the one — two paddles on either side of the
 screen, a tiny ball bouncing back and forth, and the first player to
 miss the ball loses.
@@ -79,15 +85,15 @@ Easy, right? Let's build the show.
 ## 0. Install a JDK
 
 Pick the JDK you want and follow the snippet for your operating system.
-For FlixelGDX we recommend **Eclipse OpenJ9 (IBM Semeru)** — same Java,
-much smaller memory footprint, perfect for games.
+For FlixelGDX we recommend **Eclipse Temurin (Adoptium)** HotSpot — it is
+what most libGDX and game-development material assumes, works well with
+Gradle toolchains, and gets timely security updates through Adoptium.
 
-<JdkSetupGuide vendor="semeru" vendorLabel="Eclipse OpenJ9 (IBM Semeru) — recommended" />
+<JdkSetupGuide vendor="temurin" vendorLabel="Eclipse Temurin (Adoptium)" />
 
 :::info[Want a different JDK?]
 
-If you would rather use **GraalVM**, **Adoptium Temurin**, **Amazon
-Corretto** or **Azul Zulu**, head to the
+If you would rather use **GraalVM**, **Amazon Corretto** or **Azul Zulu**,
 [project generator](./getting-started) — picking a vendor there will
 show you the matching install instructions for every OS.
 
@@ -104,7 +110,7 @@ with these settings:
 - **Template:** **Blank play state**
 - **Platforms:** **Desktop**
 - **Language:** Java *(or Groovy / Kotlin — your choice)*
-- **JDK vendor:** Eclipse OpenJ9 *(or whichever you installed above)*
+- **JDK vendor:** Eclipse Temurin (recommended) *(or GraalVM, Corretto, Zulu)*
 
 Download the zip, unzip it, and run:
 

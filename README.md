@@ -51,10 +51,7 @@ It hosts:
   Node ≥ 20. Run `nvm use` from the repo root to switch (an `.nvmrc`
   is included).
 - **JDK 17+** — needed by the bundled Gradle wrapper to render the API
-  reference. We recommend
-  [Eclipse Temurin](https://adoptium.net/) or
-  [IBM Semeru](https://developer.ibm.com/languages/java/semeru-runtimes/)
-  on contributor machines.
+  reference. We recommend [Eclipse Temurin](https://adoptium.net/) on contributor machines.
 
 You do **not** need to install Gradle, Dokka, or the FlixelGDX
 framework — `./gradlew` does that for you on demand.

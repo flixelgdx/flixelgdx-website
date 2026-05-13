@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState, type ReactNode} from 'react';
+import {useEffect, useMemo, useState, type ReactNode, JSX} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import Hint from '../Hint';
 import styles from './ProjectGenerator.module.css';
@@ -24,12 +24,10 @@ const HINTS = {
   expert:
     "For advanced developers who want more controls over their game's configs and setup.",
   jdk: {
-    semeru:
-      'Recommended for FlixelGDX. Eclipse OpenJ9 (shipped as IBM Semeru) has a tiny heap and process footprint — perfect for low-end hardware and game jams.',
+    temurin:
+      'Eclipse Temurin (Adoptium). The standard, well-tested HotSpot JVM — recommended option.',
     graalvm:
       "Oracle's GraalVM. Fast JIT, optional native-image AOT. Great if you want short startup times or to bundle a single executable later.",
-    temurin:
-      'Eclipse Temurin (Adoptium). The standard, well-tested HotSpot JVM. Picks up the most IDE support out of the box.',
     corretto:
       "Amazon Corretto. Long-term-supported HotSpot build with security patches from AWS — a safe pick for production servers and CI.",
     zulu:
@@ -102,9 +100,8 @@ async function fetchVersions(): Promise<string[]> {
 }
 
 const VENDOR_LABELS: Record<JdkVendor, string> = {
-  semeru: 'Eclipse OpenJ9 (IBM Semeru)',
-  graalvm: 'GraalVM Community',
   temurin: 'Eclipse Temurin (Adoptium)',
+  graalvm: 'GraalVM Community',
   corretto: 'Amazon Corretto',
   zulu: 'Azul Zulu',
 };
@@ -128,7 +125,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   ide: 'idea',
   template: 'blank',
   platforms: ['desktop'],
-  jdkVendor: 'semeru',
+  jdkVendor: 'temurin',
   expert: false,
   heapMb: 16,
   jvmFlags: '',
@@ -205,8 +202,13 @@ function GeneratorBody(): JSX.Element {
     zip.file('gradlew.bat', GRADLEW_BAT);
     const blob = await zip.generateAsync({type: 'blob', platform: 'UNIX'});
     saveAs(blob, `${opts.gameId}.zip`);
+    const runHints: string[] = [];
+    if (opts.platforms.includes('desktop'))
+      runHints.push('`./gradlew :lwjgl3:run` for desktop');
+    if (opts.platforms.includes('web'))
+      runHints.push('`./gradlew :teavm:run` for web');
     setStatus(
-      'Downloaded! Unzip it and run ./gradlew :lwjgl3:run — Gradle will auto-install the selected JDK on first run.'
+      `Downloaded! Unzip then run ${runHints.join('; ')} — Gradle installs the toolchain on first build.`
     );
   }
 
@@ -332,7 +334,7 @@ function GeneratorBody(): JSX.Element {
             <label className={styles.label}>
               JDK vendor{' '}
               <HelpIcon tip={HINTS.jdk[opts.jdkVendor]} />
-              {opts.jdkVendor === 'semeru' && (
+              {opts.jdkVendor === 'temurin' && (
                 <span className={styles.recommend} title="Recommended for FlixelGDX">
                   Recommended
                 </span>
@@ -343,9 +345,8 @@ function GeneratorBody(): JSX.Element {
               value={opts.jdkVendor}
               onChange={(e) => set('jdkVendor', e.target.value as JdkVendor)}
             >
-              <option value="semeru">Eclipse OpenJ9 / IBM Semeru — recommended (low memory)</option>
-              <option value="graalvm">GraalVM Community — fast startup, AOT-ready</option>
               <option value="temurin">Eclipse Temurin (Adoptium) — standard HotSpot</option>
+              <option value="graalvm">GraalVM Community — fast startup, AOT-ready</option>
               <option value="corretto">Amazon Corretto — LTS HotSpot</option>
               <option value="zulu">Azul Zulu — broad version coverage</option>
             </select>
