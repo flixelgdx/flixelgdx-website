@@ -2,10 +2,11 @@
   display: grid;
   gap: 1.25rem;
   grid-template-columns: 1fr;
+  align-items: start;
 }
 
 @media (min-width: 1024px) {
-  .wrap { grid-template-columns: 1fr 320px; }
+  .wrap { grid-template-columns: 1fr 320px; align-items: start; }
 }
 
 .panel {

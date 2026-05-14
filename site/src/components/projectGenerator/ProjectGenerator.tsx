@@ -202,7 +202,7 @@ function GeneratorBody(): JSX.Element {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} flx-generator-boundary`}>
       <div>
         <div className={styles.panel}>
           <h3 className={styles.panelTitle}>1. Identity</h3>
@@ -300,32 +300,32 @@ function GeneratorBody(): JSX.Element {
                 ))}
               </select>
             </div>
-          </div>
-          <div className={styles.field} style={{marginTop: '1rem'}}>
-            <label className={styles.label}>
-              JDK vendor{' '}
-              <HelpIcon tip={HINTS.jdk[opts.jdkVendor]} />
-              {opts.jdkVendor === 'temurin' && (
-                <span className={styles.recommend} title="Recommended for FlixelGDX">
-                  Recommended
-                </span>
-              )}
-            </label>
-            <select
-              className={styles.select}
-              value={opts.jdkVendor}
-              onChange={(e) => set('jdkVendor', e.target.value as JdkVendor)}
-            >
-              <option value="temurin">Eclipse Temurin (Adoptium) — standard HotSpot</option>
-              <option value="graalvm">GraalVM Community — fast startup, AOT-ready</option>
-              <option value="corretto">Amazon Corretto — LTS HotSpot</option>
-              <option value="zulu">Azul Zulu — broad version coverage</option>
-            </select>
-            <div className={styles.subnote}>
-              Gradle will auto-download a matching JDK on first build using the
-              Foojay Toolchains Resolver — you only need a Gradle-compatible
-              bootstrap JDK on PATH (any modern JDK 8+ works).
+            <div className={styles.field}>
+              <label className={styles.label}>
+                JDK vendor{' '}
+                <HelpIcon tip={HINTS.jdk[opts.jdkVendor]} />
+                {opts.jdkVendor === 'temurin' && (
+                  <span className={styles.recommend} title="Recommended for FlixelGDX">
+                    Recommended
+                  </span>
+                )}
+              </label>
+              <select
+                className={styles.select}
+                value={opts.jdkVendor}
+                onChange={(e) => set('jdkVendor', e.target.value as JdkVendor)}
+              >
+                <option value="temurin">Eclipse Temurin (Adoptium) — standard HotSpot</option>
+                <option value="graalvm">GraalVM Community — fast startup, AOT-ready</option>
+                <option value="corretto">Amazon Corretto — LTS HotSpot</option>
+                <option value="zulu">Azul Zulu — broad version coverage</option>
+              </select>
             </div>
+          </div>
+          <div className={styles.subnote} style={{marginTop: '0.75rem'}}>
+            Gradle will auto-download a matching JDK on first build using the
+            Foojay Toolchains Resolver — you only need a Gradle-compatible
+            bootstrap JDK on PATH (any modern JDK 8+ works).
           </div>
         </div>
 
