@@ -76,7 +76,7 @@ function HeroBadges(): JSX.Element {
       <span className={styles.heroBadge}>Java 17+</span>
       <span className={styles.heroBadge}>libGDX under the hood</span>
       <span className={styles.heroBadge}>MIT licensed</span>
-      <span className={styles.heroBadge}>Runs in 16 MB heap</span>
+      <span className={styles.heroBadge}>Runs in 4-8 MB average heap</span>
     </div>
   );
 }
