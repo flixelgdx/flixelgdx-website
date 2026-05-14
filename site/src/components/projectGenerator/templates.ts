@@ -61,7 +61,24 @@ export function gradleVendorSpec(v: JdkVendor): string {
   }
 }
 
-const GROOVY_LINE = "\n";
+/** Safe inside Java / Groovy double-quoted string literals (game window title, logs, etc.). */
+function escDoubleQuotedJvm(name: string): string {
+  return name
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n');
+}
+
+/** Safe inside Kotlin double-quoted strings (also escapes $ so ${...} is not accidentally formed). */
+function escDoubleQuotedKotlin(name: string): string {
+  return name
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n');
+}
 
 /* -------------------------- gradle.properties ----------------------------- */
 function gradleProperties(o: GeneratorOptions): string {
@@ -100,7 +117,7 @@ function settingsGradle(o: GeneratorOptions): string {
   return [
     `// Plugin versions + repositories. JitPack hosts Flixel Gradle plugins`,
     `// under maven coordinates (${JITPACK_FLIXEL_COORD}:flixelgdx-*-plugin).`,
-    `// Plugin IDs are still me.stringdotjar.flixelgdx.* — without the mapping`,
+    `// Plugin IDs are still me.stringdotjar.flixelgdx.*. Without the mapping`,
     `// below, Gradle fails to resolve the plugin marker from the portal.`,
     `pluginManagement {`,
     `  plugins {`,
@@ -231,7 +248,8 @@ function lwjgl3BuildGradle(o: GeneratorOptions): string {
     ``,
     `application {`,
     `  mainClass = "${o.packageName}.lwjgl3.${o.gameName.replace(/\\s+/g, '')}Lwjgl3Launcher${mainSuffix}"`,
-    `  applicationDefaultJvmArgs = ["${baseFlags}${userFlags}".split(" ").findAll { !it.isEmpty() }]`,
+    `  // tokenize() splits on whitespace so each JVM flag is its own list entry (no accidental nested lists).`,
+    `  applicationDefaultJvmArgs = "${baseFlags}${userFlags}".tokenize()`,
     `}`,
     ``,
     `dependencies {`,
@@ -313,6 +331,10 @@ function teavmLauncher(o: GeneratorOptions): Record<string, string> {
         `import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher`,
         `import ${o.packageName}.${cls}`,
         ``,
+        `/**`,
+        ` * Browser entry point. TeaVM turns your JVM bytecode into JavaScript.`,
+        ` * The FlixelTeaVMLauncher class connects that web runtime to your FlixelGame.`,
+        ` */`,
         `fun main() {`,
         `  FlixelTeaVMLauncher.launch(${cls}())`,
         `}`,
@@ -328,13 +350,17 @@ function teavmLauncher(o: GeneratorOptions): Record<string, string> {
         `import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher`,
         `import ${o.packageName}.${cls}`,
         ``,
-        `class ${cls}TeaVMLauncher {`,
+        `/**`,
+        ` * Browser entry point. TeaVM turns your JVM bytecode into JavaScript.`,
+        ` * The FlixelTeaVMLauncher class connects that web runtime to your FlixelGame.`,
+        ` */`,
+        `final class ${cls}TeaVMLauncher {`,
         `  static void main(String[] args) {`,
         `    FlixelTeaVMLauncher.launch(new ${cls}())`,
         `  }`,
         `}`,
         ``,
-      ].join(GROOVY_LINE),
+      ].join('\n'),
     };
   }
   return {
@@ -344,7 +370,13 @@ function teavmLauncher(o: GeneratorOptions): Record<string, string> {
       `import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher;`,
       `import ${o.packageName}.${cls};`,
       ``,
+      `/**`,
+      ` * Browser entry point. TeaVM turns your JVM bytecode into JavaScript.`,
+      ` * The FlixelTeaVMLauncher class connects that web runtime to your FlixelGame.`,
+      ` */`,
       `public final class ${cls}TeaVMLauncher {`,
+      `  private ${cls}TeaVMLauncher() {}`,
+      ``,
       `  public static void main(String[] args) {`,
       `    FlixelTeaVMLauncher.launch(new ${cls}());`,
       `  }`,
@@ -361,21 +393,25 @@ function gameClassFiles(o: GeneratorOptions): Record<string, string> {
     o.template === 'platformer' ? 'PlatformerState' : 'PlayState';
   const pkg = o.packageName.replace(/[^A-Za-z0-9_.]/g, '_');
   const pkgDir = pkg.replace(/\./g, '/');
+  const jTitle = escDoubleQuotedJvm(o.gameName);
+  const kTitle = escDoubleQuotedKotlin(o.gameName);
   const out: Record<string, string> = {};
 
   if (o.language === 'java') {
     out[`core/src/main/java/${pkgDir}/${cls}.java`] = [
       `package ${pkg};`,
       ``,
-      `import me.stringdotjar.flixelgdx.Flixel;`,
       `import me.stringdotjar.flixelgdx.FlixelGame;`,
       ``,
-      `public class ${cls} extends FlixelGame {`,
-      `  @Override`,
-      `  protected void create() {`,
-      `    super.create();`,
-      `    Flixel.log.info("${cls} is awake!");`,
-      `    Flixel.switchState(new ${stateCls}());`,
+      `/**`,
+      ` * Your game entry class. FlixelGame owns the window settings and the first FlixelState.`,
+      ` *`,
+      ` * If you are new here, start in ${stateCls}.java. That file is where you spawn sprites,`,
+      ` * load sounds, and write your first update loop.`,
+      ` */`,
+      `public final class ${cls} extends FlixelGame {`,
+      `  public ${cls}() {`,
+      `    super("${jTitle}", 640, 480, new ${stateCls}());`,
       `  }`,
       `}`,
       ``,
@@ -385,34 +421,35 @@ function gameClassFiles(o: GeneratorOptions): Record<string, string> {
     out[`core/src/main/groovy/${pkgDir}/${cls}.groovy`] = [
       `package ${pkg}`,
       ``,
-      `import me.stringdotjar.flixelgdx.Flixel`,
       `import me.stringdotjar.flixelgdx.FlixelGame`,
       ``,
-      `class ${cls} extends FlixelGame {`,
-      `  @Override`,
-      `  protected void create() {`,
-      `    super.create()`,
-      `    Flixel.log.info("${cls} is awake!")`,
-      `    Flixel.switchState(new ${stateCls}())`,
+      `/**`,
+      ` * Your game entry class. FlixelGame owns the window settings and the first FlixelState.`,
+      ` *`,
+      ` * If you are new here, start in ${stateCls}.groovy. That file is where you spawn sprites,`,
+      ` * load sounds, and write your first update loop.`,
+      ` */`,
+      `final class ${cls} extends FlixelGame {`,
+      `  ${cls}() {`,
+      `    super("${jTitle}", 640, 480, new ${stateCls}())`,
       `  }`,
       `}`,
       ``,
-    ].join(GROOVY_LINE);
+    ].join('\n');
     out[`core/src/main/groovy/${pkgDir}/${stateCls}.groovy`] = playStateGroovy(o, stateCls);
   } else {
     out[`core/src/main/kotlin/${pkgDir}/${cls}.kt`] = [
       `package ${pkg}`,
       ``,
-      `import me.stringdotjar.flixelgdx.Flixel`,
       `import me.stringdotjar.flixelgdx.FlixelGame`,
       ``,
-      `class ${cls} : FlixelGame() {`,
-      `  override fun create() {`,
-      `    super.create()`,
-      `    Flixel.log.info("${cls} is awake!")`,
-      `    Flixel.switchState(${stateCls}())`,
-      `  }`,
-      `}`,
+      `/**`,
+      ` * Your game entry class. FlixelGame owns the window settings and the first FlixelState.`,
+      ` *`,
+      ` * If you are new here, start in ${stateCls}.kt. That file is where you spawn sprites,`,
+      ` * load sounds, and write your first update loop.`,
+      ` */`,
+      `class ${cls} : FlixelGame("${kTitle}", 640, 480, ${stateCls}())`,
       ``,
     ].join('\n');
     out[`core/src/main/kotlin/${pkgDir}/${stateCls}.kt`] = playStateKotlin(o, stateCls);
@@ -427,37 +464,55 @@ function playStateJava(o: GeneratorOptions, stateCls: string): string {
     return [
       `package ${pkg};`,
       ``,
+      `import com.badlogic.gdx.graphics.Color;`,
       `import me.stringdotjar.flixelgdx.Flixel;`,
       `import me.stringdotjar.flixelgdx.FlixelSprite;`,
       `import me.stringdotjar.flixelgdx.FlixelState;`,
-      `import me.stringdotjar.flixelgdx.input.FlixelKeys;`,
+      `import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;`,
       ``,
       `/**`,
-      ` * Tiny pre-made platformer scaffold. Replace the placeholder sprite with`,
-      ` * something you draw yourself, or load a real spritesheet through`,
-      ` * Flixel.assets.`,
+      ` * Tiny starter level with a controllable block.`,
+      ` *`,
+      ` * Read this like a mini tutorial:`,
+      ` * - create() runs once when this state becomes active. Build your scene here.`,
+      ` * - update(elapsed) runs every frame. elapsed is seconds since the last frame (use it for smooth motion).`,
+      ` * - FlixelSprite is a simple game object with a position (x, y) you can draw.`,
+      ` * - makeGraphic builds a solid rectangle so you can run the project before you add art.`,
+      ` *`,
+      ` * Next experiments: change the color in new Color(0xFF2A3CFF), resize the sprite, or print logs with`,
+      ` * Flixel.log.info("hello").`,
       ` */`,
-      `public class ${stateCls} extends FlixelState {`,
+      `public final class ${stateCls} extends FlixelState {`,
       `  private FlixelSprite player;`,
-      `  private float velocityY = 0f;`,
+      `  private float velocityY;`,
       ``,
       `  @Override`,
       `  public void create() {`,
       `    super.create();`,
-      `    player = new FlixelSprite(40, 80);`,
-      `    player.makeGraphic(16, 16, 0xFF2A3CFF);`,
+      `    player = new FlixelSprite(40f, 80f);`,
+      `    player.makeGraphic(16, 16, new Color(0xFF2A3CFF));`,
       `    add(player);`,
+      `    Flixel.log.info("PlatformerState is running. Use arrow keys and space to move and jump.");`,
       `  }`,
       ``,
       `  @Override`,
       `  public void update(float elapsed) {`,
       `    super.update(elapsed);`,
       `    velocityY += 320f * elapsed;`,
-      `    if (Flixel.keys.pressed(FlixelKeys.LEFT))  player.x -= 90f * elapsed;`,
-      `    if (Flixel.keys.pressed(FlixelKeys.RIGHT)) player.x += 90f * elapsed;`,
-      `    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) velocityY = -160f;`,
+      `    if (Flixel.keys.pressed(FlixelKey.LEFT)) {`,
+      `      player.x -= 90f * elapsed;`,
+      `    }`,
+      `    if (Flixel.keys.pressed(FlixelKey.RIGHT)) {`,
+      `      player.x += 90f * elapsed;`,
+      `    }`,
+      `    if (Flixel.keys.justPressed(FlixelKey.SPACE)) {`,
+      `      velocityY = -160f;`,
+      `    }`,
       `    player.y += velocityY * elapsed;`,
-      `    if (player.y > 200) { player.y = 200; velocityY = 0; }`,
+      `    if (player.y > 200f) {`,
+      `      player.y = 200f;`,
+      `      velocityY = 0f;`,
+      `    }`,
       `  }`,
       `}`,
       ``,
@@ -469,12 +524,20 @@ function playStateJava(o: GeneratorOptions, stateCls: string): string {
     `import me.stringdotjar.flixelgdx.Flixel;`,
     `import me.stringdotjar.flixelgdx.FlixelState;`,
     ``,
-    `/** Empty starter state — open this file and start building! */`,
-    `public class ${stateCls} extends FlixelState {`,
+    `/**`,
+    ` * Your first FlixelState (think of it as one "screen" of your game).`,
+    ` *`,
+    ` * What to try first:`,
+    ` * - Put setup code in create(). It runs once when this state starts.`,
+    ` * - Put movement and rules in update(elapsed). It runs every frame.`,
+    ` * - When you want a new screen, create another FlixelState subclass and call`,
+    ` *   Flixel.switchState(new MyOtherState()) from anywhere after Flixel has started.`,
+    ` */`,
+    `public final class ${stateCls} extends FlixelState {`,
     `  @Override`,
     `  public void create() {`,
     `    super.create();`,
-    `    Flixel.log.info("${stateCls} is ready.");`,
+    `    Flixel.log.info("${stateCls} is ready. Add a FlixelSprite here when you want something on screen.");`,
     `  }`,
     ``,
     `  @Override`,
@@ -492,32 +555,55 @@ function playStateGroovy(o: GeneratorOptions, stateCls: string): string {
     return [
       `package ${pkg}`,
       ``,
+      `import com.badlogic.gdx.graphics.Color`,
       `import me.stringdotjar.flixelgdx.Flixel`,
       `import me.stringdotjar.flixelgdx.FlixelSprite`,
       `import me.stringdotjar.flixelgdx.FlixelState`,
-      `import me.stringdotjar.flixelgdx.input.FlixelKeys`,
+      `import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey`,
       ``,
-      `class ${stateCls} extends FlixelState {`,
+      `/**`,
+      ` * Tiny starter level with a controllable block.`,
+      ` *`,
+      ` * Read this like a mini tutorial:`,
+      ` * - create() runs once when this state becomes active. Build your scene here.`,
+      ` * - update(elapsed) runs every frame. elapsed is seconds since the last frame (use it for smooth motion).`,
+      ` * - FlixelSprite is a simple game object with a position (x, y) you can draw.`,
+      ` * - makeGraphic builds a solid rectangle so you can run the project before you add art.`,
+      ` *`,
+      ` * Next experiments: change the color in new Color(0xFF2A3CFF), resize the sprite, or print logs with`,
+      ` * Flixel.log.info("hello").`,
+      ` */`,
+      `final class ${stateCls} extends FlixelState {`,
       `  FlixelSprite player`,
       `  float velocityY = 0f`,
       ``,
       `  @Override`,
       `  void create() {`,
       `    super.create()`,
-      `    player = new FlixelSprite(40, 80)`,
-      `    player.makeGraphic(16, 16, 0xFF2A3CFF as int)`,
+      `    player = new FlixelSprite(40f, 80f)`,
+      `    player.makeGraphic(16, 16, new Color(0xFF2A3CFF))`,
       `    add(player)`,
+      `    Flixel.log.info("PlatformerState is running. Use arrow keys and space to move and jump.")`,
       `  }`,
       ``,
       `  @Override`,
       `  void update(float elapsed) {`,
       `    super.update(elapsed)`,
       `    velocityY += 320f * elapsed`,
-      `    if (Flixel.keys.pressed(FlixelKeys.LEFT))  player.x -= 90f * elapsed`,
-      `    if (Flixel.keys.pressed(FlixelKeys.RIGHT)) player.x += 90f * elapsed`,
-      `    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) velocityY = -160f`,
+      `    if (Flixel.keys.pressed(FlixelKey.LEFT)) {`,
+      `      player.x -= 90f * elapsed`,
+      `    }`,
+      `    if (Flixel.keys.pressed(FlixelKey.RIGHT)) {`,
+      `      player.x += 90f * elapsed`,
+      `    }`,
+      `    if (Flixel.keys.justPressed(FlixelKey.SPACE)) {`,
+      `      velocityY = -160f`,
+      `    }`,
       `    player.y += velocityY * elapsed`,
-      `    if (player.y > 200) { player.y = 200; velocityY = 0 }`,
+      `    if (player.y > 200f) {`,
+      `      player.y = 200f`,
+      `      velocityY = 0f`,
+      `    }`,
       `  }`,
       `}`,
       ``,
@@ -529,11 +615,20 @@ function playStateGroovy(o: GeneratorOptions, stateCls: string): string {
     `import me.stringdotjar.flixelgdx.Flixel`,
     `import me.stringdotjar.flixelgdx.FlixelState`,
     ``,
-    `class ${stateCls} extends FlixelState {`,
+    `/**`,
+    ` * Your first FlixelState (think of it as one "screen" of your game).`,
+    ` *`,
+    ` * What to try first:`,
+    ` * - Put setup code in create(). It runs once when this state starts.`,
+    ` * - Put movement and rules in update(elapsed). It runs every frame.`,
+    ` * - When you want a new screen, create another FlixelState subclass and call`,
+    ` *   Flixel.switchState(new MyOtherState()) from anywhere after Flixel has started.`,
+    ` */`,
+    `final class ${stateCls} extends FlixelState {`,
     `  @Override`,
     `  void create() {`,
     `    super.create()`,
-    `    Flixel.log.info("${stateCls} is ready.")`,
+    `    Flixel.log.info("${stateCls} is ready. Add a FlixelSprite here when you want something on screen.")`,
     `  }`,
     ``,
     `  @Override`,
@@ -551,29 +646,54 @@ function playStateKotlin(o: GeneratorOptions, stateCls: string): string {
     return [
       `package ${pkg}`,
       ``,
+      `import com.badlogic.gdx.graphics.Color`,
       `import me.stringdotjar.flixelgdx.Flixel`,
       `import me.stringdotjar.flixelgdx.FlixelSprite`,
       `import me.stringdotjar.flixelgdx.FlixelState`,
-      `import me.stringdotjar.flixelgdx.input.FlixelKeys`,
+      `import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey`,
       ``,
+      `/**`,
+      ` * Tiny starter level with a controllable block.`,
+      ` *`,
+      ` * Read this like a mini tutorial:`,
+      ` * - create() runs once when this state becomes active. Build your scene here.`,
+      ` * - update(elapsed) runs every frame. elapsed is seconds since the last frame (use it for smooth motion).`,
+      ` * - FlixelSprite is a simple game object with a position (x, y) you can draw.`,
+      ` * - makeGraphic builds a solid rectangle so you can run the project before you add art.`,
+      ` *`,
+      ` * Next experiments: change the color in Color(0xFF2A3CFF.toInt()), resize the sprite, or print logs with`,
+      ` * Flixel.log.info("hello").`,
+      ` */`,
       `class ${stateCls} : FlixelState() {`,
       `  private lateinit var player: FlixelSprite`,
       `  private var velocityY = 0f`,
       ``,
       `  override fun create() {`,
       `    super.create()`,
-      `    player = FlixelSprite(40f, 80f).apply { makeGraphic(16, 16, 0xFF2A3CFF.toInt()) }`,
+      `    player = FlixelSprite(40f, 80f).apply {`,
+      `      makeGraphic(16, 16, Color(0xFF2A3CFF.toInt()))`,
+      `    }`,
       `    add(player)`,
+      `    Flixel.log.info("PlatformerState is running. Use arrow keys and space to move and jump.")`,
       `  }`,
       ``,
       `  override fun update(elapsed: Float) {`,
       `    super.update(elapsed)`,
       `    velocityY += 320f * elapsed`,
-      `    if (Flixel.keys.pressed(FlixelKeys.LEFT))  player.x -= 90f * elapsed`,
-      `    if (Flixel.keys.pressed(FlixelKeys.RIGHT)) player.x += 90f * elapsed`,
-      `    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) velocityY = -160f`,
+      `    if (Flixel.keys.pressed(FlixelKey.LEFT)) {`,
+      `      player.x -= 90f * elapsed`,
+      `    }`,
+      `    if (Flixel.keys.pressed(FlixelKey.RIGHT)) {`,
+      `      player.x += 90f * elapsed`,
+      `    }`,
+      `    if (Flixel.keys.justPressed(FlixelKey.SPACE)) {`,
+      `      velocityY = -160f`,
+      `    }`,
       `    player.y += velocityY * elapsed`,
-      `    if (player.y > 200f) { player.y = 200f; velocityY = 0f }`,
+      `    if (player.y > 200f) {`,
+      `      player.y = 200f`,
+      `      velocityY = 0f`,
+      `    }`,
       `  }`,
       `}`,
       ``,
@@ -585,10 +705,19 @@ function playStateKotlin(o: GeneratorOptions, stateCls: string): string {
     `import me.stringdotjar.flixelgdx.Flixel`,
     `import me.stringdotjar.flixelgdx.FlixelState`,
     ``,
+    `/**`,
+    ` * Your first FlixelState (think of it as one "screen" of your game).`,
+    ` *`,
+    ` * What to try first:`,
+    ` * - Put setup code in create(). It runs once when this state starts.`,
+    ` * - Put movement and rules in update(elapsed). It runs every frame.`,
+    ` * - When you want a new screen, create another FlixelState subclass and call`,
+    ` *   Flixel.switchState(MyOtherState()) from anywhere after Flixel has started.`,
+    ` */`,
     `class ${stateCls} : FlixelState() {`,
     `  override fun create() {`,
     `    super.create()`,
-    `    Flixel.log.info("${stateCls} is ready.")`,
+    `    Flixel.log.info("${stateCls} is ready. Add a FlixelSprite here when you want something on screen.")`,
     `  }`,
     ``,
     `  override fun update(elapsed: Float) {`,
@@ -609,17 +738,21 @@ function lwjgl3Launcher(o: GeneratorOptions): Record<string, string> {
       [`lwjgl3/src/main/kotlin/${pkgDir}/${cls}Lwjgl3Launcher.kt`]: [
         `package ${pkg}`,
         ``,
-        `import me.stringdotjar.flixelgdx.lwjgl3.FlixelLwjgl3Launcher`,
-        `import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration`,
+        `import com.badlogic.gdx.backends.lwjgl3.StartupHelper`,
+        `import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher`,
         `import ${o.packageName}.${cls}`,
         ``,
+        `/**`,
+        ` * Desktop entry point. FlixelLwjgl3Launcher wires libGDX, logging, and window events for you.`,
+        ` *`,
+        ` * StartupHelper is a libGDX helper that can restart the JVM on some desktops when it needs`,
+        ` * special flags. If it returns true, this process is done and you should not continue.`,
+        ` */`,
         `fun main() {`,
-        `  val config = Lwjgl3ApplicationConfiguration().apply {`,
-        `    setTitle("${o.gameName}")`,
-        `    setWindowedMode(640, 480)`,
-        `    setForegroundFPS(60)`,
+        `  if (StartupHelper.startNewJvmIfRequired()) {`,
+        `    return`,
         `  }`,
-        `  FlixelLwjgl3Launcher.launch(${cls}(), config)`,
+        `  FlixelLwjgl3Launcher.launch(${cls}())`,
         `}`,
         ``,
       ].join('\n'),
@@ -630,17 +763,22 @@ function lwjgl3Launcher(o: GeneratorOptions): Record<string, string> {
       [`lwjgl3/src/main/groovy/${pkgDir}/${cls}Lwjgl3Launcher.groovy`]: [
         `package ${pkg}`,
         ``,
-        `import me.stringdotjar.flixelgdx.lwjgl3.FlixelLwjgl3Launcher`,
-        `import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration`,
+        `import com.badlogic.gdx.backends.lwjgl3.StartupHelper`,
+        `import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher`,
         `import ${o.packageName}.${cls}`,
         ``,
-        `class ${cls}Lwjgl3Launcher {`,
+        `/**`,
+        ` * Desktop entry point. FlixelLwjgl3Launcher wires libGDX, logging, and window events for you.`,
+        ` *`,
+        ` * StartupHelper is a libGDX helper that can restart the JVM on some desktops when it needs`,
+        ` * special flags. If it returns true, this process is done and you should not continue.`,
+        ` */`,
+        `final class ${cls}Lwjgl3Launcher {`,
         `  static void main(String[] args) {`,
-        `    def config = new Lwjgl3ApplicationConfiguration()`,
-        `    config.setTitle("${o.gameName}")`,
-        `    config.setWindowedMode(640, 480)`,
-        `    config.setForegroundFPS(60)`,
-        `    FlixelLwjgl3Launcher.launch(new ${cls}(), config)`,
+        `    if (StartupHelper.startNewJvmIfRequired()) {`,
+        `      return`,
+        `    }`,
+        `    FlixelLwjgl3Launcher.launch(new ${cls}())`,
         `  }`,
         `}`,
         ``,
@@ -651,17 +789,24 @@ function lwjgl3Launcher(o: GeneratorOptions): Record<string, string> {
     [`lwjgl3/src/main/java/${pkgDir}/${cls}Lwjgl3Launcher.java`]: [
       `package ${pkg};`,
       ``,
-      `import me.stringdotjar.flixelgdx.lwjgl3.FlixelLwjgl3Launcher;`,
-      `import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;`,
+      `import com.badlogic.gdx.backends.lwjgl3.StartupHelper;`,
+      `import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher;`,
       `import ${o.packageName}.${cls};`,
       ``,
+      `/**`,
+      ` * Desktop entry point. FlixelLwjgl3Launcher wires libGDX, logging, and window events for you.`,
+      ` *`,
+      ` * StartupHelper is a libGDX helper that can restart the JVM on some desktops when it needs`,
+      ` * special flags. If it returns true, this process is done and you should not continue.`,
+      ` */`,
       `public final class ${cls}Lwjgl3Launcher {`,
+      `  private ${cls}Lwjgl3Launcher() {}`,
+      ``,
       `  public static void main(String[] args) {`,
-      `    Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();`,
-      `    config.setTitle("${o.gameName}");`,
-      `    config.setWindowedMode(640, 480);`,
-      `    config.setForegroundFPS(60);`,
-      `    FlixelLwjgl3Launcher.launch(new ${cls}(), config);`,
+      `    if (StartupHelper.startNewJvmIfRequired()) {`,
+      `      return;`,
+      `    }`,
+      `    FlixelLwjgl3Launcher.launch(new ${cls}());`,
       `  }`,
       `}`,
       ``,
@@ -840,7 +985,7 @@ const IDE_TIPS: Record<IDE, IdeTips | null> = {
     steps: [
       '1. Install Eclipse with the "Eclipse IDE for Java Developers" package.',
       '2. File -> Import -> Gradle -> Existing Gradle Project -> pick this folder.',
-      '3. Gradle Tasks → run `:lwjgl3:run` (desktop) or `:teavm:run` (web).',
+      '3. Gradle Tasks, then run `:lwjgl3:run` (desktop) or `:teavm:run` (web).',
     ],
   },
   vscode: {
@@ -862,7 +1007,14 @@ function readme(o: GeneratorOptions): string {
   const lines: string[] = [];
   lines.push(`# ${o.gameName}`);
   lines.push('');
-  lines.push(`A FlixelGDX game generated by the project generator at`);
+  lines.push(
+    'Welcome! This folder is a tiny, runnable FlixelGDX starter. The big idea is simple: '
+  );
+  lines.push(
+    'your gameplay code lives in the `core` module, and the `lwjgl3` (or `teavm`) module is only the launcher.'
+  );
+  lines.push('');
+  lines.push('This zip was created by the project generator at');
   lines.push(`https://flixelgdx.github.io/flixelgdx-website/docs/getting-started.`);
   lines.push('');
   lines.push('## 1. Install a JDK');
@@ -875,7 +1027,7 @@ function readme(o: GeneratorOptions): string {
   lines.push('');
   lines.push('Confirm the install: `java -version` in a fresh terminal.');
   lines.push('');
-  lines.push(`> Any JDK 8+ on PATH is enough to bootstrap Gradle — the build`);
+  lines.push(`> Any JDK 8+ on PATH is enough to bootstrap Gradle. The build`);
   lines.push(`> auto-downloads the **${tips.label}** toolchain via Gradle's`);
   lines.push(`> Foojay Toolchains Resolver on first run.`);
   lines.push('');
@@ -890,7 +1042,7 @@ function readme(o: GeneratorOptions): string {
     lines.push('## 2. Open in an editor');
     lines.push('');
     lines.push('No IDE files were generated. Open this folder in whatever editor');
-    lines.push('you prefer — any modern editor with Gradle support works.');
+    lines.push('you prefer. Any modern editor with Gradle support works.');
     lines.push('');
   }
   lines.push('## 3. Run your game');
@@ -909,7 +1061,7 @@ function readme(o: GeneratorOptions): string {
     lines.push('    gradlew.bat :teavm:run       # Windows');
     lines.push('');
   }
-  lines.push('Gradle wrapper is bundled — you do NOT need to install Gradle.');
+  lines.push('Gradle wrapper is bundled. You do not need to install Gradle.');
   lines.push('First build downloads dependencies (and, if needed, the JDK).');
   lines.push('');
   lines.push('### If Gradle reports an unknown plugin / unresolved plugin artifact');
@@ -918,7 +1070,7 @@ function readme(o: GeneratorOptions): string {
   lines.push(`\`${JITPACK_FLIXEL_COORD}:flixelgdx-teavm-plugin:<version>\`, while`);
   lines.push('the **plugin IDs** remain `me.stringdotjar.flixelgdx.teavm` (logging:');
   lines.push('`me.stringdotjar.flixelgdx.logging`). The generated `settings.gradle` ');
-  lines.push('maps those IDs → JitPack so the `plugins {}` DSL works. ');
+  lines.push('maps those IDs to JitPack so the `plugins {}` DSL works. ');
   lines.push('If this block is missing, copy it from ');
   lines.push('[COMPILING.md](https://github.com/flixelgdx/flixelgdx/blob/master/COMPILING.md) ');
   lines.push('in the framework repo.');
@@ -945,7 +1097,7 @@ function readme(o: GeneratorOptions): string {
   if (o.platforms.includes('web')) {
     lines.push('    teavm/        browser launcher (TeaVM)');
   }
-  lines.push('    .editorconfig formatting rules (2-space indent, LF, …)');
+  lines.push('    .editorconfig formatting rules (2-space indent, LF, and trailing whitespace trim)');
   lines.push('    gradlew[.bat] Gradle wrapper bootstrap');
   lines.push('');
   lines.push('## Learn more');
