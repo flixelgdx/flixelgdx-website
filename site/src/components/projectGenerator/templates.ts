@@ -155,7 +155,13 @@ function settingsGradle(o: GeneratorOptions): string {
     `        'me.stringdotjar.flixelgdx.logging': 'flixelgdx-logging-plugin',`,
     `      ][requested.id.id]`,
     `      if (jitpackArtifact != null) {`,
-    `        useModule('${JITPACK_FLIXEL_COORD}:' + jitpackArtifact + ':' + requested.version.toString())`,
+    `        def v = requested.version?.toString()`,
+    `        if (v == null || v.isEmpty()) {`,
+    `          v = providers.gradleProperty('flixelVersion').getOrElse('')`,
+    `        }`,
+    `        if (v != null && !v.isEmpty()) {`,
+    `          useModule('${JITPACK_FLIXEL_COORD}:' + jitpackArtifact + ':' + v)`,
+    `        }`,
     `      }`,
     `    }`,
     `  }`,
@@ -204,10 +210,10 @@ function rootBuildGradle(o: GeneratorOptions): string {
 function coreBuildGradle(o: GeneratorOptions): string {
   const langPlugin =
     o.language === 'java'
-      ? `id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`
+      ? `id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging' version "\${flixelVersion}"`
       : o.language === 'groovy'
-        ? `id 'groovy'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`
-        : `id 'org.jetbrains.kotlin.jvm'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`;
+        ? `id 'groovy'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging' version "\${flixelVersion}"`
+        : `id 'org.jetbrains.kotlin.jvm'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging' version "\${flixelVersion}"`;
 
   const langDep =
     o.language === 'groovy'
