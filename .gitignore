@@ -1,0 +1,22 @@
+# Build artefacts produced by scripts/build-api.sh + Gradle
+build/
+.gradle/
+
+# Generated API markdown. Run `./scripts/build-api.sh` to populate
+# locally. The hand-written welcome page (site/api/index.mdx) is
+# tracked; everything else under site/api/ is regenerated.
+site/api/**
+!site/api/index.mdx
+
+# Docusaurus
+site/.docusaurus/
+site/build/
+site/node_modules/
+site/.cache-loader/
+
+# OS / editor noise
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.iml

@@ -1,0 +1,84 @@
+name: Deploy website
+
+# ----------------------------------------------------------------------------
+# Builds the FlixelGDX Docusaurus site (including a fresh Dokka GFM dump of
+# the framework's API) and publishes it to GitHub Pages.
+#
+# Triggers:
+#   - push to this repo's main branch (content / generator changes).
+#   - repository_dispatch with event_type=framework-updated (sent by the
+#     companion workflow in flixelgdx/flixelgdx whenever master is updated —
+#     see .github/workflows/framework-trigger.md in this repo for the snippet
+#     to paste over there).
+#   - manual workflow_dispatch.
+#   - daily cron, as a safety net.
+# ----------------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [framework-updated]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # No `gradle/actions/setup-gradle` here — the repo ships its own
+      # Gradle wrapper, so we just need a JDK on PATH for the bundled
+      # `./gradlew` to bootstrap Gradle on its own.
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build API markdown (Dokka GFM via bundled wrapper)
+        run: ./scripts/build-api.sh
+
+      - name: Install Docusaurus deps
+        working-directory: site
+        run: npm ci
+
+      - name: Build site
+        working-directory: site
+        run: npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

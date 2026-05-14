@@ -1,0 +1,47 @@
+---
+id: index
+slug: /
+title: API Reference
+sidebar_label: Overview
+sidebar_position: 1
+hide_title: false
+---
+
+import Link from '@docusaurus/Link';
+
+# FlixelGDX API Reference
+
+This is the live Java API reference for **FlixelGDX**. It is generated
+from the framework's sources by [Dokka](https://kotlinlang.org/docs/dokka-introduction.html)
+with the **kotlin-as-java** plugin (so every signature reads as native
+Java) and re-shaped for the website by `scripts/postprocess_api.py`.
+
+Pick a module to start browsing:
+
+<div className="flx-module-grid">
+  <Link className="flx-module-card" to="/api/core/">
+    <strong>Core</strong>
+    <span>The framework heart — entities, states, cameras, tweens, timers, input action sets, saves, debug overlay, asset helpers.</span>
+  </Link>
+  <Link className="flx-module-card" to="/api/lwjgl3/">
+    <strong>Desktop (LWJGL3)</strong>
+    <span>The desktop launcher: window listeners, debug overlays, mouse cursors, host integrations.</span>
+  </Link>
+  <Link className="flx-module-card" to="/api/teavm/">
+    <strong>Web (TeaVM)</strong>
+    <span>The browser backend — console sinks, filesystem limits, TeaVM-specific glue.</span>
+  </Link>
+  <Link className="flx-module-card flx-module-card--soon" to="/api/android/">
+    <strong>Android</strong>
+    <span>Android launcher integration. Still in active development.</span>
+  </Link>
+  <Link className="flx-module-card flx-module-card--soon" to="/api/ios/">
+    <strong>iOS (MobiVM)</strong>
+    <span>iOS launcher integration. Still in active development.</span>
+  </Link>
+</div>
+
+If you spot something wrong in the API docs, please
+[file an issue](https://github.com/flixelgdx/flixelgdx/issues) against
+the **framework** repository — the API content is regenerated from
+there on every push.
