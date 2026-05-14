@@ -5,7 +5,6 @@ import styles from './ProjectGenerator.module.css';
 import {
   buildProjectFiles,
   type GeneratorOptions,
-  type IDE,
   type JdkVendor,
   type Language,
   type Platform,
@@ -51,15 +50,6 @@ const HINTS = {
       'A clean, empty FlixelState ready for you to fill in. Best for following tutorials.',
     platformer:
       'A tiny pre-made platformer (one player, gravity, jumping) you can extend right away.',
-  },
-  ide: {
-    idea:
-      'JetBrains IntelliJ IDEA. Generates a run configuration that points at the desktop launcher.',
-    eclipse:
-      'Eclipse with the Buildship Gradle plugin. Drops a matching `.classpath` and `.project`.',
-    vscode:
-      'Visual Studio Code with the Java Extension Pack. Adds `launch.json` and `settings.json`.',
-    none: 'Skip IDE-specific files. You can always import the Gradle project later.',
   },
   java:
     'The Java source/target version. FlixelGDX requires Java 17 as a minimum — older versions are blocked.',
@@ -122,7 +112,6 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   language: 'java',
   javaVersion: 17,
   flixelVersion: '0.3.0',
-  ide: 'idea',
   template: 'blank',
   platforms: ['desktop'],
   jdkVendor: 'temurin',
@@ -311,24 +300,6 @@ function GeneratorBody(): JSX.Element {
                 ))}
               </select>
             </div>
-            <div className={styles.field}>
-              <label className={styles.label}>
-                IDE{' '}
-                <HelpIcon
-                  tip={HINTS.ide[opts.ide]}
-                />
-              </label>
-              <select
-                className={styles.select}
-                value={opts.ide}
-                onChange={(e) => set('ide', e.target.value as IDE)}
-              >
-                <option value="idea">IntelliJ IDEA</option>
-                <option value="eclipse">Eclipse</option>
-                <option value="vscode">VS Code</option>
-                <option value="none">Skip IDE files</option>
-              </select>
-            </div>
           </div>
           <div className={styles.field} style={{marginTop: '1rem'}}>
             <label className={styles.label}>
@@ -498,7 +469,6 @@ function GeneratorBody(): JSX.Element {
           <dt>JDK</dt><dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
           <dt>Flixel</dt><dd>{opts.flixelVersion}</dd>
           <dt>Template</dt><dd>{opts.template}</dd>
-          <dt>IDE</dt><dd>{opts.ide}</dd>
           <dt>Heap</dt><dd>{opts.heapMb} MB</dd>
           <dt>Platforms</dt><dd>{opts.platforms.join(', ') || '—'}</dd>
         </dl>

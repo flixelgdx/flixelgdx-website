@@ -30,7 +30,6 @@ const GRAALVM_NATIVE_PLUGIN_VERSION = '0.10.6';
 const CONSTRUO_PLUGIN_VERSION = '2.1.0';
 
 export type Language = 'java' | 'groovy' | 'kotlin';
-export type IDE = 'idea' | 'eclipse' | 'vscode' | 'none';
 export type Template = 'blank' | 'platformer';
 export type Platform = 'desktop' | 'web' | 'android' | 'ios';
 export type JdkVendor =
@@ -46,7 +45,6 @@ export interface GeneratorOptions {
   language: Language;
   javaVersion: number;
   flixelVersion: string;
-  ide: IDE;
   template: Template;
   platforms: Platform[];
   jdkVendor: JdkVendor;
@@ -99,6 +97,10 @@ function gradleProperties(o: GeneratorOptions): string {
     `org.gradle.parallel=true`,
     `org.gradle.caching=true`,
     `org.gradle.configuration-cache=true`,
+    `org.gradle.vfs.watch=true`,
+    ``,
+    `# UTF-8 for Gradle and JVM processes on every OS.`,
+    `systemProp.file.encoding=UTF-8`,
     ``,
     `# FlixelGDX framework version (resolved through JitPack).`,
     `flixelVersion=${o.flixelVersion}`,
@@ -106,6 +108,9 @@ function gradleProperties(o: GeneratorOptions): string {
     `gdxVersion=${GDX_VERSION}`,
     `gameName=${o.gameName}`,
     `gameId=${o.gameId}`,
+    ``,
+    `# GraalVM Native Image (nativeCompile, nativeRun, etc.). Set to true only when you use a GraalVM-capable JDK and want native binaries.`,
+    `enableGraalNative=false`,
     ``,
   ];
   if (o.platforms.includes('web')) {
@@ -136,6 +141,7 @@ function settingsGradle(o: GeneratorOptions): string {
     `    id 'org.teavm' version '${TEAVM_GRADLE_PLUGIN_VERSION}'`,
     `    id 'org.graalvm.buildtools.native' version '${GRAALVM_NATIVE_PLUGIN_VERSION}'`,
     `    id 'io.github.fourlastor.construo' version '${CONSTRUO_PLUGIN_VERSION}'`,
+    `    id 'me.stringdotjar.flixelgdx.logging' version '${o.flixelVersion}'`,
     `  }`,
     `  repositories {`,
     `    mavenLocal()`,
@@ -144,15 +150,12 @@ function settingsGradle(o: GeneratorOptions): string {
     `  }`,
     `  resolutionStrategy {`,
     `    eachPlugin {`,
-    `      switch (requested.id.id) {`,
-    `        case 'me.stringdotjar.flixelgdx.teavm':`,
-    `          useModule('${JITPACK_FLIXEL_COORD}:flixelgdx-teavm-plugin:' + requested.version.toString())`,
-    `          break`,
-    `        case 'me.stringdotjar.flixelgdx.logging':`,
-    `          useModule('${JITPACK_FLIXEL_COORD}:flixelgdx-logging-plugin:' + requested.version.toString())`,
-    `          break`,
-    `        default:`,
-    `          break`,
+    `      def jitpackArtifact = [`,
+    `        'me.stringdotjar.flixelgdx.teavm': 'flixelgdx-teavm-plugin',`,
+    `        'me.stringdotjar.flixelgdx.logging': 'flixelgdx-logging-plugin',`,
+    `      ][requested.id.id]`,
+    `      if (jitpackArtifact != null) {`,
+    `        useModule('${JITPACK_FLIXEL_COORD}:' + jitpackArtifact + ':' + requested.version.toString())`,
     `      }`,
     `    }`,
     `  }`,
@@ -201,10 +204,10 @@ function rootBuildGradle(o: GeneratorOptions): string {
 function coreBuildGradle(o: GeneratorOptions): string {
   const langPlugin =
     o.language === 'java'
-      ? `id 'java-library'`
+      ? `id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`
       : o.language === 'groovy'
-        ? `id 'groovy'\n  id 'java-library'`
-        : `id 'org.jetbrains.kotlin.jvm'\n  id 'java-library'`;
+        ? `id 'groovy'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`
+        : `id 'org.jetbrains.kotlin.jvm'\n  id 'java-library'\n  id 'me.stringdotjar.flixelgdx.logging'`;
 
   const langDep =
     o.language === 'groovy'
@@ -222,7 +225,7 @@ function coreBuildGradle(o: GeneratorOptions): string {
     `  // Gradle will auto-download a matching JDK from the configured vendor.`,
     `  toolchain {`,
     `    languageVersion = JavaLanguageVersion.of(${o.javaVersion})`,
-    `    vendor          = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
+    `    vendor = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
     `  }`,
     `  sourceCompatibility = JavaVersion.VERSION_${o.javaVersion}`,
     `  targetCompatibility = JavaVersion.VERSION_${o.javaVersion}`,
@@ -237,20 +240,19 @@ function coreBuildGradle(o: GeneratorOptions): string {
 
 /* ------------------------ nativeimage.gradle (desktop) -------------------- */
 /**
- * Loaded from {@code lwjgl3/build.gradle} so all plugin order and
- * {@code application.mainClass} wiring resolve in the lwjgl3 subproject.
+ * Loaded from {@code lwjgl3/build.gradle} when {@code enableGraalNative} is true.
+ * Applies GraalVM Native Build Tools configuration in the lwjgl3 subproject context
+ * so plugin resolution uses {@code settings.gradle} pluginManagement.
  */
 function nativeImageGradle(): string {
   return [
-    `// GraalVM Native Image resources and Construo-friendly run wiring for the desktop module.`,
+    `// GraalVM Native Image (only loaded when enableGraalNative=true in gradle.properties).`,
     `// Resource patterns are adapted from https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/`,
     ``,
     `import groovy.json.JsonOutput`,
     `import java.util.Locale`,
     ``,
     `ext.appName = rootProject.findProperty('gameId') ?: rootProject.name`,
-    ``,
-    `apply plugin: 'org.graalvm.buildtools.native'`,
     ``,
     `def isMacOsNative = System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contains('mac')`,
     ``,
@@ -331,7 +333,7 @@ function lwjgl3BuildGradle(o: GeneratorOptions): string {
     `java {`,
     `  toolchain {`,
     `    languageVersion = JavaLanguageVersion.of(${o.javaVersion})`,
-    `    vendor          = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
+    `    vendor = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
     `  }`,
     `}`,
     ``,
@@ -380,7 +382,31 @@ function lwjgl3BuildGradle(o: GeneratorOptions): string {
     `  }`,
     `}`,
     ``,
-    `apply from: rootProject.file('nativeimage.gradle')`,
+    `tasks.register('runnableJar', Jar) {`,
+    `  group = 'distribution'`,
+    `  description = 'Fat runnable game JAR with dependencies and assets (run with: java -jar ...).'`,
+    `  dependsOn tasks.classes`,
+    `  duplicatesStrategy = DuplicatesStrategy.EXCLUDE`,
+    `  archiveFileName = '${o.gameId}-runnable.jar'`,
+    `  destinationDirectory = rootProject.layout.buildDirectory.dir('pack')`,
+    `  manifest {`,
+    `    attributes('Main-Class': application.mainClass.get())`,
+    `  }`,
+    `  from sourceSets.main.output`,
+    `  from {`,
+    `    configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }`,
+    `  } {`,
+    `    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*', 'module-info.class'`,
+    `  }`,
+    `  from(rootProject.layout.projectDirectory.dir('assets')) {`,
+    `    into 'assets'`,
+    `  }`,
+    `}`,
+    ``,
+    `if (Boolean.valueOf((findProperty('enableGraalNative') ?: 'false').toString())) {`,
+    `  apply plugin: 'org.graalvm.buildtools.native'`,
+    `  apply from: 'nativeimage.gradle'`,
+    `}`,
     ``,
   ].join('\n');
 }
@@ -420,7 +446,7 @@ function teavmBuildGradle(o: GeneratorOptions): string {
     `java {`,
     `  toolchain {`,
     `    languageVersion = JavaLanguageVersion.of(${o.javaVersion})`,
-    `    vendor          = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
+    `    vendor = JvmVendorSpec.${gradleVendorSpec(o.jdkVendor)}`,
     `  }`,
     `}`,
     ``,
@@ -1021,107 +1047,6 @@ function lwjgl3Launcher(o: GeneratorOptions): Record<string, string> {
   };
 }
 
-/* ----------------------- IDE-specific dotfiles ---------------------------- */
-/** Eclipse still expects explicit source roots — match the generated module layout. */
-function eclipseSrcPath(module: string, language: Language): string {
-  const sub =
-    language === 'kotlin'
-      ? 'kotlin'
-      : language === 'groovy'
-        ? 'groovy'
-        : 'java';
-  return `  <classpathentry kind="src" path="${module}/src/main/${sub}"/>\n`;
-}
-
-function ideFiles(o: GeneratorOptions): Record<string, string> {
-  const cls = o.gameName.replace(/\s+/g, '');
-  const out: Record<string, string> = {};
-  const hasDesktop = o.platforms.includes('desktop');
-  const hasWeb = o.platforms.includes('web');
-
-  if (o.ide === 'idea') {
-    out['.idea/.gitignore'] = `*\n!.gitignore\n`;
-    if (hasDesktop) {
-      const mainLm = `${o.packageName}.lwjgl3.${cls}Lwjgl3Launcher`;
-      const mainClass =
-        o.language === 'kotlin' ? `${mainLm}Kt` : mainLm;
-      out['.idea/runConfigurations/Run_Desktop.xml'] =
-        `<component name="ProjectRunConfigurationManager">\n` +
-        `  <configuration default="false" name="Run Desktop" type="Application" factoryName="Application">\n` +
-        `    <option name="MAIN_CLASS_NAME" value="${mainClass}" />\n` +
-        `    <module name="lwjgl3" />\n` +
-        `    <option name="VM_PARAMETERS" value="-Xmx${o.heapMb}m" />\n` +
-        `    <method v="2">\n` +
-        `      <option name="Gradle.BeforeRunTask" enabled="true" tasks="classes" />\n` +
-        `    </method>\n` +
-        `  </configuration>\n` +
-        `</component>\n`;
-    }
-  } else if (o.ide === 'eclipse') {
-    let classpath =
-      `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<classpath>\n` +
-      eclipseSrcPath('core', o.language);
-    if (hasDesktop) classpath += eclipseSrcPath('lwjgl3', o.language);
-    if (hasWeb) classpath += eclipseSrcPath('teavm', o.language);
-    classpath +=
-      `  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-${o.javaVersion}"/>\n` +
-      `  <classpathentry kind="con" path="org.eclipse.buildship.core.gradleclasspathcontainer"/>\n` +
-      `  <classpathentry kind="output" path="bin/default"/>\n` +
-      `</classpath>\n`;
-    out['.classpath'] = classpath;
-    out['.project'] =
-      `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<projectDescription>\n` +
-      `  <name>${o.gameId}</name>\n` +
-      `  <buildSpec>\n` +
-      `    <buildCommand><name>org.eclipse.jdt.core.javabuilder</name></buildCommand>\n` +
-      `    <buildCommand><name>org.eclipse.buildship.core.gradleprojectbuilder</name></buildCommand>\n` +
-      `  </buildSpec>\n` +
-      `  <natures>\n` +
-      `    <nature>org.eclipse.jdt.core.javanature</nature>\n` +
-      `    <nature>org.eclipse.buildship.core.gradleprojectnature</nature>\n` +
-      `  </natures>\n` +
-      `</projectDescription>\n`;
-  } else if (o.ide === 'vscode') {
-    const vscodeConfigs: Array<{
-      type: string;
-      name: string;
-      request: string;
-      mainClass?: string;
-      projectName?: string;
-      vmArgs?: string;
-    }> = [];
-    if (hasDesktop) {
-      const mainLm = `${o.packageName}.lwjgl3.${cls}Lwjgl3Launcher`;
-      vscodeConfigs.push({
-        type: 'java',
-        name: 'Run Desktop',
-        request: 'launch',
-        mainClass:
-          o.language === 'kotlin' ? `${mainLm}Kt` : mainLm,
-        projectName: 'lwjgl3',
-        vmArgs: `-Xmx${o.heapMb}m`,
-      });
-    }
-    out['.vscode/launch.json'] = JSON.stringify(
-      {version: '0.2.0', configurations: vscodeConfigs},
-      null,
-      2
-    );
-    out['.vscode/settings.json'] = JSON.stringify(
-      {
-        'java.configuration.runtimes': [
-          {name: `JavaSE-${o.javaVersion}`, default: true},
-        ],
-      },
-      null,
-      2
-    );
-  }
-  return out;
-}
-
 /* --------------------------- README + gitignore --------------------------- */
 
 interface JdkInstallTips {
@@ -1169,48 +1094,9 @@ const JDK_TIPS: Record<JdkVendor, JdkInstallTips> = {
   },
 };
 
-interface IdeTips {
-  label: string;
-  url: string;
-  steps: string[];
-}
-
-const IDE_TIPS: Record<IDE, IdeTips | null> = {
-  idea: {
-    label: 'IntelliJ IDEA',
-    url: 'https://www.jetbrains.com/idea/download/',
-    steps: [
-      '1. Open IntelliJ -> "Open" -> pick this project folder.',
-      '2. Accept the Gradle import prompt. IntelliJ uses the bundled wrapper.',
-      '3. Run the game via the Gradle tool window (`:lwjgl3:run` for desktop, `:teavm:run` for web),',
-      '   or use the pre-made "Run Desktop" run configuration when you generated desktop + IntelliJ configs.',
-    ],
-  },
-  eclipse: {
-    label: 'Eclipse + Buildship',
-    url: 'https://www.eclipse.org/downloads/',
-    steps: [
-      '1. Install Eclipse with the "Eclipse IDE for Java Developers" package.',
-      '2. File -> Import -> Gradle -> Existing Gradle Project -> pick this folder.',
-      '3. Gradle Tasks, then run `:lwjgl3:run` (desktop) or `:teavm:run` (web).',
-    ],
-  },
-  vscode: {
-    label: 'Visual Studio Code',
-    url: 'https://code.visualstudio.com/',
-    steps: [
-      '1. Install VS Code + the "Extension Pack for Java" from the marketplace.',
-      '2. File -> Open Folder -> pick this folder.',
-      '3. Use Run and Debug (F5) if a `.vscode/launch.json` entry exists, or run `./gradlew :lwjgl3:run` / `./gradlew :teavm:run` from the embedded terminal.',
-    ],
-  },
-  none: null,
-};
-
 function readme(o: GeneratorOptions): string {
   // Emitted as Markdown at the project root.
   const tips = JDK_TIPS[o.jdkVendor];
-  const ide = IDE_TIPS[o.ide];
   const lines: string[] = [];
   lines.push(`# ${o.gameName}`);
   lines.push('');
@@ -1238,20 +1124,12 @@ function readme(o: GeneratorOptions): string {
   lines.push(`> auto-downloads the **${tips.label}** toolchain via Gradle's`);
   lines.push(`> Foojay Toolchains Resolver on first run.`);
   lines.push('');
-  if (ide) {
-    lines.push(`## 2. Open in ${ide.label}`);
-    lines.push('');
-    lines.push(`Download: ${ide.url}`);
-    lines.push('');
-    ide.steps.forEach((s) => lines.push(`  ${s}`));
-    lines.push('');
-  } else {
-    lines.push('## 2. Open in an editor');
-    lines.push('');
-    lines.push('No IDE files were generated. Open this folder in whatever editor');
-    lines.push('you prefer. Any modern editor with Gradle support works.');
-    lines.push('');
-  }
+  lines.push('## 2. Open the project');
+  lines.push('');
+  lines.push(
+    'Open this folder as a Gradle project in IntelliJ IDEA, Eclipse, VS Code, or any editor you like. The Gradle tool window (or terminal) is the usual place to run tasks.'
+  );
+  lines.push('');
   lines.push('## 3. Run your game');
   lines.push('');
   if (o.platforms.includes('desktop')) {
@@ -1259,6 +1137,14 @@ function readme(o: GeneratorOptions): string {
     lines.push('');
     lines.push('    ./gradlew :lwjgl3:run        # macOS / Linux');
     lines.push('    gradlew.bat :lwjgl3:run      # Windows');
+    lines.push('');
+    lines.push('**Runnable JAR (double-click with Java installed):**');
+    lines.push('');
+    lines.push('    ./gradlew :lwjgl3:runnableJar');
+    lines.push('');
+    lines.push(
+      `The output is build/pack/${o.gameId}-runnable.jar at the project root (dependencies and assets are bundled inside).`
+    );
     lines.push('');
   }
   if (o.platforms.includes('web')) {
@@ -1269,10 +1155,10 @@ function readme(o: GeneratorOptions): string {
     lines.push('');
   }
   if (o.platforms.includes('desktop')) {
-    lines.push('### GraalVM Native Image');
+    lines.push('### GraalVM Native Image (optional)');
     lines.push('');
     lines.push(
-      'The `lwjgl3` module applies `nativeimage.gradle`, which wires GraalVM Native Build Tools (for example `:lwjgl3:nativeCompile` and `:lwjgl3:nativeRun`) and refreshes `resource-config.json` from your `assets/` folder before native image work.'
+      'GraalVM Native Image is **off by default** so Gradle sync works with any JDK. To turn it on, set `enableGraalNative=true` in `gradle.properties`, use a GraalVM-capable JDK for the build, then sync again. The `lwjgl3/nativeimage.gradle` script wires nativeCompile, nativeRun, and a small `resource-config.json` refresh from your `assets/` folder.'
     );
     lines.push('');
     lines.push('    ./gradlew :lwjgl3:nativeCompile');
@@ -1318,7 +1204,6 @@ function readme(o: GeneratorOptions): string {
   lines.push(`  - Default heap    : ${o.heapMb} MB`);
   lines.push(`  - Platforms       : ${o.platforms.join(', ') || 'desktop'}`);
   lines.push(`  - Template        : ${o.template}`);
-  lines.push(`  - IDE             : ${ide ? ide.label : 'none'}`);
   lines.push('');
   lines.push('## Project layout');
   lines.push('');
@@ -1457,7 +1342,7 @@ export function buildProjectFiles(o: GeneratorOptions): Record<string, string> {
   Object.assign(files, gameClassFiles(o));
   if (o.platforms.includes('desktop')) {
     files['lwjgl3/build.gradle'] = lwjgl3BuildGradle(o);
-    files['nativeimage.gradle'] = nativeImageGradle();
+    files['lwjgl3/nativeimage.gradle'] = nativeImageGradle();
     const lwjgl3PkgPath = `${o.packageName}.lwjgl3`.replace(/\./g, '/');
     files[`lwjgl3/src/main/java/${lwjgl3PkgPath}/StartupHelper.java`] =
       buildStartupHelperJava(`${o.packageName}.lwjgl3`);
@@ -1467,9 +1352,7 @@ export function buildProjectFiles(o: GeneratorOptions): Record<string, string> {
     files['teavm/build.gradle'] = teavmBuildGradle(o);
     Object.assign(files, teavmLauncher(o));
   }
-  Object.assign(files, ideFiles(o));
 
-  // Gradle wrapper (text portion). The jar itself is added by the caller.
   files['gradle/wrapper/gradle-wrapper.properties'] = gradleWrapperProperties();
   return files;
 }
