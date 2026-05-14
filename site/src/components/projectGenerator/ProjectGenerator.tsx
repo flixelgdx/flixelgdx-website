@@ -136,7 +136,7 @@ function decodeWrapperJar(): Uint8Array {
 function validate(o: GeneratorOptions): string | null {
   if (!o.gameName.trim()) return 'Game name cannot be empty.';
   if (!/^[a-z0-9][a-z0-9-_]*$/.test(o.gameId))
-    return 'Game id must be lowercase letters, numbers, dashes or underscores.';
+    return 'Game ID must be lowercase letters, numbers, dashes or underscores.';
   if (!/^[a-z_][\w]*(\.[a-z_][\w]*)+$/.test(o.packageName))
     return 'Package name must look like a Java package, e.g. com.example.game.';
   if (o.javaVersion < 17) return 'Java version cannot be lower than 17 (FlixelGDX requirement).';
