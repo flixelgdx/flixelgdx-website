@@ -27,7 +27,7 @@ It hosts:
 .
 ├── gradlew                  ← bundled Gradle wrapper (no system Gradle needed)
 ├── gradlew.bat
-├── gradle/wrapper/          ← gradle-wrapper.jar + properties (pinned to 8.10)
+├── gradle/wrapper/          ← gradle-wrapper.jar + properties (pinned to 9.5.1)
 ├── settings.gradle.kts      ← Gradle root settings (includes :dokka)
 ├── build.gradle.kts         ← (empty; real work lives in :dokka)
 ├── dokka/
