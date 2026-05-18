@@ -1,0 +1,5 @@
+{
+  "java.configuration.runtimes": [
+    { "name": "JavaSE-{{JAVA_VERSION}}", "default": true }
+  ]
+}

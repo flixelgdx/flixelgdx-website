@@ -1,0 +1,7 @@
+{
+  "id": "blank_play_state",
+  "name": "Blank play state",
+  "description": "A clean, empty FlixelState ready for you to fill in. Best for following tutorials.",
+  "languages": ["java", "kotlin", "groovy"],
+  "variables": ["GAME", "PACKAGE", "PACKAGE_PATH"]
+}

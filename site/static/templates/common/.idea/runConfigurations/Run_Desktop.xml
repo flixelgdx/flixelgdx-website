@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Desktop" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="{{IDEA_MAIN_CLASS}}" />
+    <module name="lwjgl3" />
+    <option name="VM_PARAMETERS" value="-Xmx{{HEAP_MB}}m" />
+    <method v="2">
+      <option name="Gradle.BeforeRunTask" enabled="true" tasks="classes" />
+    </method>
+  </configuration>
+</component>
