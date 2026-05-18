@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "build-templates": "node scripts/build-template-catalog.mjs",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
+    "prestart": "npm run build-templates",
     "build": "docusaurus build",
+    "prebuild": "npm run build-templates",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
