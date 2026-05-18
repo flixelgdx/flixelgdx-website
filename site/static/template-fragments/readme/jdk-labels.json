@@ -1,0 +1,6 @@
+{
+  "graalvm": "GraalVM Community",
+  "temurin": "Eclipse Temurin (Adoptium)",
+  "corretto": "Amazon Corretto",
+  "zulu": "Azul Zulu"
+}

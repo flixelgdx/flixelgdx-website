@@ -1,24 +1,27 @@
 import {useEffect, useMemo, useState, type ReactNode, JSX} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Hint from '../Hint';
 import styles from './ProjectGenerator.module.css';
 import {
-  buildProjectFiles,
+  buildZipFromTemplates,
+  loadTemplateCatalog,
+  type TemplateCatalog,
+} from './fileBasedGenerator';
+import {
   type GeneratorOptions,
   type IDE,
   type JdkVendor,
   type Language,
   type Platform,
-  type Template,
-} from './templates';
+  validateOptions,
+} from './generatorOptions';
 import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
 import {GRADLEW_SH, GRADLEW_BAT} from './gradleWrapperScripts';
 import JdkSetupGuide from './JdkSetupGuide';
 
 /* ----------------------------------------------------------------------------
- * Per-option hover descriptions. Kept centralized so they read consistently
- * and so the "expert mode" tooltips never disappear from one place when an
- * option is renamed.
+ * Per-option hover descriptions.
  * --------------------------------------------------------------------------- */
 const HINTS = {
   expert:
@@ -46,12 +49,6 @@ const HINTS = {
     kotlin:
       'Modern, concise JVM language with null safety and great IDE support. Mixes seamlessly with Java.',
   },
-  template: {
-    blank:
-      'A clean, empty FlixelState ready for you to fill in. Best for following tutorials.',
-    platformer:
-      'A tiny pre-made platformer (one player, gravity, jumping) you can extend right away.',
-  },
   ide: {
     idea:
       'JetBrains IntelliJ IDEA. Generates a run configuration that points at the desktop launcher.',
@@ -78,11 +75,6 @@ const HINTS = {
   },
 } as const;
 
-/* ----------------------------------------------------------------------------
- * Releases fetcher with a hard-coded fallback. We try to load the live release
- * list from GitHub so the dropdown always reflects reality, and fall back to
- * a sane static list when we are offline or rate-limited.
- * --------------------------------------------------------------------------- */
 const FALLBACK_VERSIONS = ['master-SNAPSHOT', '0.3.0', '0.2.1', '0.2.0', '0.1.1-beta'];
 
 async function fetchVersions(): Promise<string[]> {
@@ -94,7 +86,7 @@ async function fetchVersions(): Promise<string[]> {
     const data: Array<{tag_name: string; prerelease: boolean}> = await res.json();
     if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
     return ['master-SNAPSHOT', ...data.map((r) => r.tag_name)];
-  } catch (e) {
+  } catch {
     return FALLBACK_VERSIONS;
   }
 }
@@ -109,12 +101,13 @@ const VENDOR_LABELS: Record<JdkVendor, string> = {
 function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   return (
     <Hint tip={tip}>
-      <span className={styles.helpIcon} aria-label="help">?</span>
+      <span className={styles.helpIcon} aria-label="help">
+        ?
+      </span>
     </Hint>
   );
 }
 
-/* --------------------------- internals: state ----------------------------- */
 const DEFAULT_OPTIONS: GeneratorOptions = {
   gameName: 'My Cool Game',
   gameId: 'my-cool-game',
@@ -123,7 +116,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   javaVersion: 17,
   flixelVersion: '0.3.0',
   ide: 'idea',
-  template: 'blank',
+  template: '',
   platforms: ['desktop'],
   jdkVendor: 'temurin',
   expert: false,
@@ -132,11 +125,6 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   gradleConfig: '',
 };
 
-/**
- * Decode the embedded base64 wrapper jar to a Uint8Array. Done lazily inside
- * the download handler so the bytes never live in memory until the user
- * actually clicks the button.
- */
 function decodeWrapperJar(): Uint8Array {
   const binary = atob(GRADLE_WRAPPER_JAR_BASE64);
   const bytes = new Uint8Array(binary.length);
@@ -144,22 +132,14 @@ function decodeWrapperJar(): Uint8Array {
   return bytes;
 }
 
-function validate(o: GeneratorOptions): string | null {
-  if (!o.gameName.trim()) return 'Game name cannot be empty.';
-  if (!/^[a-z0-9][a-z0-9-_]*$/.test(o.gameId))
-    return 'Game id must be lowercase letters, numbers, dashes or underscores.';
-  if (!/^[a-z_][\w]*(\.[a-z_][\w]*)+$/.test(o.packageName))
-    return 'Package name must look like a Java package, e.g. com.example.game.';
-  if (o.javaVersion < 17) return 'Java version cannot be lower than 17 (FlixelGDX requirement).';
-  if (o.heapMb < 8) return 'Heap must be at least 8 MB.';
-  if (o.platforms.length === 0) return 'Pick at least one platform.';
-  return null;
-}
-
 function GeneratorBody(): JSX.Element {
+  const {siteConfig} = useDocusaurusContext();
+  const baseUrl = siteConfig.baseUrl;
   const [opts, setOpts] = useState<GeneratorOptions>(DEFAULT_OPTIONS);
   const [versions, setVersions] = useState<string[]>(FALLBACK_VERSIONS);
   const [status, setStatus] = useState<string>('');
+  const [catalog, setCatalog] = useState<TemplateCatalog | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -170,6 +150,41 @@ function GeneratorBody(): JSX.Element {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    loadTemplateCatalog(baseUrl)
+      .then((c) => {
+        if (!alive) return;
+        setCatalog(c);
+        setCatalogError(null);
+      })
+      .catch((e: Error) => {
+        if (!alive) return;
+        setCatalogError(e.message ?? String(e));
+        setCatalog(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [baseUrl]);
+
+  useEffect(() => {
+    if (!catalog?.templates.length) return;
+    setOpts((p) => {
+      if (p.template && catalog.templates.some((t) => t.id === p.template)) return p;
+      return {...p, template: catalog.templates[0].id};
+    });
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!catalog) return;
+    const t = catalog.templates.find((x) => x.id === opts.template);
+    if (!t?.languages.length) return;
+    if (!t.languages.includes(opts.language)) {
+      setOpts((p) => ({...p, language: t.languages[0] as Language}));
+    }
+  }, [catalog, opts.template, opts.language]);
 
   const set = <K extends keyof GeneratorOptions>(k: K, v: GeneratorOptions[K]) =>
     setOpts((prev) => ({...prev, [k]: v}));
@@ -184,37 +199,50 @@ function GeneratorBody(): JSX.Element {
     });
   };
 
-  const error = useMemo(() => validate(opts), [opts]);
+  const error = useMemo(() => validateOptions(opts), [opts]);
+
+  const selectedTemplate = catalog?.templates.find((t) => t.id === opts.template);
 
   async function download() {
-    if (error) return;
+    if (error || !catalog) return;
     setStatus('Bundling your project…');
-    const files = buildProjectFiles(opts);
-    const {default: JSZip} = await import('jszip');
-    const {saveAs} = await import('file-saver');
-    const zip = new JSZip();
-    Object.entries(files).forEach(([path, contents]) => zip.file(path, contents));
-    // Bundle the Gradle wrapper so users can run `./gradlew :lwjgl3:run`
-    // immediately. The wrapper jar is a real binary, written via Uint8Array.
-    zip.file('gradle/wrapper/gradle-wrapper.jar', decodeWrapperJar());
-    // POSIX shell wrapper — mark it executable (unix permission 0o755).
-    zip.file('gradlew', GRADLEW_SH, {unixPermissions: 0o755});
-    zip.file('gradlew.bat', GRADLEW_BAT);
-    const blob = await zip.generateAsync({type: 'blob', platform: 'UNIX'});
-    saveAs(blob, `${opts.gameId}.zip`);
-    const runHints: string[] = [];
-    if (opts.platforms.includes('desktop'))
-      runHints.push('`./gradlew :lwjgl3:run` for desktop');
-    if (opts.platforms.includes('web'))
-      runHints.push('`./gradlew :teavm:run` for web');
-    setStatus(
-      `Downloaded! Unzip then run ${runHints.join('; ')} — Gradle installs the toolchain on first build.`
-    );
+    try {
+      const blob = await buildZipFromTemplates(baseUrl, opts, catalog);
+      const {default: JSZip} = await import('jszip');
+      const {saveAs} = await import('file-saver');
+      const zip = new JSZip();
+      const outer = await JSZip.loadAsync(blob);
+      for (const [relPath, file] of Object.entries(outer.files)) {
+        if (file.dir) continue;
+        const content = await file.async('uint8array');
+        zip.file(relPath, content);
+      }
+      zip.file('gradle/wrapper/gradle-wrapper.jar', decodeWrapperJar());
+      zip.file('gradlew', GRADLEW_SH, {unixPermissions: 0o755});
+      zip.file('gradlew.bat', GRADLEW_BAT);
+      const outBlob = await zip.generateAsync({type: 'blob', platform: 'UNIX'});
+      saveAs(outBlob, `${opts.gameId}.zip`);
+      const runHints: string[] = [];
+      if (opts.platforms.includes('desktop'))
+        runHints.push('`./gradlew :lwjgl3:run` for desktop');
+      if (opts.platforms.includes('web'))
+        runHints.push('`./gradlew :teavm:run` for web');
+      setStatus(
+        `Downloaded! Unzip then run ${runHints.join('; ')} — Gradle installs the toolchain on first build.`
+      );
+    } catch (e) {
+      setStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   return (
     <div className={styles.wrap}>
       <div>
+        {catalogError && (
+          <div className={styles.error} role="alert">
+            Could not load project templates ({catalogError}). Try refreshing the page.
+          </div>
+        )}
         <div className={styles.panel}>
           <h3 className={styles.panelTitle}>1. Identity</h3>
           <div className={styles.row}>
@@ -263,17 +291,24 @@ function GeneratorBody(): JSX.Element {
               <label className={styles.label}>
                 Language{' '}
                 <HelpIcon
-                  tip={HINTS.language[opts.language]}
+                  tip={
+                    selectedTemplate
+                      ? HINTS.language[opts.language]
+                      : 'Pick a template first.'
+                  }
                 />
               </label>
               <select
                 className={styles.select}
                 value={opts.language}
                 onChange={(e) => set('language', e.target.value as Language)}
+                disabled={!selectedTemplate}
               >
-                <option value="java">Java</option>
-                <option value="groovy">Groovy</option>
-                <option value="kotlin">Kotlin</option>
+                {(selectedTemplate?.languages ?? ['java', 'kotlin', 'groovy']).map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang === 'java' ? 'Java' : lang === 'groovy' ? 'Groovy' : 'Kotlin'}
+                  </option>
+                ))}
               </select>
             </div>
             <div className={styles.field}>
@@ -314,9 +349,7 @@ function GeneratorBody(): JSX.Element {
             <div className={styles.field}>
               <label className={styles.label}>
                 IDE{' '}
-                <HelpIcon
-                  tip={HINTS.ide[opts.ide]}
-                />
+                <HelpIcon tip={HINTS.ide[opts.ide]} />
               </label>
               <select
                 className={styles.select}
@@ -365,16 +398,23 @@ function GeneratorBody(): JSX.Element {
               <label className={styles.label}>
                 Template{' '}
                 <HelpIcon
-                  tip={HINTS.template[opts.template]}
+                  tip={
+                    selectedTemplate?.description ??
+                    'Starter layouts are loaded from the templates folder on the site.'
+                  }
                 />
               </label>
               <select
                 className={styles.select}
                 value={opts.template}
-                onChange={(e) => set('template', e.target.value as Template)}
+                onChange={(e) => set('template', e.target.value)}
+                disabled={!catalog?.templates.length}
               >
-                <option value="blank">Blank play state</option>
-                <option value="platformer">Pre-made platformer</option>
+                {(catalog?.templates ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -386,12 +426,14 @@ function GeneratorBody(): JSX.Element {
               </Hint>
             </span>
             <div className={styles.checks}>
-              {([
-                {id: 'desktop', label: 'Desktop (LWJGL3)', disabled: false},
-                {id: 'web', label: 'Web (TeaVM)', disabled: false},
-                {id: 'android', label: 'Android — coming soon', disabled: true},
-                {id: 'ios', label: 'iOS — coming soon', disabled: true},
-              ] as const).map((p) => (
+              {(
+                [
+                  {id: 'desktop', label: 'Desktop (LWJGL3)', disabled: false},
+                  {id: 'web', label: 'Web (TeaVM)', disabled: false},
+                  {id: 'android', label: 'Android — coming soon', disabled: true},
+                  {id: 'ios', label: 'iOS — coming soon', disabled: true},
+                ] as const
+              ).map((p) => (
                 <Hint key={p.id} tip={HINTS.platforms[p.id]}>
                   <label
                     className={`${styles.check} ${p.disabled ? styles.disabled : ''}`}
@@ -490,21 +532,32 @@ function GeneratorBody(): JSX.Element {
       <aside className={styles.summary}>
         <h4>Summary</h4>
         <dl>
-          <dt>Name</dt><dd>{opts.gameName}</dd>
-          <dt>Id</dt><dd>{opts.gameId}</dd>
-          <dt>Package</dt><dd>{opts.packageName}</dd>
-          <dt>Lang</dt><dd>{opts.language}</dd>
-          <dt>Java</dt><dd>{opts.javaVersion}</dd>
-          <dt>JDK</dt><dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
-          <dt>Flixel</dt><dd>{opts.flixelVersion}</dd>
-          <dt>Template</dt><dd>{opts.template}</dd>
-          <dt>IDE</dt><dd>{opts.ide}</dd>
-          <dt>Heap</dt><dd>{opts.heapMb} MB</dd>
-          <dt>Platforms</dt><dd>{opts.platforms.join(', ') || '—'}</dd>
+          <dt>Name</dt>
+          <dd>{opts.gameName}</dd>
+          <dt>Id</dt>
+          <dd>{opts.gameId}</dd>
+          <dt>Package</dt>
+          <dd>{opts.packageName}</dd>
+          <dt>Lang</dt>
+          <dd>{opts.language}</dd>
+          <dt>Java</dt>
+          <dd>{opts.javaVersion}</dd>
+          <dt>JDK</dt>
+          <dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
+          <dt>Flixel</dt>
+          <dd>{opts.flixelVersion}</dd>
+          <dt>Template</dt>
+          <dd>{selectedTemplate?.name || opts.template || '—'}</dd>
+          <dt>IDE</dt>
+          <dd>{opts.ide}</dd>
+          <dt>Heap</dt>
+          <dd>{opts.heapMb} MB</dd>
+          <dt>Platforms</dt>
+          <dd>{opts.platforms.join(', ') || '—'}</dd>
         </dl>
         <button
           className="flx-btn flx-btn--primary"
-          disabled={!!error}
+          disabled={!!error || !catalog || !!catalogError}
           onClick={download}
         >
           ↓ Download project
@@ -519,10 +572,6 @@ function GeneratorBody(): JSX.Element {
   );
 }
 
-/**
- * BrowserOnly wrapper — the generator uses `fetch` and dynamic imports of
- * JSZip / file-saver. None of those work during the Node SSR pass.
- */
 export default function ProjectGenerator(): JSX.Element {
   return (
     <BrowserOnly fallback={<div>Loading project generator…</div>}>

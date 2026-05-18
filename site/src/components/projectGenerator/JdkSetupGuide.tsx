@@ -8,7 +8,7 @@
  * fall-back tarball/installer link otherwise.
  */
 import {useState, type JSX} from 'react';
-import type {JdkVendor} from './templates';
+import type {JdkVendor} from './generatorOptions';
 import styles from './JdkSetupGuide.module.css';
 
 type OS = 'windows' | 'macos' | 'ubuntu' | 'fedora' | 'arch';
