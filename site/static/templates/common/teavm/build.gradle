@@ -1,0 +1,28 @@
+plugins {
+  {{TEAVM_PLUGINS}}
+  // Must be applied beside me.stringdotjar.flixelgdx.teavm (see COMPILING.md in flixelgdx).
+  id 'org.teavm'
+  id 'me.stringdotjar.flixelgdx.teavm' version "${flixelVersion}"
+}
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of({{JAVA_VERSION}})
+    vendor          = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
+  }
+}
+
+teavm {
+  all {
+    mainClass = "{{TEAVM_MAIN_CLASS}}"
+  }
+  js {
+    addedToWebApp = true
+    targetFileName = "{{TEAVM_JS_BUNDLE}}"
+  }
+}
+
+dependencies {
+  implementation project(":core")
+  implementation "com.github.flixelgdx.flixelgdx:flixelgdx-teavm:${flixelVersion}"{{TEAVM_LANG_DEPS}}
+}
