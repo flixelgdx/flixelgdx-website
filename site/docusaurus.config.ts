@@ -1,6 +1,9 @@
-import type {Config} from '@docusaurus/types';
+import type {Config, PluginConfig} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {githubLight, githubDark} from './src/prismThemes';
+
+const devTemplateEditorPlugins: PluginConfig[] =
+  process.env.NODE_ENV === 'development' ? [['./plugins/dev-template-editor-api', {}]] : [];
 
 const config: Config = {
   title: 'FlixelGDX',
@@ -59,6 +62,7 @@ const config: Config = {
   ],
 
   plugins: [
+    ...devTemplateEditorPlugins,
     // Single docs plugin for the entire API reference (welcome page +
     // every module's generated content). Per-module sidebars are still
     // distinct because each top-level module folder (core / lwjgl3 /
@@ -119,6 +123,9 @@ const config: Config = {
             {to: '/api/', label: 'About the reference'},
           ],
         },
+        ...(process.env.NODE_ENV === 'development'
+          ? [{to: '/template-editor', label: 'Template editor (dev)', position: 'right' as const}]
+          : []),
         {
           href: 'https://github.com/flixelgdx/flixelgdx',
           label: 'View source',
