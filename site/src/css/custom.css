@@ -589,3 +589,9 @@ nav[class*="docsBreadcrumbs"] {
   border-radius: 999px;
   padding: 2px 8px;
 }
+
+/* Project generator on Getting Started: sticky summary must not overlap
+   markdown that follows the component (overflow creates a scrollport for sticky). */
+.flx-generator-boundary {
+  overflow: hidden;
+}
