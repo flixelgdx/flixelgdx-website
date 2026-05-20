@@ -8,7 +8,7 @@ plugins {
 java {
   toolchain {
     languageVersion = JavaLanguageVersion.of({{JAVA_VERSION}})
-    vendor          = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
+    vendor = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
   }
 }
 
@@ -16,17 +16,47 @@ def isMacOs = System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contain
 
 application {
   mainClass = "{{LWJGL3_MAIN_CLASS}}"
-  // tokenize() splits on whitespace so each JVM flag is its own list entry (no accidental nested lists).
-  def baseJvmArgs = "{{JVM_ARG_STRING}}".tokenize()
-  // GLFW on macOS expects the JVM main thread; this matches LibGDX StartupHelper guidance.
-  applicationDefaultJvmArgs = baseJvmArgs + (isMacOs ? ['-XstartOnFirstThread'] : [])
+}
+
+run {
+  workingDir = rootProject.file('assets').path
+  // You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
+  // setIgnoreExitValue(true)
+
+  jvmArgs = ["-Xms8M", "-Xmx{{HEAP_MB}}M"]
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
 dependencies {
   implementation project(":core")
   implementation "com.github.flixelgdx.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
-  // StartupHelper (com.badlogic.gdx.backends.lwjgl3) ships in this artifact; listing it keeps the dependency visible.
-  implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:${gdxVersion}"
+  
+  if (enableGraalNative == 'true') {
+    implementation "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
+  }
+}
+
+jar {
+  // Sets the name of the .jar file this produces to the name of the game or app, with the version after.
+  archiveFileName.set("${appName}-${projectVersion}.jar")
+  // The duplicatesStrategy matters starting in Gradle 7.0; this setting works.
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  // These "exclude" lines remove some unnecessary duplicate files in the output JAR.
+  exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
+  dependencies {
+    exclude('META-INF/INDEX.LIST', 'META-INF/maven/**')
+  }
+  // Setting the manifest makes the JAR runnable.
+  // Enabling native access helps avoid a warning when Java 24 or later runs the JAR.
+  manifest {
+    attributes 'Main-Class': application.mainClass, 'Enable-Native-Access': 'ALL-UNNAMED'
+  }
+  // This last step may help on some OSes that need extra instruction to make runnable JARs.
+  doLast {
+    file(archiveFile).setExecutable(true, false)
+  }
 }
 
 graalvmNative {
@@ -68,4 +98,25 @@ construo {
       jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.13%2B11/OpenJDK17U-jdk_x64_windows_hotspot_17.0.13_11.zip")
     }
   }
+}
+
+distributions {
+  main {
+    contents {
+      into('libs') {
+        project.configurations.runtimeClasspath.files.findAll { file ->
+          file.getName() != project.tasks.jar.outputs.files.singleFile.name
+        }.each { file ->
+          exclude file.name
+        }
+      }
+    }
+  }
+}
+
+startScripts.dependsOn(':lwjgl3:jar')
+startScripts.classpath = project.tasks.jar.outputs.files
+
+if (enableGraalNative == 'true') {
+  apply from: file("nativeimage.gradle")
 }

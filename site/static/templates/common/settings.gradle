@@ -32,7 +32,7 @@ pluginManagement {
 
 // Auto-provision the selected JDK at build time.
 // The Foojay Toolchains Resolver lets Gradle download a matching JDK on
-// demand, so users only need a JDK to *bootstrap* Gradle itself.
+// demand, so you only need a JDK to bootstrap Gradle itself.
 plugins {
   id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
