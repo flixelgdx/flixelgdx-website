@@ -97,6 +97,14 @@ export async function createTemplate(
   return res.json();
 }
 
+export async function deleteTemplate(baseUrl: string, templateId: string): Promise<void> {
+  const res = await fetch(
+    `${devApiRoot(baseUrl)}/templates/${encodeURIComponent(templateId)}`,
+    {method: 'DELETE'}
+  );
+  if (!res.ok) throw new Error(await res.text());
+}
+
 export async function rebuildCatalog(baseUrl: string): Promise<unknown> {
   const res = await fetch(`${devApiRoot(baseUrl)}/templates/rebuild-catalog`, {
     method: 'POST',

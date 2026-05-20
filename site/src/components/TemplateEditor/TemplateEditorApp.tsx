@@ -3,6 +3,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import {
   createTemplate,
+  deleteTemplate,
   deleteTemplatePath,
   fetchTemplateList,
   mkdirTemplate,
@@ -15,6 +16,7 @@ import {ManifestForm} from './ManifestForm';
 import {NewTemplateWizard, type WizardPayload} from './NewTemplateWizard';
 import {TreePanel} from './TreePanel';
 import type {TemplateListEntry, TemplateManifest} from './types';
+import {BUILTIN_TEMPLATE_PLACEHOLDERS} from './builtinPlaceholders';
 import styles from './TemplateEditor.module.css';
 
 function insertAtCursor(el: HTMLTextAreaElement, snippet: string) {
@@ -42,6 +44,7 @@ export default function TemplateEditorApp(): JSX.Element {
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [tplCtx, setTplCtx] = useState<{x: number; y: number; id: string} | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const manifestTaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,11 +57,33 @@ export default function TemplateEditorApp(): JSX.Element {
     selectedPath === 'template.json' && selected && !selected.isCommon;
 
   const placeholderVars = useMemo(() => {
-    if (manifestDraft?.variables?.length) return manifestDraft.variables;
+    const merged = new Set<string>();
+    if (selected?.isCommon) {
+      for (const v of BUILTIN_TEMPLATE_PLACEHOLDERS) merged.add(v);
+      for (const t of templates) {
+        if (t.isCommon) continue;
+        const vars = t.manifest && Array.isArray(t.manifest.variables) ? t.manifest.variables : [];
+        for (const v of vars) merged.add(v);
+      }
+      return [...merged].sort((a, b) => a.localeCompare(b));
+    }
+    if (manifestDraft?.variables?.length) {
+      for (const v of manifestDraft.variables) merged.add(v);
+    }
     const m = selected?.manifest;
-    if (m && Array.isArray(m.variables) && m.variables.length) return m.variables;
+    if (m && Array.isArray(m.variables)) {
+      for (const v of m.variables) merged.add(v);
+    }
+    if (merged.size) return [...merged].sort((a, b) => a.localeCompare(b));
     return ['GAME', 'PACKAGE', 'PACKAGE_PATH'];
-  }, [manifestDraft, selected]);
+  }, [manifestDraft, selected, templates]);
+
+  useEffect(() => {
+    if (!tplCtx) return;
+    const close = () => setTplCtx(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [tplCtx]);
 
   const refresh = useCallback(async () => {
     const data = await fetchTemplateList(baseUrl);
@@ -160,21 +185,43 @@ export default function TemplateEditorApp(): JSX.Element {
     await refresh();
   }
 
-  async function handleDelete() {
-    if (!selectedId || !selectedPath) return;
-    if (!window.confirm(`Delete ${selectedPath}?`)) return;
-    await deleteTemplatePath(baseUrl, selectedId, selectedPath);
-    setSelectedPath(null);
-    setEditorText('');
+  async function handleDeletePath(relPath: string) {
+    if (!selectedId) return;
+    if (!window.confirm(`Delete ${relPath}?`)) return;
+    await deleteTemplatePath(baseUrl, selectedId, relPath);
+    if (selectedPath === relPath) {
+      setSelectedPath(null);
+      setEditorText('');
+    }
     await refresh();
   }
 
-  async function handleRename() {
-    if (!selectedId || !selectedPath) return;
-    const to = window.prompt('New path (relative)', selectedPath);
-    if (!to || to === selectedPath) return;
-    await mvTemplatePath(baseUrl, selectedId, selectedPath, to);
-    setSelectedPath(to);
+  async function handleRenamePath(relPath: string) {
+    if (!selectedId) return;
+    const to = window.prompt('New path (relative)', relPath);
+    if (!to || to === relPath) return;
+    await mvTemplatePath(baseUrl, selectedId, relPath, to);
+    if (selectedPath === relPath) setSelectedPath(to);
+    await refresh();
+  }
+
+  async function handleMovePath(from: string, to: string) {
+    if (!selectedId) return;
+    if (from === to) return;
+    await mvTemplatePath(baseUrl, selectedId, from, to);
+    if (selectedPath === from) setSelectedPath(to);
+    await refresh();
+  }
+
+  async function handleDeleteTemplate(templateId: string) {
+    if (!window.confirm(`Delete entire template "${templateId}"? This cannot be undone.`)) return;
+    await deleteTemplate(baseUrl, templateId);
+    setTplCtx(null);
+    if (selectedId === templateId) {
+      setSelectedId(null);
+      setSelectedPath(null);
+      setEditorText('');
+    }
     await refresh();
   }
 
@@ -228,6 +275,12 @@ export default function TemplateEditorApp(): JSX.Element {
                       setRawManifest(false);
                       setDirty(false);
                     }}
+                    onContextMenu={(e) => {
+                      if (t.isCommon) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTplCtx({x: e.clientX, y: e.clientY, id: t.id});
+                    }}
                   >
                     {t.isCommon ? 'common (global)' : t.manifest?.name ?? t.id}
                   </button>
@@ -241,8 +294,9 @@ export default function TemplateEditorApp(): JSX.Element {
                 onSelectFile={setSelectedPath}
                 onAddFile={() => void handleAddFile()}
                 onAddFolder={() => void handleAddFolder()}
-                onDelete={() => void handleDelete()}
-                onRename={() => void handleRename()}
+                onDeletePath={(p) => void handleDeletePath(p)}
+                onRenamePath={(p) => void handleRenamePath(p)}
+                onMovePath={(from, to) => void handleMovePath(from, to)}
               />
             )}
           </aside>
@@ -408,6 +462,35 @@ export default function TemplateEditorApp(): JSX.Element {
           templates={templates}
           onCreate={handleCreate}
         />
+        {tplCtx && (
+          <div
+            className={styles.ctxMenu}
+            style={{left: tplCtx.x, top: tplCtx.y}}
+            role="menu"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className={styles.ctxItem}
+              role="menuitem"
+              onClick={() => {
+                setSelectedId(tplCtx.id);
+                setSelectedPath('template.json');
+                setTplCtx(null);
+              }}
+            >
+              Open template.json
+            </button>
+            <button
+              type="button"
+              className={`${styles.ctxItem} ${styles.ctxDanger}`}
+              role="menuitem"
+              onClick={() => void handleDeleteTemplate(tplCtx.id)}
+            >
+              Delete entire template…
+            </button>
+          </div>
+        )}
       </div>
     </Layout>
   );

@@ -1,7 +1,7 @@
 package {{PACKAGE}}.teavm
 
 import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher
-import {{PACKAGE}}.{{GAME}}
+import {{PACKAGE}}.{{GAME}}Game
 
 /**
  * Browser entry point.
@@ -13,6 +13,6 @@ import {{PACKAGE}}.{{GAME}}
 final class {{GAME}}TeaVMLauncher {
 
   static void main(String[] args) {
-    FlixelTeaVMLauncher.launch(new {{GAME}}())
+    FlixelTeaVMLauncher.launch(new {{GAME}}Game())
   }
 }

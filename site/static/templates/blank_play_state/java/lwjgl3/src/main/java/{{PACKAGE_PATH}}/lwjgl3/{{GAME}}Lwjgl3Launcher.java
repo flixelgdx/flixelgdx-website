@@ -2,7 +2,7 @@ package {{PACKAGE}}.lwjgl3;
 
 import com.badlogic.gdx.backends.lwjgl3.StartupHelper;
 import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher;
-import {{PACKAGE}}.{{GAME}};
+import {{PACKAGE}}.{{GAME}}Game;
 
 /**
  * Desktop entry point.
@@ -19,6 +19,6 @@ public final class {{GAME}}Lwjgl3Launcher {
     if (StartupHelper.startNewJvmIfRequired()) {
       return;
     }
-    FlixelLwjgl3Launcher.launch(new {{GAME}}());
+    FlixelLwjgl3Launcher.launch(new {{GAME}}Game());
   }
 }

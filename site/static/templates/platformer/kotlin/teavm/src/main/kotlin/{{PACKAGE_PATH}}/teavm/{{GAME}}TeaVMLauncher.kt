@@ -1,7 +1,7 @@
 package {{PACKAGE}}.teavm
 
 import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher
-import {{PACKAGE}}.{{GAME}}
+import {{PACKAGE}}.{{GAME}}Game
 
 /**
  * Browser entry point.
@@ -11,5 +11,5 @@ import {{PACKAGE}}.{{GAME}}
  * FlixelTeaVMLauncher connects that web runtime to your FlixelGame.
  */
 fun main() {
-  FlixelTeaVMLauncher.launch({{GAME}}())
+  FlixelTeaVMLauncher.launch({{GAME}}Game())
 }

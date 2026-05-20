@@ -101,10 +101,60 @@
   margin-bottom: 0.5rem;
 }
 
-.treeScroll {
-  max-height: 50vh;
-  overflow: auto;
-  font-size: 0.85rem;
+.treeHint {
+  font-size: 0.78rem;
+  color: var(--ifm-color-content-secondary);
+  margin: 0 0 0.5rem;
+  line-height: 1.35;
+}
+
+.treeRootDrop {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.35rem;
+  border: 1px dashed var(--ifm-color-emphasis-400);
+  border-radius: 6px;
+  color: var(--ifm-color-content-secondary);
+}
+
+.treeDropTarget {
+  outline: 2px solid var(--ifm-color-primary);
+  background: var(--ifm-hover-overlay);
+}
+
+.treeDragging {
+  opacity: 0.55;
+}
+
+.ctxMenu {
+  position: fixed;
+  z-index: 400;
+  min-width: 160px;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  padding: 0.25rem 0;
+}
+
+.ctxItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ctxItem:hover {
+  background: var(--ifm-hover-overlay);
+}
+
+.ctxDanger {
+  color: var(--ifm-color-danger);
 }
 
 .treeItem {
@@ -171,6 +221,9 @@
   align-items: center;
   gap: 0.35rem;
   flex: 1 1 auto;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  padding-bottom: 0.15rem;
 }
 
 .phLabel {
@@ -349,7 +402,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 200;
+  z-index: calc(var(--ifm-z-index-fixed) + 50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,9 +415,11 @@
   max-width: 520px;
   width: 100%;
   max-height: 90vh;
-  overflow: auto;
+  overflow: visible;
   border: 1px solid var(--ifm-color-emphasis-300);
   padding: 0 1rem 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .wizardHeader {
@@ -388,6 +443,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-height: calc(90vh - 120px);
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .wizardNav {

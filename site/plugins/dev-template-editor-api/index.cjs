@@ -339,12 +339,18 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                       fs.cpSync(src, dest, {recursive: true});
                     } else {
                       fs.mkdirSync(dest, {recursive: true});
+                      const globalCommon = path.join(templatesRoot(siteDir), 'common');
+                      const destCommon = path.join(dest, 'common');
+                      if (fs.existsSync(globalCommon)) {
+                        fs.cpSync(globalCommon, destCommon, {recursive: true});
+                      } else {
+                        fs.mkdirSync(destCommon, {recursive: true});
+                      }
                       for (const lang of languages || []) {
                         if (['java', 'kotlin', 'groovy'].includes(lang)) {
                           fs.mkdirSync(path.join(dest, lang), {recursive: true});
                         }
                       }
-                      fs.mkdirSync(path.join(dest, 'common'), {recursive: true});
                     }
                     const manifest = {
                       id,
@@ -372,6 +378,32 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                   const cat = rebuildCatalog(siteDir);
                   res.setHeader('Content-Type', 'application/json');
                   res.end(JSON.stringify(cat));
+                  return;
+                }
+
+                const delTemplateRe = new RegExp(
+                  `^${escapeRegex(apiPrefix)}/templates/([^/]+)$`
+                );
+                const mDelTemplate = routePath.match(delTemplateRe);
+                if (req.method === 'DELETE' && mDelTemplate) {
+                  const id = decodeURIComponent(mDelTemplate[1]);
+                  if (id === 'common' || id === '_partials') {
+                    res.statusCode = 400;
+                    res.end('cannot delete reserved template');
+                    return;
+                  }
+                  assertSafeRel(id);
+                  const tp = path.join(templatesRoot(siteDir), id);
+                  assertUnderRoot(tp, templatesRoot(siteDir));
+                  if (!fs.existsSync(tp)) {
+                    res.statusCode = 404;
+                    res.end('not found');
+                    return;
+                  }
+                  fs.rmSync(tp, {recursive: true});
+                  const cat = rebuildCatalog(siteDir);
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ok: true, catalog: cat}));
                   return;
                 }
 

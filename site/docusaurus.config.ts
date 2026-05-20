@@ -42,6 +42,8 @@ const config: Config = {
     },
   },
 
+  clientModules: ['./src/clientModules/devTemplateEditorNav.ts'],
+
   presets: [
     [
       'classic',
@@ -123,9 +125,6 @@ const config: Config = {
             {to: '/api/', label: 'About the reference'},
           ],
         },
-        ...(process.env.NODE_ENV === 'development'
-          ? [{to: '/template-editor', label: 'Template editor (dev)', position: 'right' as const}]
-          : []),
         {
           href: 'https://github.com/flixelgdx/flixelgdx',
           label: 'View source',

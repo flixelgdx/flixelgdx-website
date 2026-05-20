@@ -300,8 +300,10 @@ export async function buildZipFromTemplates(
   const zip = new JSZip();
   for (const entry of files) {
     if (!shouldIncludePath(entry.path, o)) continue;
-    const fetchPath = substitute(entry.fetch, map);
-    const raw = await fetchText(baseUrl, fetchPath);
+    // Fetch paths must stay literal: static files are stored as e.g.
+    // `.../{{GAME}}.java` on disk. Substituting `entry.fetch` would request
+    // the wrong URL and often return the SPA shell (HTML/JS) instead of sources.
+    const raw = await fetchText(baseUrl, entry.fetch);
     const outPath = substitute(entry.path, map);
     const contents = substitute(raw, map);
     zip.file(outPath, contents);

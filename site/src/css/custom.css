@@ -337,7 +337,7 @@ body {
 
 .flx-hint__tip {
   position: absolute;
-  z-index: 50;
+  z-index: calc(var(--ifm-z-index-fixed) + 20);
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%) translateY(4px);
