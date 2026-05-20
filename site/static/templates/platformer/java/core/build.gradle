@@ -1,0 +1,17 @@
+plugins {
+  id 'java-library'
+}
+
+java {
+  // Gradle will auto-download a matching JDK from the configured vendor.
+  toolchain {
+    languageVersion = JavaLanguageVersion.of({{JAVA_VERSION}})
+    vendor          = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
+  }
+  sourceCompatibility = JavaVersion.VERSION_{{JAVA_VERSION}}
+  targetCompatibility = JavaVersion.VERSION_{{JAVA_VERSION}}
+}
+
+dependencies {
+  api "com.github.flixelgdx.flixelgdx:flixelgdx-core:${flixelVersion}"
+}
