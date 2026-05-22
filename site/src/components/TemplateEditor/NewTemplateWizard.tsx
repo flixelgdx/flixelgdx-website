@@ -1,9 +1,9 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState, type JSX} from 'react';
 import type {TemplateListEntry} from './types';
 import {slugFromName, TagInput} from './ManifestForm';
 import styles from './TemplateEditor.module.css';
 
-export interface WizardPayload {
+export type WizardPayload = {
   id: string;
   name: string;
   description: string;
@@ -11,18 +11,18 @@ export interface WizardPayload {
   variables: string[];
   mode: 'blank' | 'copy';
   sourceId?: string;
-}
+};
 
-interface NewTemplateWizardProps {
+type NewTemplateWizardProps = {
   open: boolean;
   onClose: () => void;
   templates: TemplateListEntry[];
   onCreate: (payload: WizardPayload) => Promise<void>;
-}
+};
 
 const DEFAULT_VARS = ['GAME', 'PACKAGE', 'PACKAGE_PATH'];
 
-export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTemplateWizardProps) {
+export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTemplateWizardProps): JSX.Element | null {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [id, setId] = useState('');
@@ -50,13 +50,9 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
     setSourceId(templates.filter((t) => !t.isCommon)[0]?.id ?? '');
     setErr(null);
     setBusy(false);
-  }, [open]);
+  }, [open, templates]);
 
   if (!open) return null;
-
-  function close() {
-    onClose();
-  }
 
   function syncIdFromName(n: string) {
     if (!idTouched) setId(slugFromName(n));
@@ -85,7 +81,7 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
         mode,
         sourceId: mode === 'copy' ? sourceId : undefined,
       });
-      close();
+      onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -98,7 +94,7 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
       <div className={styles.wizard}>
         <header className={styles.wizardHeader}>
           <h2>New template</h2>
-          <button type="button" className={styles.btnGhost} onClick={close}>
+          <button type="button" className={styles.btnGhost} onClick={onClose}>
             Close
           </button>
         </header>

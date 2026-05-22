@@ -7,7 +7,7 @@ export type JdkVendor =
   | 'corretto'
   | 'zulu';
 
-export interface GeneratorOptions {
+export type GeneratorOptions = {
   gameName: string;
   gameId: string;
   packageName: string;
@@ -23,7 +23,7 @@ export interface GeneratorOptions {
   heapMb: number;
   jvmFlags: string;
   gradleConfig: string;
-}
+};
 
 /**
  * Gradle `JvmVendorSpec` enum value matching a `JdkVendor`. See

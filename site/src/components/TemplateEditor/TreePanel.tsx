@@ -12,7 +12,7 @@ function basename(rel: string): string {
   return i < 0 ? rel : rel.slice(i + 1);
 }
 
-export interface TreePanelProps {
+export type TreePanelProps = {
   root: TreeNode;
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
@@ -21,14 +21,14 @@ export interface TreePanelProps {
   onDeletePath: (path: string) => void;
   onRenamePath: (path: string) => void;
   onMovePath: (from: string, to: string) => void | Promise<void>;
-}
+};
 
-interface CtxState {
+type CtxState = {
   x: number;
   y: number;
   path: string;
   kind: 'file' | 'dir';
-}
+};
 
 function TreeRows({
   node,
@@ -167,7 +167,7 @@ export function TreePanel({
   onDeletePath,
   onRenamePath,
   onMovePath,
-}: TreePanelProps) {
+}: TreePanelProps): JSX.Element {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([root.path || '']));
   const [ctx, setCtx] = useState<CtxState | null>(null);
   const [dragFrom, setDragFrom] = useState<string | null>(null);
@@ -182,7 +182,7 @@ export function TreePanel({
     });
   }, []);
 
-  const onContextMenu = useCallback((e: ReactMouseEvent, path: string, kind: 'file' | 'dir') => {
+  const onContextMenu = useCallback((e: ReactMouseEvent<HTMLButtonElement>, path: string, kind: 'file' | 'dir') => {
     e.preventDefault();
     setCtx({x: e.clientX, y: e.clientY, path, kind});
   }, []);

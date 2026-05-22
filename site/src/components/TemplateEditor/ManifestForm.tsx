@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useState, type JSX} from 'react';
+import type {TemplateManifest} from './types';
 import styles from './TemplateEditor.module.css';
 
 export function slugFromName(name: string): string {
@@ -10,14 +11,15 @@ export function slugFromName(name: string): string {
     .replace(/_+/g, '_');
 }
 
-interface TagInputProps {
+type TagInputProps = {
   values: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
-}
+};
 
-export function TagInput({values, onChange, placeholder}: TagInputProps) {
+export function TagInput({values, onChange, placeholder}: TagInputProps): JSX.Element {
   const [draft, setDraft] = useState('');
+
   function add() {
     const t = draft.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
     if (!t || values.includes(t)) {
@@ -27,6 +29,7 @@ export function TagInput({values, onChange, placeholder}: TagInputProps) {
     onChange([...values, t]);
     setDraft('');
   }
+
   return (
     <div className={styles.tagInput}>
       <div className={styles.tags}>
@@ -65,12 +68,12 @@ export function TagInput({values, onChange, placeholder}: TagInputProps) {
   );
 }
 
-interface ManifestFormProps {
-  manifest: import('./types').TemplateManifest;
-  onManifestChange: (m: import('./types').TemplateManifest) => void;
-}
+type ManifestFormProps = {
+  manifest: TemplateManifest;
+  onManifestChange: (m: TemplateManifest) => void;
+};
 
-export function ManifestForm({manifest, onManifestChange}: ManifestFormProps) {
+export function ManifestForm({manifest, onManifestChange}: ManifestFormProps): JSX.Element {
   return (
     <div className={styles.manifestForm}>
       <label className={styles.field}>

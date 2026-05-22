@@ -1,21 +1,21 @@
-export interface TreeNode {
+export type TreeNode = {
   type: 'file' | 'dir';
   name: string;
   path: string;
   children?: TreeNode[];
-}
+};
 
-export interface TemplateManifest {
+export type TemplateManifest = {
   id: string;
   name: string;
   description: string;
   languages: string[];
   variables: string[];
-}
+};
 
-export interface TemplateListEntry {
+export type TemplateListEntry = {
   id: string;
   isCommon: boolean;
   manifest: TemplateManifest | null;
   tree: TreeNode;
-}
+};

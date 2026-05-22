@@ -86,7 +86,7 @@ export async function mvTemplatePath(
 
 export async function createTemplate(
   baseUrl: string,
-  payload: object
+  payload: Record<string, unknown>
 ): Promise<{ok: boolean; id: string}> {
   const res = await fetch(`${devApiRoot(baseUrl)}/templates/create`, {
     method: 'POST',

@@ -5,24 +5,24 @@ import {
   gradleVendorSpec,
 } from './generatorOptions';
 
-export interface CatalogFileEntry {
+export type CatalogFileEntry = {
   path: string;
   fetch: string;
-}
+};
 
-export interface CatalogTemplate {
+export type CatalogTemplate = {
   id: string;
   name: string;
   description: string;
   languages: string[];
   variables: string[];
   files: Record<string, CatalogFileEntry[]>;
-}
+};
 
-export interface TemplateCatalog {
+export type TemplateCatalog = {
   version: number;
   templates: CatalogTemplate[];
-}
+};
 
 function joinUrl(baseUrl: string, rel: string): string {
   const b = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;

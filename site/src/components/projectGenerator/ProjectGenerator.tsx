@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState, type ReactNode, JSX} from 'react';
+import {useEffect, useMemo, useState, type JSX, type ReactNode} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Hint from '../Hint';
@@ -20,9 +20,6 @@ import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
 import {GRADLEW_SH, GRADLEW_BAT} from './gradleWrapperScripts';
 import JdkSetupGuide from './JdkSetupGuide';
 
-/* ----------------------------------------------------------------------------
- * Per-option hover descriptions.
- * --------------------------------------------------------------------------- */
 const HINTS = {
   expert:
     "For advanced developers who want more controls over their game's configs and setup.",
@@ -82,7 +79,7 @@ async function fetchVersions(): Promise<string[]> {
     const res = await fetch(
       'https://api.github.com/repos/flixelgdx/flixelgdx/releases?per_page=30'
     );
-    if (!res.ok) throw new Error('http ' + res.status);
+    if (!res.ok) throw new Error(`http ${res.status}`);
     const data: Array<{tag_name: string; prerelease: boolean}> = await res.json();
     if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
     return ['master-SNAPSHOT', ...data.map((r) => r.tag_name)];

@@ -1,12 +1,5 @@
-import {JSX, ReactNode} from 'react';
+import {type JSX, type ReactNode} from 'react';
 
-/**
- * Inline help bubble.
- *
- * Wraps any child element with a hover/focus tooltip. We keep the markup
- * dead simple (a styled <span> for the tip) so the tooltip works on touch
- * devices via :focus-within as well.
- */
 export default function Hint({
   tip,
   children,

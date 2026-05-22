@@ -1,4 +1,4 @@
-import {JSX, ReactNode} from 'react';
+import {type JSX, type ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -207,9 +207,6 @@ function LowEndCallout(): JSX.Element {
   );
 }
 
-// Docusaurus treats every module under src/pages as a route: it must export
-// exactly one React component as `export default`, or you'll get "This page
-// crashed … doesn't have a default export".
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
