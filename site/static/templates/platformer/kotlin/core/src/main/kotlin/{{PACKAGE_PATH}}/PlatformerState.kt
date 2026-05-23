@@ -9,9 +9,9 @@ import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 
 /**
  * Starter platformer scene: gravity, horizontal run, jump, and a solid floor.
- * <p>
- * Same ideas as the Java template: immovable floor, {@code Flixel.collide}, kinematic fields on
- * {@code FlixelObject}, and a floor touch check before {@code super.update}.
+ *
+ * Same ideas as the Java template: immovable floor, `Flixel.collide`, kinematic fields on
+ * `FlixelObject`, and a floor touch check before `super.update`.
  */
 class PlatformerState : FlixelState() {
 
