@@ -211,9 +211,9 @@ body {
   margin-top: 1.5rem;
 }
 
-/* API member headings (h4) use flex so the Docusaurus hash-link anchor sits
+/* API member headings (h3) use flex so the Docusaurus hash-link anchor sits
  * inline with the simplified label text. */
-.markdown h4 {
+.markdown h3 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -659,12 +659,12 @@ nav[class*="docsBreadcrumbs"] {
 .dm-sig .dm-param { color: var(--dm-param); }
 .dm-sig .dm-const { color: var(--dm-const); }
 
-.markdown h4 > a {
+.markdown h3 > a {
   color: inherit;
   text-decoration: none;
 }
 
-.markdown h4 > a:hover {
+.markdown h3 > a:hover {
   text-decoration: underline;
   color: var(--ifm-color-primary);
 }

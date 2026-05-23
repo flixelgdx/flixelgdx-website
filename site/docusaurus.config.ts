@@ -1,6 +1,7 @@
 import type {Config, PluginConfig} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {githubLight, githubDark} from './src/prismThemes';
+import remarkDocletmdColors from './plugins/remark-docletmd-colors';
 
 const devTemplateEditorPlugins: PluginConfig[] =
   process.env.NODE_ENV === 'development' ? [['./plugins/dev-template-editor-api', {}]] : [];
@@ -84,6 +85,7 @@ const config: Config = {
         routeBasePath: 'api',
         sidebarPath: './sidebars-api.ts',
         editUrl: undefined,
+        beforeDefaultRemarkPlugins: [remarkDocletmdColors],
       },
     ],
   ],

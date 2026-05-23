@@ -165,7 +165,7 @@ const remarkDocletmdColors: Plugin<[], Root> = () => (tree) => {
       children?: (Node & {type: string; value?: string})[];
       data?: Record<string, unknown>;
     }) | undefined;
-    if (!next || next.type !== 'heading' || next.depth !== 4) return;
+    if (!next || next.type !== 'heading' || next.depth !== 3) return;
 
     // Grab the full signature text from the inlineCode child DocletMD generated.
     const codeChild = next.children?.find(c => c.type === 'inlineCode');
