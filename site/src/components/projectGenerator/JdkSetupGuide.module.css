@@ -54,7 +54,9 @@
   border-radius: 8px;
   border: 1px solid var(--flx-border);
   margin: 0 0 0.6rem;
+  width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 
 [data-theme='light'] .code {

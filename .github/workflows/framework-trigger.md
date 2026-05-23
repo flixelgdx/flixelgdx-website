@@ -38,6 +38,6 @@ fine-grained token with **Actions: read & write** + **Contents: read**
 on `flixelgdx/flixelgdx-website`) stored as the secret
 `WEBSITE_DISPATCH_TOKEN` on the framework repo.
 
-That is the entire integration — every push to `master` will fire a
+That is the entire integration -- every push to `master` will fire a
 `framework-updated` event here, which kicks the **Deploy website**
-workflow and republishes the site with the latest Dokka GFM output.
+workflow and republishes the site with the latest DocletMD output.
