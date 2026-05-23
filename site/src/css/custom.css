@@ -211,6 +211,17 @@ body {
   margin-top: 1.5rem;
 }
 
+/* API member headings (h4) use flex so the Docusaurus hash-link anchor sits
+ * inline with the simplified label text. */
+.markdown h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
 .markdown a {
   color: var(--ifm-link-color);
   text-underline-offset: 2px;
@@ -240,11 +251,11 @@ body {
 }
 
 .markdown table {
-  display: table;
-  width: 100%;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 1rem 0;
-  overflow: auto;
 }
 
 .markdown table th,
@@ -331,19 +342,17 @@ body {
 /* ----------------------- Tooltip / hover hint --------------------------- */
 
 .flx-hint {
-  position: relative;
   display: inline-block;
 }
 
+/* Tooltip is portalled into document.body and uses position: fixed so it
+   can never be clipped by an ancestor with overflow: hidden. */
 .flx-hint__tip {
-  position: absolute;
+  position: fixed;
   z-index: calc(var(--ifm-z-index-fixed) + 20);
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
+  transform: translateX(-50%) translateY(calc(-100% - 8px));
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms ease, transform 120ms ease;
+  animation: flx-tip-in 120ms ease forwards;
   background: #18181c;
   color: #fff;
   border: 1px solid #2a2a32;
@@ -356,10 +365,15 @@ body {
   box-shadow: 0 14px 24px -14px rgba(0, 0, 0, 0.6);
 }
 
-.flx-hint:hover .flx-hint__tip,
-.flx-hint:focus-within .flx-hint__tip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+@keyframes flx-tip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(calc(-100% - 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(-100% - 8px));
+  }
 }
 
 /* ------------------- Scroll-fade-in animation utility -------------------- */
@@ -590,8 +604,67 @@ nav[class*="docsBreadcrumbs"] {
   padding: 2px 8px;
 }
 
-/* Project generator on Getting Started: sticky summary must not overlap
-   markdown that follows the component (overflow creates a scrollport for sticky). */
+/* The generator grid contains its own sticky summary column; no overflow
+   containment needed on the boundary itself (would clip tooltips). */
 .flx-generator-boundary {
-  overflow: hidden;
+  overflow: visible;
+}
+
+/* -------- API member signature syntax coloring (GitHub palette) ---------- */
+/*
+ * The remark-docletmd-colors plugin inserts a <div class="dm-sig"> sibling
+ * directly after each DocletMD h4 heading. The div contains a <code> block
+ * with individual tokens wrapped in <span class="dm-*"> elements.
+ *
+ * Token classes:
+ *   dm-kw    -- Java modifiers (public, static, final...) and primitive types
+ *   dm-type  -- Class/interface type references (String, List, FlixelSprite...)
+ *   dm-fn    -- Method or field name
+ *   dm-param -- Parameter name
+ *   dm-const -- Constant field value (the RHS of "= ...")
+ */
+
+:root {
+  --dm-kw:    #cf222e;
+  --dm-type:  #0550ae;
+  --dm-fn:    #8250df;
+  --dm-param: #24292f;
+  --dm-const: #9a6700;
+}
+
+[data-theme='dark'] {
+  --dm-kw:    #ff7b72;
+  --dm-type:  #79c0ff;
+  --dm-fn:    #d2a8ff;
+  --dm-param: #e6edf3;
+  --dm-const: #e3b341;
+}
+
+.dm-sig {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.dm-sig code {
+  background: none;
+  border: none;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.dm-sig .dm-kw    { color: var(--dm-kw); }
+.dm-sig .dm-type  { color: var(--dm-type); }
+.dm-sig .dm-fn    { color: var(--dm-fn); }
+.dm-sig .dm-param { color: var(--dm-param); }
+.dm-sig .dm-const { color: var(--dm-const); }
+
+.markdown h4 > a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.markdown h4 > a:hover {
+  text-decoration: underline;
+  color: var(--ifm-color-primary);
 }
