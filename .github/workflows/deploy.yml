@@ -7,7 +7,7 @@ name: Deploy website
 # Triggers:
 #   - push to this repo's main branch (content / generator changes).
 #   - repository_dispatch with event_type=framework-updated (sent by the
-#     companion workflow in flixelgdx/flixelgdx whenever master is updated —
+#     companion workflow in flixelgdx/flixelgdx whenever master is updated --
 #     see .github/workflows/framework-trigger.md in this repo for the snippet
 #     to paste over there).
 #   - manual workflow_dispatch.
