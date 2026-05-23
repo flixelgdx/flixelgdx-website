@@ -1,4 +1,4 @@
-export type Language = 'java' | 'groovy' | 'kotlin';
+export type Language = 'java' | 'kotlin';
 export type IDE = 'idea' | 'eclipse' | 'vscode' | 'none';
 export type Platform = 'desktop' | 'web' | 'android' | 'ios';
 export type JdkVendor =

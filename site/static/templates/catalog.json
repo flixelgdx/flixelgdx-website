@@ -7,8 +7,7 @@
       "description": "A clean, empty FlixelState ready for you to fill in. Best for following tutorials.",
       "languages": [
         "java",
-        "kotlin",
-        "groovy"
+        "kotlin"
       ],
       "variables": [
         "GAME",
@@ -187,92 +186,6 @@
             "path": "teavm/src/main/kotlin/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.kt",
             "fetch": "templates/blank_play_state/kotlin/teavm/src/main/kotlin/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.kt"
           }
-        ],
-        "groovy": [
-          {
-            "path": ".classpath",
-            "fetch": "templates/common/.classpath"
-          },
-          {
-            "path": ".editorconfig",
-            "fetch": "templates/common/.editorconfig"
-          },
-          {
-            "path": ".gitignore",
-            "fetch": "templates/common/.gitignore"
-          },
-          {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
-          },
-          {
-            "path": ".project",
-            "fetch": "templates/common/.project"
-          },
-          {
-            "path": ".vscode/launch.json",
-            "fetch": "templates/common/.vscode/launch.json"
-          },
-          {
-            "path": ".vscode/settings.json",
-            "fetch": "templates/common/.vscode/settings.json"
-          },
-          {
-            "path": "assets/.gitkeep",
-            "fetch": "templates/common/assets/.gitkeep"
-          },
-          {
-            "path": "build.gradle",
-            "fetch": "templates/common/build.gradle"
-          },
-          {
-            "path": "core/build.gradle",
-            "fetch": "templates/blank_play_state/groovy/core/build.gradle"
-          },
-          {
-            "path": "core/src/main/groovy/{{PACKAGE_PATH}}/{{GAME}}Game.groovy",
-            "fetch": "templates/blank_play_state/groovy/core/src/main/groovy/{{PACKAGE_PATH}}/{{GAME}}Game.groovy"
-          },
-          {
-            "path": "core/src/main/groovy/{{PACKAGE_PATH}}/PlayState.groovy",
-            "fetch": "templates/blank_play_state/groovy/core/src/main/groovy/{{PACKAGE_PATH}}/PlayState.groovy"
-          },
-          {
-            "path": "gradle.properties",
-            "fetch": "templates/common/gradle.properties"
-          },
-          {
-            "path": "gradle/wrapper/gradle-wrapper.properties",
-            "fetch": "templates/common/gradle/wrapper/gradle-wrapper.properties"
-          },
-          {
-            "path": "lwjgl3/build.gradle",
-            "fetch": "templates/common/lwjgl3/build.gradle"
-          },
-          {
-            "path": "lwjgl3/src/main/groovy/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.groovy",
-            "fetch": "templates/blank_play_state/groovy/lwjgl3/src/main/groovy/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.groovy"
-          },
-          {
-            "path": "README.md",
-            "fetch": "templates/common/README.md"
-          },
-          {
-            "path": "settings.gradle",
-            "fetch": "templates/common/settings.gradle"
-          },
-          {
-            "path": "teavm/build.gradle",
-            "fetch": "templates/common/teavm/build.gradle"
-          },
-          {
-            "path": "teavm/src/main/groovy/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.groovy",
-            "fetch": "templates/blank_play_state/groovy/teavm/src/main/groovy/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.groovy"
-          }
         ]
       }
     },
@@ -282,8 +195,7 @@
       "description": "A tiny pre-made platformer (one player, gravity, jumping) you can extend right away.",
       "languages": [
         "java",
-        "kotlin",
-        "groovy"
+        "kotlin"
       ],
       "variables": [
         "GAME",
@@ -461,92 +373,6 @@
           {
             "path": "teavm/src/main/kotlin/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.kt",
             "fetch": "templates/platformer/kotlin/teavm/src/main/kotlin/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.kt"
-          }
-        ],
-        "groovy": [
-          {
-            "path": ".classpath",
-            "fetch": "templates/common/.classpath"
-          },
-          {
-            "path": ".editorconfig",
-            "fetch": "templates/common/.editorconfig"
-          },
-          {
-            "path": ".gitignore",
-            "fetch": "templates/common/.gitignore"
-          },
-          {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
-          },
-          {
-            "path": ".project",
-            "fetch": "templates/common/.project"
-          },
-          {
-            "path": ".vscode/launch.json",
-            "fetch": "templates/common/.vscode/launch.json"
-          },
-          {
-            "path": ".vscode/settings.json",
-            "fetch": "templates/common/.vscode/settings.json"
-          },
-          {
-            "path": "assets/.gitkeep",
-            "fetch": "templates/common/assets/.gitkeep"
-          },
-          {
-            "path": "build.gradle",
-            "fetch": "templates/common/build.gradle"
-          },
-          {
-            "path": "core/build.gradle",
-            "fetch": "templates/platformer/groovy/core/build.gradle"
-          },
-          {
-            "path": "core/src/main/groovy/{{PACKAGE_PATH}}/{{GAME}}Game.groovy",
-            "fetch": "templates/platformer/groovy/core/src/main/groovy/{{PACKAGE_PATH}}/{{GAME}}Game.groovy"
-          },
-          {
-            "path": "core/src/main/groovy/{{PACKAGE_PATH}}/PlatformerState.groovy",
-            "fetch": "templates/platformer/groovy/core/src/main/groovy/{{PACKAGE_PATH}}/PlatformerState.groovy"
-          },
-          {
-            "path": "gradle.properties",
-            "fetch": "templates/common/gradle.properties"
-          },
-          {
-            "path": "gradle/wrapper/gradle-wrapper.properties",
-            "fetch": "templates/common/gradle/wrapper/gradle-wrapper.properties"
-          },
-          {
-            "path": "lwjgl3/build.gradle",
-            "fetch": "templates/common/lwjgl3/build.gradle"
-          },
-          {
-            "path": "lwjgl3/src/main/groovy/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.groovy",
-            "fetch": "templates/platformer/groovy/lwjgl3/src/main/groovy/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.groovy"
-          },
-          {
-            "path": "README.md",
-            "fetch": "templates/common/README.md"
-          },
-          {
-            "path": "settings.gradle",
-            "fetch": "templates/common/settings.gradle"
-          },
-          {
-            "path": "teavm/build.gradle",
-            "fetch": "templates/common/teavm/build.gradle"
-          },
-          {
-            "path": "teavm/src/main/groovy/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.groovy",
-            "fetch": "templates/platformer/groovy/teavm/src/main/groovy/{{PACKAGE_PATH}}/teavm/{{GAME}}TeaVMLauncher.groovy"
           }
         ]
       }

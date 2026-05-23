@@ -41,8 +41,6 @@ const HINTS = {
     'The Java/Kotlin package your code lives in. Convention: reversed domain, e.g. com.you.game.',
   language: {
     java: 'The classic and standard option. Easiest to learn, easiest to debug.',
-    groovy:
-      'A dynamic JVM language. Friendly for scripting-style code; runs slightly slower than Java.',
     kotlin:
       'Modern, concise JVM language with null safety and great IDE support. Mixes seamlessly with Java.',
   },
@@ -301,9 +299,9 @@ function GeneratorBody(): JSX.Element {
                 onChange={(e) => set('language', e.target.value as Language)}
                 disabled={!selectedTemplate}
               >
-                {(selectedTemplate?.languages ?? ['java', 'kotlin', 'groovy']).map((lang) => (
+                {(selectedTemplate?.languages ?? ['java', 'kotlin']).map((lang) => (
                   <option key={lang} value={lang}>
-                    {lang === 'java' ? 'Java' : lang === 'groovy' ? 'Groovy' : 'Kotlin'}
+                    {lang === 'java' ? 'Java' : 'Kotlin'}
                   </option>
                 ))}
               </select>

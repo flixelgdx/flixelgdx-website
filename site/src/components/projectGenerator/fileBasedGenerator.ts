@@ -100,7 +100,7 @@ function webGradleProperties(platforms: Platform[]): string {
 }
 
 function eclipseClasspathEntries(o: GeneratorOptions): string {
-  const sub = o.language === 'kotlin' ? 'kotlin' : o.language === 'groovy' ? 'groovy' : 'java';
+  const sub = o.language === 'kotlin' ? 'kotlin' : 'java';
   let lines = `  <classpathentry kind="src" path="core/src/main/${sub}"/>\n`;
   if (o.platforms.includes('desktop')) {
     lines += `  <classpathentry kind="src" path="lwjgl3/src/main/${sub}"/>\n`;
@@ -136,12 +136,6 @@ function lwjgl3PluginsBlock(lang: Language): string {
   id 'org.graalvm.buildtools.native'
   id 'io.github.fourlastor.construo'`;
   }
-  if (lang === 'groovy') {
-    return `id 'groovy'
-  id 'application'
-  id 'org.graalvm.buildtools.native'
-  id 'io.github.fourlastor.construo'`;
-  }
   return `id 'application'
   id 'org.graalvm.buildtools.native'
   id 'io.github.fourlastor.construo'`;
@@ -152,17 +146,10 @@ function teavmPluginsBlock(lang: Language): string {
     return `id 'org.jetbrains.kotlin.jvm'
   id 'java-library'`;
   }
-  if (lang === 'groovy') {
-    return `id 'groovy'
-  id 'java-library'`;
-  }
   return `id 'java-library'`;
 }
 
 function teavmLangDeps(lang: Language): string {
-  if (lang === 'groovy') {
-    return '\n  implementation "org.codehaus.groovy:groovy-all:3.0.21"';
-  }
   if (lang === 'kotlin') {
     return '\n  implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"';
   }

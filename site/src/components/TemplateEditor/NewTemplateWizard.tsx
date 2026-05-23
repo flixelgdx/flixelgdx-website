@@ -28,7 +28,7 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
   const [id, setId] = useState('');
   const [idTouched, setIdTouched] = useState(false);
   const [description, setDescription] = useState('');
-  const [languages, setLanguages] = useState<string[]>(['java', 'kotlin', 'groovy']);
+  const [languages, setLanguages] = useState<string[]>(['java', 'kotlin']);
   const [variables, setVariables] = useState<string[]>(DEFAULT_VARS);
   const [mode, setMode] = useState<'blank' | 'copy'>('blank');
   const [sourceId, setSourceId] = useState('');
@@ -44,7 +44,7 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
     setId('');
     setIdTouched(false);
     setDescription('');
-    setLanguages(['java', 'kotlin', 'groovy']);
+    setLanguages(['java', 'kotlin']);
     setVariables([...DEFAULT_VARS]);
     setMode('blank');
     setSourceId(templates.filter((t) => !t.isCommon)[0]?.id ?? '');
