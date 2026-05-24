@@ -29,14 +29,6 @@
             "fetch": "templates/common/.gitignore"
           },
           {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
-          },
-          {
             "path": ".project",
             "fetch": "templates/common/.project"
           },
@@ -85,6 +77,10 @@
             "fetch": "templates/blank_play_state/java/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java"
           },
           {
+            "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java",
+            "fetch": "templates/common/lwjgl3/java/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java"
+          },
+          {
             "path": "README.md",
             "fetch": "templates/common/README.md"
           },
@@ -113,14 +109,6 @@
           {
             "path": ".gitignore",
             "fetch": "templates/common/.gitignore"
-          },
-          {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
           },
           {
             "path": ".project",
@@ -171,6 +159,10 @@
             "fetch": "templates/blank_play_state/kotlin/lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt"
           },
           {
+            "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt",
+            "fetch": "templates/common/lwjgl3/kotlin/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt"
+          },
+          {
             "path": "README.md",
             "fetch": "templates/common/README.md"
           },
@@ -215,14 +207,6 @@
           {
             "path": ".gitignore",
             "fetch": "templates/common/.gitignore"
-          },
-          {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
           },
           {
             "path": ".project",
@@ -273,6 +257,10 @@
             "fetch": "templates/platformer/java/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java"
           },
           {
+            "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java",
+            "fetch": "templates/common/lwjgl3/java/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java"
+          },
+          {
             "path": "README.md",
             "fetch": "templates/common/README.md"
           },
@@ -301,14 +289,6 @@
           {
             "path": ".gitignore",
             "fetch": "templates/common/.gitignore"
-          },
-          {
-            "path": ".idea/.gitignore",
-            "fetch": "templates/common/.idea/.gitignore"
-          },
-          {
-            "path": ".idea/runConfigurations/Run_Desktop.xml",
-            "fetch": "templates/common/.idea/runConfigurations/Run_Desktop.xml"
           },
           {
             "path": ".project",
@@ -357,6 +337,10 @@
           {
             "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt",
             "fetch": "templates/platformer/kotlin/lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt"
+          },
+          {
+            "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt",
+            "fetch": "templates/common/lwjgl3/kotlin/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt"
           },
           {
             "path": "README.md",

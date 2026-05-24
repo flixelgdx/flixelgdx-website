@@ -30,18 +30,48 @@ function walkFiles(dir, baseRel = '') {
   return out;
 }
 
+const LANG_DIRS = new Set(['java', 'kotlin']);
+
+/**
+ * If a path contains a language-discriminator segment (exactly 'java' or 'kotlin', appearing
+ * before any 'src' segment), returns its index. Otherwise returns -1.
+ * This lets common/ subfolders like lwjgl3/java/src/... be language-specific while
+ * paths like lwjgl3/src/main/java/... are treated as shared.
+ * @param {string[]} segments
+ * @returns {number}
+ */
+function langDiscriminatorIndex(segments) {
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i] === 'src') return -1;
+    if (LANG_DIRS.has(segments[i])) return i;
+  }
+  return -1;
+}
+
 /**
  * @param {string} layerRoot absolute path to layer root on disk
  * @param {string} fetchPrefix URL path segment after static/, e.g. "templates/common"
+ * @param {string} targetLang the language being built for, e.g. "java" or "kotlin"
  */
-function layerMap(layerRoot, fetchPrefix) {
+function layerMap(layerRoot, fetchPrefix, targetLang) {
   /** @type {Map<string, string>} */
   const m = new Map();
   if (!fs.existsSync(layerRoot)) return m;
   for (const rel of walkFiles(layerRoot)) {
     const posixRel = rel.split(path.sep).join('/');
-    const fetch = `${fetchPrefix}/${posixRel}`.replace(/\/+/g, '/');
-    m.set(posixRel, fetch);
+    const segments = posixRel.split('/');
+    const discIdx = langDiscriminatorIndex(segments);
+    if (discIdx !== -1) {
+      // Language-specific file: skip if it doesn't match the target language.
+      if (segments[discIdx] !== targetLang) continue;
+      // Strip the language-discriminator segment from the output path.
+      const stripped = [...segments.slice(0, discIdx), ...segments.slice(discIdx + 1)].join('/');
+      const fetch = `${fetchPrefix}/${posixRel}`.replace(/\/+/g, '/');
+      m.set(stripped, fetch);
+    } else {
+      const fetch = `${fetchPrefix}/${posixRel}`.replace(/\/+/g, '/');
+      m.set(posixRel, fetch);
+    }
   }
   return m;
 }
@@ -97,12 +127,13 @@ function main() {
       if (!fs.existsSync(langRoot)) {
         continue;
       }
-      const l1 = layerMap(globalCommonRoot, globalCommonPrefix);
+      const l1 = layerMap(globalCommonRoot, globalCommonPrefix, lang);
       const l2 = layerMap(
         path.join(STATIC_TEMPLATES, id, 'common'),
-        `templates/${id}/common`
+        `templates/${id}/common`,
+        lang
       );
-      const l3 = layerMap(langRoot, `templates/${id}/${lang}`);
+      const l3 = layerMap(langRoot, `templates/${id}/${lang}`, lang);
       const merged = mergeLayers([l1, l2, l3]);
       files[lang] = [...merged.entries()]
         .sort(([a], [b]) => a.localeCompare(b))

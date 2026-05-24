@@ -1,6 +1,5 @@
 package {{PACKAGE}}.lwjgl3
 
-import com.badlogic.gdx.backends.lwjgl3.StartupHelper
 import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher
 import {{PACKAGE}}.{{GAME}}Game
 
@@ -9,8 +8,8 @@ import {{PACKAGE}}.{{GAME}}Game
  *
  * FlixelLwjgl3Launcher wires libGDX, logging, and window events for you.
  *
- * StartupHelper lives in com.badlogic.gdx.backends.lwjgl3 on the classpath (gdx-backend-lwjgl3).
- * It can restart the JVM on some desktops when it needs special flags. If it returns true, stop here.
+ * StartupHelper (same package) restarts the JVM on macOS and NVIDIA Linux when needed.
+ * If it returns true, stop here -- the real launch will happen in the child process.
  */
 fun main() {
   if (StartupHelper.startNewJvmIfRequired()) {
