@@ -17,13 +17,12 @@
   --flx-red: #ff2a3c;
   --flx-red-strong: #ff5566;
   --flx-red-deep: #6b0f15;
-  /* The exact colours from the HaxeFlixel mascot/logo (salmon red, golden
-   * yellow, lime green, sky blue). Used in the pixel rule and as the
-   * "Flixel red" accent across the site (e.g. the check-list bullets). */
-  --hxflx-red: #f86973;
-  --hxflx-yellow: #fcd647;
-  --hxflx-green: #9dce36;
-  --hxflx-blue: #5fb4f5;
+  /* Colors sampled from the FlixelGDX logo squares: vivid red, golden amber,
+   * pure green, bright cyan. Used in the pixel rule below the hero tagline. */
+  --hxflx-red: #e03040;
+  --hxflx-yellow: #f5a623;
+  --hxflx-green: #35b535;
+  --hxflx-blue: #26b8e8;
   /* Aliases kept for backwards-compat with older rules in this file. */
   --flx-yellow: var(--hxflx-yellow);
   --flx-green: var(--hxflx-green);

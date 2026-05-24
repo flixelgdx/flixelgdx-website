@@ -33,10 +33,6 @@ const config: Config = {
 
   markdown: {
     mermaid: false,
-    // 'detect' = .mdx → MDX (JSX-aware), .md → CommonMark. Our hand-
-    // written pages live in .mdx files (they import React components);
-    // every auto-generated API page is .md so they're never run through
-    // MDX's strict JSX parser, which rejects Dokka's link-heavy syntax.
     format: 'detect',
     hooks: {
       onBrokenMarkdownLinks: 'warn',
@@ -50,17 +46,28 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: 'docs',
-          routeBasePath: 'docs',
+          path: 'learn',
+          routeBasePath: 'learn',
           sidebarPath: './sidebars.ts',
-          editUrl:
-            'https://github.com/flixelgdx/flixelgdx-website/tree/main/site/',
+          editUrl: 'https://github.com/flixelgdx/flixelgdx-website/tree/main/site/',
         },
         blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
       } satisfies Preset.Options,
+    ],
+  ],
+
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        language: ['en'],
+        searchResultLimits: 10,
+        docsRouteBasePath: ['learn', 'api'],
+      },
     ],
   ],
 
@@ -112,18 +119,19 @@ const config: Config = {
         src: 'img/logo-square.png',
       },
       items: [
-        {to: '/docs/getting-started', label: 'Getting Started', position: 'left'},
-        {to: '/docs/your-first-project', label: 'Your First Project', position: 'left'},
+        {to: '/learn/getting-started', label: 'Getting Started', position: 'left'},
+        {to: '/learn/your-first-project', label: 'Your First Project', position: 'left'},
         {
           type: 'dropdown',
           label: 'API',
           position: 'left',
           items: [
-            {to: '/api/core/', label: 'Core'},
-            {to: '/api/lwjgl3/', label: 'Desktop (LWJGL3)'},
-            {to: '/api/teavm/', label: 'Web (TeaVM)'},
-            {to: '/api/android/', label: 'Android'},
-            {to: '/api/ios/', label: 'iOS (MobiVM)'},
+            {to: '/api/category/core/', label: 'Core'},
+            {to: '/api/category/desktop-lwjgl3/', label: 'Desktop (LWJGL3)'},
+            {to: '/api/category/web-teavm', label: 'Web (TeaVM)'},
+            // TODO: uncomment when Android and iOS backends are released
+            // {to: '/api/android/', label: 'Android'},
+            // {to: '/api/ios/', label: 'iOS (MobiVM)'},
             {to: '/api/', label: 'About the reference'},
           ],
         },
@@ -140,8 +148,8 @@ const config: Config = {
         {
           title: 'Learn',
           items: [
-            {label: 'Getting Started', to: '/docs/getting-started'},
-            {label: 'Your First Project', to: '/docs/your-first-project'},
+            {label: 'Getting Started', to: '/learn/getting-started'},
+            {label: 'Your First Project', to: '/learn/your-first-project'},
             {label: 'API Reference', to: '/api/'},
           ],
         },

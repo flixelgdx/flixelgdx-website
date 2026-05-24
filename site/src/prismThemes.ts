@@ -64,7 +64,7 @@ export const githubDark: PrismTheme = {
       types: ['tag', 'selector', 'keyword'],
       style: {color: '#ff7b72'},
     },
-    // Java / Kotlin / Groovy specifics
+    // Java / Kotlin specifics
     {
       types: ['class-name', 'maybe-class-name'],
       style: {color: '#ffa657'},
