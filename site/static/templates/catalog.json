@@ -73,6 +73,14 @@
             "fetch": "templates/common/lwjgl3/build.gradle"
           },
           {
+            "path": "lwjgl3/nativeimage.gradle",
+            "fetch": "templates/common/lwjgl3/nativeimage.gradle"
+          },
+          {
+            "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",
+            "fetch": "templates/common/lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json"
+          },
+          {
             "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java",
             "fetch": "templates/blank_play_state/java/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java"
           },
@@ -153,6 +161,14 @@
           {
             "path": "lwjgl3/build.gradle",
             "fetch": "templates/common/lwjgl3/build.gradle"
+          },
+          {
+            "path": "lwjgl3/nativeimage.gradle",
+            "fetch": "templates/common/lwjgl3/nativeimage.gradle"
+          },
+          {
+            "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",
+            "fetch": "templates/common/lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json"
           },
           {
             "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt",
@@ -253,6 +269,14 @@
             "fetch": "templates/common/lwjgl3/build.gradle"
           },
           {
+            "path": "lwjgl3/nativeimage.gradle",
+            "fetch": "templates/common/lwjgl3/nativeimage.gradle"
+          },
+          {
+            "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",
+            "fetch": "templates/common/lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json"
+          },
+          {
             "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java",
             "fetch": "templates/platformer/java/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.java"
           },
@@ -333,6 +357,14 @@
           {
             "path": "lwjgl3/build.gradle",
             "fetch": "templates/common/lwjgl3/build.gradle"
+          },
+          {
+            "path": "lwjgl3/nativeimage.gradle",
+            "fetch": "templates/common/lwjgl3/nativeimage.gradle"
+          },
+          {
+            "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",
+            "fetch": "templates/common/lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json"
           },
           {
             "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt",

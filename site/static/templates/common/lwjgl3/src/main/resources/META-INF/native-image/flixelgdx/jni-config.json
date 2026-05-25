@@ -1,0 +1,10 @@
+[
+  {
+    "name": "games.rednblack.miniaudio.MiniAudio",
+    "methods": [
+      {"name": "on_native_notification", "parameterTypes": ["int"]},
+      {"name": "on_native_sound_end", "parameterTypes": ["long"]},
+      {"name": "on_native_log", "parameterTypes": ["int", "java.lang.String"]}
+    ]
+  }
+]
