@@ -24,7 +24,7 @@ run {
   // setIgnoreExitValue(true)
 
   jvmArgs = ["-Xms8M", "-Xmx{{HEAP_MB}}M"]
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+  if (isMacOs) jvmArgs += "-XstartOnFirstThread"
 }
 
 dependencies {
@@ -38,7 +38,7 @@ dependencies {
 
 jar {
   // Sets the name of the .jar file this produces to the name of the game or app, with the version after.
-  archiveFileName.set("${appName}-${projectVersion}.jar")
+  archiveFileName.set("${gameId}-${version}.jar")
   // The duplicatesStrategy matters starting in Gradle 7.0; this setting works.
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   dependsOn configurations.runtimeClasspath
@@ -55,7 +55,7 @@ jar {
   }
   // This last step may help on some OSes that need extra instruction to make runnable JARs.
   doLast {
-    file(archiveFile).setExecutable(true, false)
+    archiveFile.get().asFile.setExecutable(true, false)
   }
 }
 

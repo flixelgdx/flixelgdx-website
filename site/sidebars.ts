@@ -4,6 +4,7 @@ const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'getting-started',
     'your-first-project',
+    'best-practices',
   ],
 };
 

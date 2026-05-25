@@ -83,9 +83,11 @@ graalvmNative {
       buildArgs.add('-H:IncludeResources=.+\\.dll')
       buildArgs.add('-H:IncludeResources=.+\\.dylib')
 
-      // libGDX window-icon PNGs and bundled lsans fonts from the libGDX JAR.
-      buildArgs.add('-H:IncludeResources=libgdx.+\\.png')
-      buildArgs.add('-H:IncludeResources=lsans.+')
+      // The default bitmap font (lsans-15) is bundled inside both the libGDX JAR
+      // (com/badlogic/gdx/utils/) and the FlixelGDX JAR (me/stringdotjar/.../bitmap/).
+      // The pattern needs a leading .* because GraalVM matches the ENTIRE resource
+      // path -- "lsans.+" would only match paths that START with "lsans".
+      buildArgs.add('-H:IncludeResources=.*lsans.+')
 
       // Embed every file in assets/ using its full path relative to the
       // assets root (e.g. "images/player.png", not just "player.png").
@@ -111,10 +113,21 @@ graalvmNative {
 
       resources.autodetect()
 
+      // imgui-java's ImGui class loads its native library from a classpath resource
+      // inside its static initializer. Native libraries loaded during a GraalVM build
+      // are not preserved in the final binary -- they must be (re-)loaded at runtime.
+      // Deferring these classes to runtime initialization ensures the library is
+      // extracted and loaded correctly when the debug overlay first opens.
+      buildArgs.add('--initialize-at-run-time=imgui.ImGui,imgui.ImFontAtlas,imgui.ImGuiPlatformIO')
+
       // MiniAudio JNI callbacks must be registered explicitly -- miniaudio-*.jar
       // ships no GraalVM metadata and gdx-svmhelper does not cover it.
       // The native library calls GetMethodID for these three methods at startup;
       // without this registration the image crashes with NoSuchMethodError.
+      //
+      // imgui-java also ships no GraalVM metadata. The entries here cover the JNI
+      // field and method IDs that imgui.ImGui.nInitJni() caches on startup, plus
+      // all native-to-Java callbacks the overlay uses at runtime.
       buildArgs.add("-H:JNIConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json")
     }
   }

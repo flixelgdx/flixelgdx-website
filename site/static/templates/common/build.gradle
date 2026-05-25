@@ -10,7 +10,16 @@ allprojects {
   repositories {
     mavenCentral()
     google()
-    maven { url 'https://jitpack.io' }
+    maven {
+      url 'https://jitpack.io'
+      // Restrict JitPack to only FlixelGDX artifacts. io.github.berstanio
+      // (gdx-svmhelper 2.0.1+) lives on Maven Central, not JitPack; without
+      // this filter Gradle tries JitPack first and gets a 401 for it.
+      content {
+        includeGroupByRegex 'com\\.github\\..*'
+        includeGroupByRegex 'io\\.github\\.flixelgdx.*'
+      }
+    }
   }
 }
 {{GRADLE_EXPERT_APPEND}}

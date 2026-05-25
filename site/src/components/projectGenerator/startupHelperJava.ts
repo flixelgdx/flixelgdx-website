@@ -110,6 +110,9 @@ public class StartupHelper {
    * @return whether a child JVM process was spawned or not.
    */
   public static boolean startNewJvmIfRequired(boolean inheritIO) {
+    // In a GraalVM native image there is no JVM to restart, and LWJGL JNI
+    // bindings (used by getProcessID) are not available. Exit immediately.
+    if (!System.getProperty("org.graalvm.nativeimage.imagecode", "").isEmpty()) return false;
     String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
     if (osName.contains("mac")) return startNewJvm0(/*isMac =*/ true, inheritIO);
     if (osName.contains("windows")) {

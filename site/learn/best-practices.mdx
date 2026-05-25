@@ -1,0 +1,426 @@
+---
+id: best-practices
+title: Best Practices
+sidebar_position: 3
+description: Tips and tricks for keeping your FlixelGDX game fast, clean, and fun to work on.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Best Practices
+
+You don't need to know all of this on day one. If you just finished the
+Pong tutorial and your game is running, that is already a win. These
+tips are here for when you start noticing things — a slight stutter, a
+growing pile of objects, or code that is getting tricky to follow.
+
+Come back to this page whenever something feels off. Each section is
+short and self-contained, so you can read just the part you need.
+
+## 1. Always use delta time
+
+Every `update(float elapsed)` call hands you a tiny number called
+`elapsed`. It represents **how many seconds passed since the last
+frame** — usually something like `0.016` on a 60 FPS machine.
+
+If you move a sprite by a fixed amount each frame, your game will feel
+faster on a powerful PC and slower on a weak one. Multiplying by
+`elapsed` fixes that. The sprite always travels the same distance
+**per second**, no matter how fast the machine is.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+private static final float SPEED = 200f; // pixels per second
+
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+
+  // Bad: moves 3 pixels every frame -- fast machine = fast game.
+  // player.x += 3;
+
+  // Good: moves 200 pixels every real-world second, always.
+  player.x += SPEED * elapsed;
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+companion object { private const val SPEED = 200f } // pixels per second
+
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+
+  // Bad: moves 3 pixels every frame -- fast machine = fast game.
+  // player.x += 3f
+
+  // Good: moves 200 pixels every real-world second, always.
+  player.x += SPEED * elapsed
+}
+```
+
+</TabItem>
+</Tabs>
+
+The rule is simple: **every number that represents a speed or a rate
+should be multiplied by `elapsed`.**
+
+## 2. `kill()` and `revive()` -- the lazy way to hide things
+
+When you are done with an object for a while (a bullet that has
+flown off screen, an enemy that just died), your first instinct might
+be to remove it from the group entirely. Resist that urge!
+
+Instead, call `kill()` on it. FlixelGDX will set `alive = false` and
+`exists = false`, and from that point on:
+
+- The group's `update()` loop skips it automatically.
+- The group's `draw()` loop skips it automatically.
+
+It is still in memory, just silent. When you need it again, call
+`revive()` and it springs back to life.
+
+Use `destroy()` only when you are **permanently** done with the object
+and want to free its resources (textures, etc.). After `destroy()`,
+the object is gone for good.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Bullet flies off screen -- silence it, don't remove it.
+if (bullet.x > 640) {
+  bullet.kill(); // stops updating and drawing, stays in the group
+}
+
+// Something respawned -- wake it back up.
+bullet.revive();
+bullet.x = player.x;
+bullet.y = player.y;
+
+// Truly done (like a one-time explosion effect) -- free it.
+explosion.destroy();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Bullet flies off screen -- silence it, don't remove it.
+if (bullet.x > 640f) {
+  bullet.kill() // stops updating and drawing, stays in the group
+}
+
+// Something respawned -- wake it back up.
+bullet.revive()
+bullet.x = player.x
+bullet.y = player.y
+
+// Truly done (like a one-time explosion effect) -- free it.
+explosion.destroy()
+```
+
+</TabItem>
+</Tabs>
+
+This pattern is fast, simple, and sets you up perfectly for the next
+tip.
+
+## 3. Pooling with `recycle()` -- stop making new objects
+
+Imagine a swimming pool. When someone is done swimming, they climb out
+and sit in a chair. The pool is still there. The next person who wants
+to swim does not need a brand new pool -- they just use the same one.
+
+Object pooling works the same way. Instead of creating a new bullet
+every time the player fires, you keep a group of them, `kill()` the
+ones that are done, and grab a "sleeping" one the next time you need
+it. `recycle()` on a `FlixelSpriteGroup` does this for you: it finds
+the first dead member and revives it, or creates a new one if the
+group is not yet at its `maxSize`.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+import me.stringdotjar.flixelgdx.FlixelSprite;
+import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup;
+
+// In your state fields:
+private FlixelSpriteGroup bullets;
+
+// In create():
+// FlixelSpriteGroup takes (maxSize, rotationRadius, rotation).
+// rotationRadius and rotation only matter if you rotate the group.
+bullets = new FlixelSpriteGroup(20, 0f, 0f); // pool of up to 20 bullets
+for (int i = 0; i < 20; i++) {
+  FlixelSprite b = new FlixelSprite();
+  b.makeGraphic(4, 8, 0xFFFFFF00); // yellow
+  b.kill(); // start them all asleep
+  bullets.add(b);
+}
+add(bullets);
+
+// When the player fires:
+FlixelSprite bullet = bullets.recycle();
+bullet.x = player.x + 4;
+bullet.y = player.y;
+
+// In update(), when a bullet leaves the screen:
+for (FlixelSprite b : bullets.getMembers()) {
+  if (b != null && b.alive && b.x > 640) b.kill();
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+import me.stringdotjar.flixelgdx.FlixelSprite
+import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup
+
+// In your state fields:
+private lateinit var bullets: FlixelSpriteGroup
+
+// In create():
+// FlixelSpriteGroup takes (maxSize, rotationRadius, rotation).
+bullets = FlixelSpriteGroup(20, 0f, 0f) // pool of up to 20 bullets
+repeat(20) {
+  val b = FlixelSprite().apply {
+    makeGraphic(4, 8, 0xFFFFFF00.toInt()) // yellow
+    kill() // start them all asleep
+  }
+  bullets.add(b)
+}
+add(bullets)
+
+// When the player fires:
+val bullet = bullets.recycle()
+bullet.x = player.x + 4f
+bullet.y = player.y
+
+// In update(), when a bullet leaves the screen.
+// Use a plain for loop to avoid allocating temporary lists every frame.
+for (b in bullets.members) {
+  if (b != null && b.alive && b.x > 640f) b.kill()
+}
+```
+
+</TabItem>
+</Tabs>
+
+Because killed members are skipped during update and draw, a pool of
+20 bullets costs almost nothing when none are active. No garbage
+collector pressure, no stutter.
+
+## 4. Use groups for collision
+
+When you have a group of enemies and a group of bullets, do not loop
+through them yourself. Pass both groups to `Flixel.overlap()` and let
+the framework do the work. It iterates both groups, skips any dead or
+non-existent members, and calls your callback for every overlapping
+pair.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// In update(elapsed):
+
+// Bad: manual nested loop -- slow and error-prone.
+// for (FlixelSprite b : bullets.getMembers()) {
+//   for (FlixelSprite e : enemies.getMembers()) {
+//     if (b != null && e != null && b.alive && e.alive && b.overlaps(e)) { ... }
+//   }
+// }
+
+// Good: one line, handles dead members automatically.
+Flixel.overlap(bullets, enemies, (bullet, enemy) -> {
+  bullet.kill();
+  enemy.kill();
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// In update(elapsed):
+
+// Bad: manual nested loop -- slow and error-prone.
+// bullets.members.filterNotNull().filter { it.alive }.forEach { b ->
+//   enemies.members.filterNotNull().filter { it.alive }.forEach { e ->
+//     if (b.overlaps(e)) { ... }
+//   }
+// }
+
+// Good: one line, handles dead members automatically.
+Flixel.overlap(bullets, enemies) { bullet, enemy ->
+  bullet.kill()
+  enemy.kill()
+}
+```
+
+</TabItem>
+</Tabs>
+
+`Flixel.collide()` works the same way but also physically separates
+the objects so they cannot overlap. Use `overlap` for triggers (bullet
+hitting enemy), `collide` for solid walls and floors.
+
+## 5. Use timers instead of frame counters
+
+It is tempting to track time like this:
+
+```java
+frameCounter++;
+if (frameCounter > 120) { spawnEnemy(); frameCounter = 0; }
+```
+
+The problem is that `120 frames` means something different on a 30 FPS
+machine versus a 144 FPS machine. Use `FlixelTimer` instead. It counts
+in real seconds, so your game behaves the same everywhere.
+
+`FlixelTimer.wait()` fires once after a delay. `FlixelTimer.loop()`
+fires over and over. Both are pooled by the framework internally, so
+you do not need to manage them yourself.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+import me.stringdotjar.flixelgdx.util.FlixelTimer;
+
+// Fire once after 2 seconds.
+FlixelTimer.wait(2f, timer -> spawnEnemy());
+
+// Fire every 1.5 seconds, 5 times total.
+FlixelTimer.loop(1.5f, timer -> spawnEnemy(), 5);
+
+// Fire every second forever (pass 0 for infinite loops).
+FlixelTimer.loop(1f, timer -> {
+  Flixel.info("Still running!");
+}, 0);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+import me.stringdotjar.flixelgdx.util.FlixelTimer
+
+// Fire once after 2 seconds.
+FlixelTimer.wait(2f) { spawnEnemy() }
+
+// Fire every 1.5 seconds, 5 times total.
+FlixelTimer.loop(1.5f, { spawnEnemy() }, 5)
+
+// Fire every second forever (pass 0 for infinite loops).
+FlixelTimer.loop(1f, {
+  Flixel.info("Still running!")
+}, 0)
+```
+
+</TabItem>
+</Tabs>
+
+## 6. Don't create objects in `update()`
+
+Every time Java or Kotlin sees `new SomeThing(...)`, it asks the
+runtime to carve out a fresh chunk of memory. Do this every frame, and
+you fill up memory fast. When the garbage collector kicks in to clean
+it up, you get a brief hiccup -- a stutter your players will notice.
+
+Create your objects once in `create()`, then reuse them every frame.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Bad: allocates a new Vector2 object 60 times per second.
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+  Vector2 dir = new Vector2(ball.x - player.x, ball.y - player.y);
+  // ... use dir
+}
+
+// Good: allocate once in create(), reuse every frame.
+private Vector2 dir;
+
+@Override
+public void create() {
+  super.create();
+  dir = new Vector2();
+}
+
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+  dir.set(ball.x - player.x, ball.y - player.y);
+  // ... use dir
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Bad: allocates a new Vector2 object 60 times per second.
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+  val dir = Vector2(ball.x - player.x, ball.y - player.y)
+  // ... use dir
+}
+
+// Good: allocate once in create(), reuse every frame.
+private lateinit var dir: Vector2
+
+override fun create() {
+  super.create()
+  dir = Vector2()
+}
+
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+  dir.set(ball.x - player.x, ball.y - player.y)
+  // ... use dir
+}
+```
+
+</TabItem>
+</Tabs>
+
+The same rule applies to strings built with concatenation inside
+`update()`. If you are building a string just to log it every frame,
+consider logging only when the value actually changes.
+
+## 7. A quick checklist
+
+Before you share your game with anyone, run through this list:
+
+- **Delta time everywhere.** Every speed, rate, or duration multiplies
+  by `elapsed`.
+- **No allocations in `update()`.** No `new`, no string concatenation
+  in hot loops.
+- **Bullets and particles use pooling.** `FlixelSpriteGroup` with
+  `recycle()` and `kill()`, not `new` every shot.
+- **Collision uses group helpers.** `Flixel.overlap(groupA, groupB)`
+  instead of manual loops.
+- **Timers use `FlixelTimer`.** No frame counters counting up to a
+  magic number.
+- **`kill()` for temporary removal, `destroy()` for permanent.** If
+  the object might come back, just `kill()` it.
+- **Log with `Flixel.info` / `Flixel.warn` / `Flixel.error`.** These
+  write to both the terminal and the framework log file, so you always
+  have a record of what happened.
+
+That is it! You do not need to apply all of these at once. Pick one
+tip, try it in your current project, and notice the difference. Small
+habits add up fast, and your future self will thank you every time you
+open the project again.

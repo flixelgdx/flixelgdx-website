@@ -176,28 +176,18 @@ function CodeShowcase(): JSX.Element {
   );
 }
 
-function LowEndCallout(): JSX.Element {
+function MissionCallout(): JSX.Element {
   return (
     <section className={styles.section}>
       <div className={styles.sectionInner}>
-        <FadeIn className={styles.cta}>
-          <h2 className={styles.ctaTitle}>
-            Modern engines, classic hardware.
-          </h2>
+        <FadeIn className={styles.missionCta}>
+          <h2 className={styles.ctaTitle}>Our mission ❤️</h2>
           <p className={styles.ctaLead}>
-            FlixelGDX is engineered for memory-efficient, frame-stable
-            gameplay even on low-end PCs and old laptops. The default project
-            template ships with a 16 MB JVM heap — that is more than plenty
-            for a FlixelGDX game to run smoothly.
+            FlixelGDX is more than just a game engine for Java: it&apos;s a goal
+            to make game development easy, accessible and free for everyone.
+            Read more about our mission{' '}
+            <Link to="/mission">here</Link>.
           </p>
-          <div className={styles.heroButtons}>
-            <Link className="flx-btn flx-btn--primary" to="/learn/getting-started">
-              Generate a project
-            </Link>
-            <Link className="flx-btn flx-btn--ghost" to="/api/">
-              Browse the API
-            </Link>
-          </div>
         </FadeIn>
       </div>
     </section>
@@ -216,7 +206,7 @@ export default function Home(): ReactNode {
       <main>
         <FeatureGrid />
         <CodeShowcase />
-        <LowEndCallout />
+        <MissionCallout />
       </main>
     </Layout>
   );
