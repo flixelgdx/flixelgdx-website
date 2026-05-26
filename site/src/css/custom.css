@@ -612,8 +612,13 @@ nav[class*="docsBreadcrumbs"] {
 /* -------- API member signature syntax coloring (GitHub palette) ---------- */
 /*
  * The remark-docletmd-colors plugin inserts a <div class="dm-sig"> sibling
- * directly after each DocletMD h4 heading. The div contains a <code> block
- * with individual tokens wrapped in <span class="dm-*"> elements.
+ * directly after each DocletMD h4 heading. The div contains a <span class="dm-code">
+ * block with individual tokens wrapped in <span class="dm-*"> elements.
+ *
+ * A <span> is used instead of <code> to prevent Docusaurus's rehype pipeline
+ * from converting it into a Prism code block React component, which would
+ * bake in dark-theme inline styles and potentially replace our dm-* spans on
+ * client-side re-render.
  *
  * Token classes:
  *   dm-kw    -- Java modifiers (public, static, final...) and primitive types
@@ -645,7 +650,9 @@ nav[class*="docsBreadcrumbs"] {
   overflow-x: auto;
 }
 
-.dm-sig code {
+.dm-sig .dm-code {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: var(--ifm-code-font-size);
   background: none;
   border: none;
   padding: 0;

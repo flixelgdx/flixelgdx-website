@@ -190,9 +190,17 @@ const remarkDocletmdColors: Plugin<[], Root> = () => (tree) => {
     // Insert a sibling <div class="dm-sig"> immediately after the heading to display
     // the colorized full signature. This keeps the h4 text clean (for TOC) while
     // still rendering the full colored signature for readers below the heading.
+    //
+    // Using <span class="dm-code"> instead of <code> here is intentional.
+    // Docusaurus's rehype pipeline intercepts bare <code> elements and converts
+    // them into full Prism code block React components (codeBlockStandalone) with
+    // hardcoded inline --prism-color/--prism-background-color styles. That component
+    // can re-render client-side and replace our dm-* spans with Prism token spans,
+    // causing intermittent wrong colors. A <span> is left as raw HTML and is never
+    // touched by the Prism transformer.
     parent.children.splice(index + 2, 0, {
       type: 'html',
-      value: `<div class="dm-sig"><code>${colorize(sig, kind)}</code></div>`,
+      value: `<div class="dm-sig"><span class="dm-code">${colorize(sig, kind)}</span></div>`,
     } as Node);
   });
 };
