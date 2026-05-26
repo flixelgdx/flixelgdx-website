@@ -12,6 +12,17 @@ java {
   }
 }
 
+// gdx-svmhelper provides GraalVM substitutions for libGDX. It must be on the
+// native-image classpath during nativeCompile, but should NOT be in the fat JAR
+// because jdeps (used by construo) would see its GraalVM module references and
+// add org.graalvm.nativeimage to jlink's module list, which Temurin does not ship.
+configurations {
+  nativeImageOnly {
+    canBeResolved = true
+    canBeConsumed = false
+  }
+}
+
 def isMacOs = System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contains('mac')
 
 application {
@@ -32,7 +43,7 @@ dependencies {
   implementation "com.github.flixelgdx.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
   
   if (enableGraalNative == 'true') {
-    implementation "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
+    nativeImageOnly "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
   }
 }
 
@@ -43,7 +54,12 @@ jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   dependsOn configurations.runtimeClasspath
   from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
-  // These "exclude" lines remove some unnecessary duplicate files in the output JAR.
+  // These "exclude" lines remove unnecessary or harmful duplicate files from the output JAR.
+  // module-info.class files must be excluded because the fat JAR merges named modules
+  // (FlixelGDX core, libGDX) with automatic modules. Leaving module-info.class in causes
+  // jdeps -- used by construo's createRuntimeImage task -- to fail with a FindException
+  // when it tries to resolve the full module graph and cannot find automatic-module peers.
+  exclude('module-info.class', '**/module-info.class')
   exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
   dependencies {
     exclude('META-INF/INDEX.LIST', 'META-INF/maven/**')
@@ -68,6 +84,9 @@ graalvmNative {
       if (isMacOs) {
         buildArgs.add('-J-XstartOnFirstThread')
       }
+      // svmhelper is in nativeImageOnly (not runtimeClasspath), so we add it here
+      // explicitly so native-image discovers its substitutions during compilation.
+      classpath(configurations.nativeImageOnly)
     }
   }
 }
@@ -83,11 +102,19 @@ construo {
   targets.configure {
     create("linuxX64", Target.Linux) {
       architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.13%2B11/OpenJDK17U-jdk_x64_linux_hotspot_17.0.13_11.tar.gz")
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_linux_hotspot_21.0.11_10.tar.gz")
+    }
+    create("macOsX64", Target.MacOs) {
+      architecture.set(Target.Architecture.X86_64)
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_mac_hotspot_21.0.11_10.tar.gz")
+      identifier.set("{{CONSTRUO_IDENTIFIER}}")
+      def v = providers.gradleProperty("version").orElse("0.0.1").get()
+      buildNumber.set(v)
+      versionNumber.set(v)
     }
     create("macOsAarch64", Target.MacOs) {
       architecture.set(Target.Architecture.AARCH64)
-      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.13%2B11/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.13_11.tar.gz")
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.11_10.tar.gz")
       identifier.set("{{CONSTRUO_IDENTIFIER}}")
       def v = providers.gradleProperty("version").orElse("0.0.1").get()
       buildNumber.set(v)
@@ -95,7 +122,7 @@ construo {
     }
     create("winX64", Target.Windows) {
       architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.13%2B11/OpenJDK17U-jdk_x64_windows_hotspot_17.0.13_11.zip")
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_windows_hotspot_21.0.11_10.zip")
     }
   }
 }
