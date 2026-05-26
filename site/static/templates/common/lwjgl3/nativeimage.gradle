@@ -1,111 +1,75 @@
 /*
- * nativeimage.gradle -- GraalVM Native Image support for the lwjgl3 module
+ * nativeimage.gradle -- GraalVM Native Image support for the lwjgl3 module.
  *
- * This file is applied automatically by lwjgl3/build.gradle when the project
- * property "enableGraalNative" is set to "true" in gradle.properties. You do
- * not need to apply it yourself. It does three things:
+ * Applied automatically when enableGraalNative=true in gradle.properties.
  *
- *   1. Extends the graalvmNative block already in build.gradle with settings
- *      that only matter for a native build (UTF-8 encoding, the
- *      cross-machine compatibility flag, etc.).
- *
- *   2. Marks the desktop "run" task so Gradle does not try to cache its
- *      result, which would interfere with the Graal tracing agent.
- *
- *   3. Passes -H:IncludeResources flags that embed game assets and native
- *      shared libraries (.so/.dll/.dylib) into the binary. Without this step
- *      the game cannot load any asset or native library at runtime.
- *
- * ------------------------------------------------------------------
  * HOW TO ENABLE
- *   1. Install GraalVM JDK 17+ from https://graalvm.org or your package manager.
- *   2. Set the GRAALVM_HOME environment variable to your GraalVM installation:
- *          export GRAALVM_HOME=/path/to/graalvm-jdk-17
- *      Add that line to ~/.profile (Linux/Mac) to make it permanent.
- *   3. In gradle.properties, set:
- *          enableGraalNative=true
+ *   1. Install GraalVM JDK 17+.
+ *   2. Set GRAALVM_HOME=/path/to/graalvm-jdk-17 in your shell profile.
+ *   3. Set enableGraalNative=true in gradle.properties.
  *
- * HOW TO BUILD A NATIVE IMAGE
- *   Run the Gradle task:
- *       ./gradlew :lwjgl3:nativeCompile
- *   The compiled binary is placed in lwjgl3/build/native/nativeCompile/.
+ * HOW TO BUILD
+ *   ./gradlew :lwjgl3:nativeCompile
+ *   Output lands in lwjgl3/build/native/nativeCompile/.
  *
- * HOW TO CONFIGURE
- *   - The output binary name is controlled by the "imageName" setting in
- *     lwjgl3/build.gradle (it defaults to the value of the gameId property).
- *   - To add extra GraalVM build flags, append to "buildArgs" in the
- *     graalvmNative block in lwjgl3/build.gradle.
- *   - If you add new assets sub-folders, this task picks them up
- *     automatically because it walks the entire assets/ directory tree.
- * ------------------------------------------------------------------
+ * ADDING LIBRARIES THAT USE JNI OR REFLECTION
+ *   If you add a library that uses JNI or reflection, run the config generator:
+ *
+ *   ./gradlew :lwjgl3:generateNativeConfig
+ *
+ *   Play through every feature in your game, then close the window.
+ *   The task merges the recorded configuration into META-INF/native-image/
+ *   so it is picked up by the next nativeCompile.
  */
 
-// Capture the assets folder path at configuration time.
+// Enable agent instrumentation when generateNativeConfig is explicitly requested.
+if (gradle.startParameter.taskNames.any { it.contains('generateNativeConfig') }) {
+    project.extensions.extraProperties.set('agent', '')
+}
+
 def _assetsDir = new File("${project.rootDir}/assets")
 
-// Extend the graalvmNative configuration declared in build.gradle.
-// Groovy DSL merges repeated blocks, so these settings are added on top of
-// whatever build.gradle already set (imageName, -H:+ReportExceptionStackTraces,
-// macOS -XstartOnFirstThread, etc.).
 graalvmNative {
-  // With toolchain detection on, the plugin ignores GRAALVM_HOME and uses
-  // Gradle's JDK auto-detection, which finds the wrong JDK. Turning it off
-  // makes the plugin read GRAALVM_HOME (or JAVA_HOME as a fallback) directly.
+  // Disable Gradle's JDK auto-detection so GRAALVM_HOME (or JAVA_HOME) is used directly.
   toolchainDetection = false
-  // The community metadata repository requires GraalVM 25+ as of plugin
-  // 1.1.0. Game projects don't need it -- gdx-svmhelper already supplies
-  // all libGDX-specific substitutions.
   metadataRepository {
+    // The community metadata repository requires GraalVM 25+; game projects don't need it.
     enabled = false
   }
+
+  agent {
+    defaultMode = "standard"
+    modes {
+      standard {
+        outputTaskNames = ["run"]
+      }
+    }
+    // generateNativeConfig merges agent output here after the game closes.
+    metadataCopy {
+      inputTaskNames = ["run"]
+      outputDirectories = ["src/main/resources/META-INF/native-image"]
+      mergeWithExisting = true
+    }
+  }
+
   binaries {
     main {
-      // Produce a binary that runs on any x86-64 CPU, not just the
-      // machine that compiled it.
       buildArgs.add('-march=compatibility')
-
-      // Cap the runtime heap to the limit chosen in the project generator.
-      // Without this, GraalVM Serial GC defaults to 80% of system RAM.
-      // -R: flags set runtime defaults baked into the binary itself.
       buildArgs.add('-R:MaxHeapSize={{HEAP_MB}}m')
-
-      // Force UTF-8 so string and file-name handling is consistent
-      // across platforms.
       jvmArgs.add('-Dfile.encoding=UTF8')
-
       sharedLibrary = false
 
-      // Native shared libraries (.so/.dll/.dylib) are bundled inside
-      // framework JARs and extracted at runtime by SharedLibraryLoader. They
-      // must be embedded here so GraalVM can provide them at runtime.
-      // This covers libGDX core, miniaudio, freetype, and LWJGL3 natives.
+      // Bundle native shared libraries so they can be extracted at runtime.
       buildArgs.add('-H:IncludeResources=.+\\.so')
       buildArgs.add('-H:IncludeResources=.+\\.dll')
       buildArgs.add('-H:IncludeResources=.+\\.dylib')
 
-      // The default bitmap font (lsans-15) is bundled inside both the libGDX JAR
-      // (com/badlogic/gdx/utils/) and the FlixelGDX JAR (me/stringdotjar/.../bitmap/).
-      // The pattern needs a leading .* because GraalVM matches the ENTIRE resource
-      // path -- "lsans.+" would only match paths that START with "lsans".
+      // The default bitmap font is embedded in both the libGDX and FlixelGDX JARs.
+      // The leading .* is required because GraalVM matches the full classpath-relative path.
       buildArgs.add('-H:IncludeResources=.*lsans.+')
 
-      // Embed every file in assets/ using its full path relative to the
-      // assets root (e.g. "images/player.png", not just "player.png").
-      // Using the exact classpath-relative path avoids false matches against
-      // identically-named files that may exist in dependency JARs.
-      //
-      // The fat JAR task below includes the assets/ directory so GraalVM can
-      // locate each file during compilation. At runtime, libGDX falls back to
-      // a classpath lookup when the file does not exist on the filesystem, so
-      // embedded resources are found transparently.
-      //
-      // GraalVM stores embedded resources in the binary's image heap, which
-      // is native memory (the binary's data section, not the GC heap).
-      // libGDX decodes them into Pixmaps backed by DirectByteBuffers (also
-      // native memory) before uploading to GPU VRAM. Asset loading therefore
-      // creates no long-lived GC heap pressure.
-      //
-      // Based on https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/ -- thanks Lyze!
+      // Embed each asset file using its exact classpath-relative path.
+      // Based on https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
       fileTree(_assetsDir).each { file ->
         def relPath = _assetsDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
         buildArgs.add("-H:IncludeResources=\\Q${relPath}\\E")
@@ -113,40 +77,32 @@ graalvmNative {
 
       resources.autodetect()
 
-      // imgui-java's ImGui class loads its native library from a classpath resource
-      // inside its static initializer. Native libraries loaded during a GraalVM build
-      // are not preserved in the final binary -- they must be (re-)loaded at runtime.
-      // Deferring these classes to runtime initialization ensures the library is
-      // extracted and loaded correctly when the debug overlay first opens.
+      // imgui-java must initialize at runtime so its native library is loaded from
+      // the classpath after the binary starts, not discarded at build time.
       buildArgs.add('--initialize-at-run-time=imgui.ImGui,imgui.ImFontAtlas,imgui.ImGuiPlatformIO')
 
-      // MiniAudio JNI callbacks must be registered explicitly -- miniaudio-*.jar
-      // ships no GraalVM metadata and gdx-svmhelper does not cover it.
-      // The native library calls GetMethodID for these three methods at startup;
-      // without this registration the image crashes with NoSuchMethodError.
-      //
-      // imgui-java also ships no GraalVM metadata. The entries here cover the JNI
-      // field and method IDs that imgui.ImGui.nInitJni() caches on startup, plus
-      // all native-to-Java callbacks the overlay uses at runtime.
+      // JNI configuration for framework libraries (imgui, miniaudio) and any
+      // libraries you add. Run generateNativeConfig to extend this file for your own dependencies.
       buildArgs.add("-H:JNIConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json")
     }
   }
 }
 
-// Add assets/ to the fat JAR so GraalVM can find and embed the files matched
-// by the -H:IncludeResources patterns above. The fat JAR is nativeCompile's
-// primary classpath input; assets are not included in it by default, so
-// without this step GraalVM cannot see any asset file at build time and all
-// -H:IncludeResources patterns targeting assets match nothing.
+// Include assets in the fat JAR so nativeCompile can find and embed them.
 tasks.named('jar').configure {
   from fileTree("${project.rootDir}/assets")
 }
 
-// The Graal tracing agent runs alongside a normal JVM launch and records which
-// resources and reflection calls the game makes. Gradle's incremental-build
-// cache would skip the run task if nothing changed, which prevents the agent
-// from recording correctly. Disabling state tracking ensures the task always
-// executes when called.
+// Prevent Gradle from caching the run task, which would skip agent recording.
 tasks.named('run').configure {
-  doNotTrackState('Running with the Graal tracing agent must not be skipped by the build cache.')
+  doNotTrackState('Agent recording must not be skipped by the build cache.')
+}
+
+// Single-command config generator. Launches the game with the tracing agent,
+// then merges the recorded output into META-INF/native-image/ when the game closes.
+tasks.register('generateNativeConfig') {
+  group = 'Native Image'
+  description = 'Launches the game with the GraalVM tracing agent. Play through all features, then close the window. Config is written to META-INF/native-image/ automatically.'
+  dependsOn(tasks.named('run'))
+  finalizedBy(tasks.named('metadataCopy'))
 }

@@ -135,7 +135,6 @@ const config: Config = {
             {to: '/api/', label: 'About the reference'},
           ],
         },
-        {to: '/mission', label: 'Our Mission', position: 'right'},
         {
           href: 'https://github.com/flixelgdx/flixelgdx',
           label: 'View source',

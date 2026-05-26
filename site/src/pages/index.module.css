@@ -225,35 +225,3 @@
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
 }
 
-/* ----------------------- Mission callout ------------------------------- */
-
-.missionCta {
-  margin: 3rem 0 5rem;
-  padding: 2.5rem 1.5rem;
-  border-radius: 18px;
-  background: linear-gradient(160deg, #111827 0%, #1a2235 100%);
-  color: #e8ecf4;
-  text-align: center;
-  border: 5px solid rgba(120, 160, 230, 0.18);
-  box-shadow: 0 16px 48px -24px rgba(80, 120, 200, 0.25);
-}
-
-[data-theme='light'] .missionCta {
-  background: linear-gradient(160deg, #f0f4ff 0%, #e8f0fb 100%);
-  color: var(--ifm-color-content);
-  border: 5px solid rgba(80, 120, 220, 0.15);
-  box-shadow: 0 12px 32px -16px rgba(80, 120, 200, 0.15);
-}
-
-.ctaTitle {
-  font-size: clamp(2.5rem, 3vw, 2.2rem);
-  font-weight: 800;
-  margin: 0 0 0.8rem;
-}
-
-.ctaLead {
-  font-size: 18px;
-  margin: 0 auto 1.25rem;
-  max-width: 680px;
-  opacity: 0.85;
-}

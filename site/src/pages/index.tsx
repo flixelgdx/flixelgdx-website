@@ -176,24 +176,6 @@ function CodeShowcase(): JSX.Element {
   );
 }
 
-function MissionCallout(): JSX.Element {
-  return (
-    <section className={styles.section}>
-      <div className={styles.sectionInner}>
-        <FadeIn className={styles.missionCta}>
-          <h2 className={styles.ctaTitle}>Our mission ❤️</h2>
-          <p className={styles.ctaLead}>
-            FlixelGDX is more than just a game engine for Java: it&apos;s a goal
-            to make game development easy, accessible and free for everyone.
-            Read more about our mission{' '}
-            <Link to="/mission">here</Link>.
-          </p>
-        </FadeIn>
-      </div>
-    </section>
-  );
-}
-
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
@@ -206,7 +188,6 @@ export default function Home(): ReactNode {
       <main>
         <FeatureGrid />
         <CodeShowcase />
-        <MissionCallout />
       </main>
     </Layout>
   );

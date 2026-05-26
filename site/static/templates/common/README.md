@@ -55,6 +55,31 @@ in the framework repo.
     .editorconfig formatting rules (2-space indent, LF, and trailing whitespace trim)
     gradlew[.bat] Gradle wrapper bootstrap
 
+## Native image (optional)
+
+If you enabled GraalVM native image support (`enableGraalNative=true`), you can compile
+your game to a standalone binary with no JVM required.
+
+    ./gradlew :lwjgl3:nativeCompile
+
+The binary lands in `lwjgl3/build/native/nativeCompile/`.
+
+### Adding libraries that use JNI or reflection
+
+FlixelGDX's built-in libraries (imgui, miniaudio) are already configured. If you add a
+third-party library that uses JNI or reflection, you need to record what it accesses:
+
+  1. Run the config generator:
+
+         ./gradlew :lwjgl3:generateNativeConfig
+
+  2. Play through every feature in your game that the new library is involved in.
+  3. Close the game window. The recorded configuration is automatically merged into
+     `lwjgl3/src/main/resources/META-INF/native-image/` and picked up by the next build.
+
+The generator only records code paths that actually execute, so make sure to exercise
+every screen and feature that touches the library during step 2.
+
 ## Learn more
 
   - Pong tutorial : https://flixelgdx.github.io/flixelgdx-website/docs/your-first-project
