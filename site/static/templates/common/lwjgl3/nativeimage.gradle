@@ -75,6 +75,20 @@ graalvmNative {
         buildArgs.add("-H:IncludeResources=\\Q${relPath}\\E")
       }
 
+      // Embed module-level resources (icons, config files, shaders, etc.) from
+      // src/main/resources/. These are on the classpath but not in assets/, so they
+      // need explicit entries. META-INF is skipped because it holds GraalVM config,
+      // not runtime files.
+      def _moduleResourcesDir = new File("${projectDir}/src/main/resources")
+      if (_moduleResourcesDir.exists()) {
+        fileTree(_moduleResourcesDir).each { file ->
+          def relPath = _moduleResourcesDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+          if (!relPath.startsWith('META-INF')) {
+            buildArgs.add("-H:IncludeResources=\\Q${relPath}\\E")
+          }
+        }
+      }
+
       resources.autodetect()
 
       // imgui-java must initialize at runtime so its native library is loaded from
