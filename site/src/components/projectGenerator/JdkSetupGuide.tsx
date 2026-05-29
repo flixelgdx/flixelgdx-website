@@ -173,9 +173,9 @@ const INSTRUCTIONS: Record<JdkVendor, Record<OS, InstallSteps>> = {
 const OS_TABS: {id: OS; label: string}[] = [
   {id: 'windows', label: 'Windows'},
   {id: 'macos', label: 'macOS'},
-  {id: 'ubuntu', label: 'Ubuntu / Debian'},
-  {id: 'fedora', label: 'Fedora / RHEL'},
-  {id: 'arch', label: 'Arch'},
+  {id: 'ubuntu', label: 'Linux (Ubuntu / Debian)'},
+  {id: 'fedora', label: 'Linux (Fedora / RHEL)'},
+  {id: 'arch', label: 'Linux (Arch)'},
 ];
 
 type Props = {

@@ -6,8 +6,9 @@ import {visit} from 'unist-util-visit';
 const MARKER_RE = /^<!-- docletmd:([\w:]+) -->$/;
 
 // Java access/non-access modifiers that appear in member signatures.
+// "default" covers interface default methods (Modifier.DEFAULT in the element model).
 const MODIFIER_RE =
-  /^(public|protected|private|static|final|abstract|synchronized|native|transient|volatile|strictfp) /;
+  /^(public|protected|private|static|final|abstract|default|synchronized|native|transient|volatile|strictfp) /;
 
 // Java primitive types and void -- colored as keywords, not as type references.
 const JAVA_PRIMITIVES = new Set([

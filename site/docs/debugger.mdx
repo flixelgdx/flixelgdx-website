@@ -1,0 +1,338 @@
+---
+id: debugger
+title: The Debugger
+sidebar_position: 4
+description: A complete guide to the FlixelGDX in-game debugger — stats, graph, log, watch panel, command line, texture viewer, and more.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# The Debugger
+
+FlixelGDX ships a full-featured in-game debugger powered by [Dear ImGui](https://github.com/ocornut/imgui). On
+desktop (LWJGL3) it gives you a floating HUD with multiple dockable panels that you can show, hide, resize, and
+rearrange at will — all without restarting your game.
+
+:::info[Desktop only by default]
+
+The ImGui-based overlay is only available in the **LWJGL3** backend. The core module includes a lightweight
+headless overlay for other backends (TeaVM, Android) that handles hitbox drawing and command dispatch but has
+no windowed UI. If you need a full UI on another backend you can implement `FlixelDebugOverlay` yourself.
+
+:::
+
+---
+
+## Enabling the debugger
+
+Pass `FlixelRuntimeMode.DEBUG` when launching:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public static void main(String[] args) {
+    FlixelLwjgl3Launcher.launch(new MyGame(), FlixelRuntimeMode.DEBUG);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+fun main() {
+    FlixelLwjgl3Launcher.launch(MyGame(), FlixelRuntimeMode.DEBUG)
+}
+```
+
+</TabItem>
+</Tabs>
+
+When `DEBUG` mode is active, `Flixel.debug` is populated and the overlay can be toggled at any time.
+In `RELEASE` mode the overlay is never created, so there is zero runtime cost in shipped builds.
+
+---
+
+## The overlay panels
+
+### Stats viewer
+
+The **Stats** window shows the most important per-frame numbers at a glance:
+
+| Stat | What it means |
+|------|--------------|
+| FPS | Frames rendered in the last second. |
+| Delta | How long the last frame took (in milliseconds). |
+| Objects | Number of active `FlixelBasic` instances across all groups. |
+| Draw calls | OpenGL draw calls issued during the last frame. |
+| Memory | Java heap used / max heap reported by the runtime. |
+
+### Performance graph
+
+The **Performance** window plots a rolling history of frame times as a bar chart. Each bar corresponds to one
+recent frame; the height reflects how long that frame took to process and render. You can use this to spot
+hitches visually without reading raw numbers. The graph updates in real time even when the game is paused.
+
+### Log window
+
+The **Log** window streams everything that passes through `FlixelLogger` — the same logger backing `Flixel.info`,
+`Flixel.warn`, and `Flixel.error`. Messages are color-coded by severity:
+
+- **Grey** — INFO (normal messages)
+- **Yellow** — WARN
+- **Red** — ERROR
+
+A menu bar lets you filter by level and toggle auto-scroll so new messages always appear at the bottom. The
+window preserves a configurable ring buffer of recent entries so you can scroll back if something important
+scrolled past.
+
+### Watch panel
+
+The **Watch** panel shows live key-value pairs that you register from your game code. It refreshes every
+frame, making it perfect for tracking moving values (sprite positions, velocity, AI state) without adding
+`System.out.println` calls.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Register any supplier — evaluated every frame while the overlay is visible.
+Flixel.watch.add("Player X", () -> player.getX());
+Flixel.watch.add("Player Y", () -> player.getY());
+Flixel.watch.add("Speed", () -> player.velocity.len());
+Flixel.watch.add("State", () -> player.getStateName());
+
+// Convenience helper: adds "Mouse X" and "Mouse Y" entries.
+Flixel.watch.addMouse();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.watch.add("Player X") { player.x }
+Flixel.watch.add("Player Y") { player.y }
+Flixel.watch.add("Speed") { player.velocity.len() }
+Flixel.watch.addMouse()
+```
+
+</TabItem>
+</Tabs>
+
+Call `Flixel.watch.remove("Player X")` to remove a single entry, or `Flixel.watch.clear()` (or the built-in
+`watch.clear` command) to clear all of them.
+
+### Control panel
+
+The **Controls** window is a quick-reference card that lists every active debug keybind. It also shows the
+index of the camera currently selected for inspection, and provides toggle buttons for hitbox drawing and
+game pause so you do not have to remember the keys.
+
+### Texture viewer
+
+The **Texture Inspector** shows the texture atlas or sprite sheet currently loaded on the selected object. To
+select an object:
+
+1. Make sure the overlay is **visible** and the game is **paused** (F4 by default).
+2. **Left-click** any sprite in your game window. The object under the cursor becomes the "inspected sprite."
+3. The Texture Inspector panel opens automatically and renders the full texture of that sprite. You can zoom
+   and pan inside the panel using standard mouse controls.
+
+While an object is selected you can also **drag it** with the mouse to reposition it in world space — useful
+for manually checking hitbox alignment or testing edge cases without changing code.
+
+### Command line
+
+The **Command** window is an interactive console where you can type commands and view their output. It
+supports history navigation (Up/Down arrows), tab completion, and the same command registry as
+`Flixel.debug.executeCommand(...)`.
+
+Built-in commands:
+
+| Command | What it does |
+|---------|-------------|
+| `help [filter]` | Lists all registered commands; pass a prefix to filter. |
+| `pause [true/false]` | Pauses or unpauses the game loop. |
+| `hitboxes [true/false]` | Toggles hitbox drawing. |
+| `hide` | Hides the overlay (same as pressing F2). |
+| `resetState` | Destroys and re-creates the current state. |
+| `watch.clear` | Removes all watch entries. |
+| `watch.mouse` | Adds mouse X/Y watch entries. |
+
+---
+
+## Keybinds
+
+All debug keys are configurable. Set them in your game constructor or `create()` method using `Flixel.set*`:
+
+| Action | Default key | Setter |
+|--------|------------|--------|
+| Toggle overlay visibility | **F2** | `Flixel.setDebugToggleKey(key)` |
+| Toggle hitbox drawing | **F3** | `Flixel.setDebugDrawToggleKey(key)` |
+| Pause / unpause game loop | **F4** | `Flixel.setDebugPauseKey(key)` |
+| Pan camera (while paused) | **Right mouse button** | `Flixel.setDebugCameraPanButton(button)` |
+| Cycle camera left (while paused) | **Alt + Left arrow** | `Flixel.setDebugCameraCycleLeftKey(key)` |
+| Cycle camera right (while paused) | **Alt + Right arrow** | `Flixel.setDebugCameraCycleRightKey(key)` |
+| Mouse wheel (while paused) | **Scroll** | Zoom the inspected camera |
+
+Key constants live in `FlixelKey` (which wraps libGDX's `Input.Keys`). Example:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+@Override
+protected void create() {
+    // Remap the overlay toggle to F1 and disable the default F2 binding.
+    Flixel.setDebugToggleKey(FlixelKey.F1);
+    // Remap pause to F5.
+    Flixel.setDebugPauseKey(FlixelKey.F5);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+override fun create() {
+    Flixel.setDebugToggleKey(FlixelKey.F1)
+    Flixel.setDebugPauseKey(FlixelKey.F5)
+}
+```
+
+</TabItem>
+</Tabs>
+
+### While paused
+
+When the game loop is paused (F4), several additional mouse interactions become available:
+
+- **Scroll wheel** — zooms the currently selected camera in and out.
+- **Right mouse button drag** — pans the camera in world space.
+- **Left click on a sprite** — selects it for the Texture Inspector and enables dragging.
+- **Left mouse button drag** (after clicking a sprite) — moves the sprite in world space.
+- **Alt + Left / Right arrow** — cycles between cameras when your game has more than one.
+
+Camera positions and zoom levels are **automatically restored** when you unpause, so your inspection
+session never changes the real game state.
+
+---
+
+## Controlling the overlay from code
+
+`Flixel.debug` exposes the full `FlixelDebugManager` API. You can use it to show/hide the overlay,
+toggle hitbox drawing, and manage commands from anywhere in your game code:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.debug.setVisible(true);   // show the overlay
+Flixel.debug.toggleVisible();    // flip visibility
+Flixel.debug.setDrawDebug(true); // enable hitbox drawing
+Flixel.debug.toggleDrawDebug();  // flip hitbox drawing
+
+// Execute a command programmatically (works even without the UI).
+Flixel.debug.executeCommand("resetState");
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.debug.setVisible(true)
+Flixel.debug.toggleVisible()
+Flixel.debug.setDrawDebug(true)
+Flixel.debug.executeCommand("resetState")
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Creating your own commands
+
+Register a command with a name and a handler that receives a `FlixelDebugCommandArgs` object. The args
+object wraps the whitespace-separated tokens the user typed after the command name.
+
+Command names may only contain ASCII letters and periods (e.g. `spawn`, `ai.toggle`, `scene.reload`).
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Register during create() or in the constructor of your game.
+Flixel.debug.registerCommand("spawn", args -> {
+    String type = args.getString(0, "enemy");  // first arg, default "enemy"
+    int count = args.getInt(1, 1);             // second arg, default 1
+    for (int i = 0; i < count; i++) {
+        spawnEnemy(type);
+    }
+    Flixel.info("Spawner", "Spawned " + count + " " + type);
+});
+
+// To remove a command later:
+Flixel.debug.unregisterCommand("spawn");
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.debug.registerCommand("spawn") { args ->
+    val type = args.getString(0, "enemy")
+    val count = args.getInt(1, 1)
+    repeat(count) { spawnEnemy(type) }
+    Flixel.info("Spawner", "Spawned $count $type")
+}
+```
+
+</TabItem>
+</Tabs>
+
+You can then type `spawn boss 3` in the command window to call the handler with `args[0] = "boss"` and
+`args[1] = "3"`. The `FlixelDebugCommandArgs` helpers (`getString`, `getInt`, `getFloat`, `getBoolean`)
+parse and return the argument at the given index, or a default value when the argument is absent.
+
+---
+
+## Common debugging scenarios
+
+### "My sprite is in the wrong place"
+
+1. Pause the game (F4).
+2. Left-click the sprite in the window to select it.
+3. Check the Watch panel — add the sprite's `x`, `y`, `width`, `height` to confirm what the code thinks.
+4. Toggle hitboxes (F3) to see the bounding box vs. the visual position.
+
+### "I'm getting a lag spike every few seconds"
+
+Open the Performance graph and look for tall bars appearing at a regular interval. Common culprits:
+- GC pressure from allocating objects every frame (look for Array or HashMap construction in `update`).
+- A texture that is loaded (and uploaded to the GPU) inside the game loop rather than in a loading state.
+
+### "The overlay is blocking my input / game controls"
+
+The overlay captures keyboard and mouse input only while it is **focused**. If you click inside an ImGui
+window the text box may hold keyboard focus. Press Escape or click outside the overlay to return focus to
+your game. Function keys (F2, F3, F4) always pass through to the debug layer regardless of focus.
+
+### "I want to show debugging information in a release build without the full overlay"
+
+Use `Flixel.info` / `Flixel.warn` / `Flixel.error` with your own `FlixelLogger` listener. In release mode
+the overlay is absent but the logger still dispatches events to every registered listener, so you can
+forward to a file or an in-game console of your own design.
+
+### "I want to test a specific state immediately on startup"
+
+Use a reset command combined with a `switchState` call:
+
+```java
+Flixel.debug.registerCommand("goto.battle", args ->
+    Flixel.switchState(new BattleState()));
+```
+
+Then type `goto.battle` in the command line whenever you want to jump straight to the battle state from
+any other state without clicking through menus.

@@ -665,6 +665,58 @@ nav[class*="docsBreadcrumbs"] {
 .dm-sig .dm-param { color: var(--dm-param); }
 .dm-sig .dm-const { color: var(--dm-const); }
 
+/* Type declaration header emitted by DocletMD above every class/interface/record/enum page. */
+.dm-decl {
+  display: inline-block;
+  margin: 0 0 1.1rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--flx-border);
+  border-radius: 8px;
+  background: var(--flx-surface-2);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.dm-decl .dm-code {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.dm-decl .dm-kw    { color: var(--dm-kw); }
+.dm-decl .dm-type  { color: var(--dm-type); }
+.dm-decl .dm-fn    { color: var(--dm-fn); }
+.dm-decl .dm-param { color: var(--dm-param); }
+
+/* Source link pill button emitted by DocletMD on every API class page. */
+.docletmd-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--flx-border);
+  border-radius: 999px;
+  background: var(--flx-surface-2);
+  color: var(--ifm-color-content) !important;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+
+.docletmd-source-link::before {
+  content: "\27E8/\27E9";
+  font-weight: 700;
+  color: var(--ifm-color-primary);
+}
+
+.docletmd-source-link:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary) !important;
+  text-decoration: none !important;
+}
+
 .markdown h3 > a {
   color: inherit;
   text-decoration: none;

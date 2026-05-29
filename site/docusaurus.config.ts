@@ -46,8 +46,8 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: 'learn',
-          routeBasePath: 'learn',
+          path: 'docs',
+          routeBasePath: 'docs',
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/flixelgdx/flixelgdx-website/tree/main/site/',
         },
@@ -66,7 +66,7 @@ const config: Config = {
         hashed: true,
         language: ['en'],
         searchResultLimits: 10,
-        docsRouteBasePath: ['learn', 'api'],
+        docsRouteBasePath: ['docs', 'api'],
       },
     ],
   ],
@@ -119,8 +119,8 @@ const config: Config = {
         src: 'img/logo-square.png',
       },
       items: [
-        {to: '/learn/getting-started', label: 'Getting Started', position: 'left'},
-        {to: '/learn/your-first-project', label: 'Your First Project', position: 'left'},
+        {to: '/docs/getting-started', label: 'Getting Started', position: 'left'},
+        {to: '/docs/your-first-project', label: 'Your First Project', position: 'left'},
         {
           type: 'dropdown',
           label: 'API',
@@ -146,10 +146,10 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Learn',
+          title: 'Docs',
           items: [
-            {label: 'Getting Started', to: '/learn/getting-started'},
-            {label: 'Your First Project', to: '/learn/your-first-project'},
+            {label: 'Getting Started', to: '/docs/getting-started'},
+            {label: 'Your First Project', to: '/docs/your-first-project'},
             {label: 'API Reference', to: '/api/'},
           ],
         },

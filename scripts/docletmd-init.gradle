@@ -68,7 +68,9 @@ allprojects { proj ->
                     .getByName('compileClasspath')
                     .resolvedConfiguration.resolvedArtifacts
                     .find { it.name.contains('jnigen-loader') }
-                jnigenJar ? ['--patch-module', "gdx=${jnigenJar.file.absolutePath}"] : []
+                def jnigenArgs = jnigenJar ? ['--patch-module', "gdx=${jnigenJar.file.absolutePath}"] : []
+                def sourceBase = "https://github.com/flixelgdx/flixelgdx/blob/master/${proj.name}/src/main/java/"
+                jnigenArgs + ['-sourceBase', sourceBase]
             })
         }
     }

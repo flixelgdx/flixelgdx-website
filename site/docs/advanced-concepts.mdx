@@ -1,0 +1,420 @@
+---
+id: advanced-concepts
+title: Advanced Concepts
+sidebar_position: 5
+description: Action sets, Adobe Animate integration, asset management, and the logging API — for developers who want to write cleaner, more maintainable FlixelGDX games.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Advanced Concepts
+
+This page covers four systems that are optional but unlock a significant step up in code quality and
+flexibility once you are comfortable with the core framework.
+
+---
+
+## Action sets — platform-agnostic input
+
+Action sets decouple your game logic from specific hardware. Instead of asking "is the Space key down?"
+you ask "is the Jump action pressed?" — and the framework figures out whether that came from a keyboard,
+a controller, or a touch screen.
+
+The pattern mirrors HaxeFlixel's `FlxActionManager`.
+
+### Defining an action set
+
+Extend `FlixelActionSet` and declare each action as a field. In the constructor, add bindings:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public class PlayerControls extends FlixelActionSet {
+    public final FlixelActionDigital jump;
+    public final FlixelActionDigital attack;
+    public final FlixelActionAnalog move;
+
+    public PlayerControls() {
+        jump = new FlixelActionDigital("jump");
+        jump.addBinding(FlixelInputBinding.key(FlixelKey.SPACE));
+        jump.addBinding(FlixelInputBinding.key(FlixelKey.W));
+        jump.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A));
+        add(jump);
+
+        attack = new FlixelActionDigital("attack");
+        attack.addBinding(FlixelInputBinding.key(FlixelKey.Z));
+        attack.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X));
+        add(attack);
+
+        move = new FlixelActionAnalog("move");
+        move.addBinding(FlixelAnalogAxisBinding.keyAxis(
+            FlixelKey.LEFT, FlixelKey.RIGHT, FlixelKey.UP, FlixelKey.DOWN));
+        move.addBinding(FlixelAnalogAxisBinding.gamepadLeftStick(0));
+        add(move);
+    }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+class PlayerControls : FlixelActionSet() {
+    val jump = FlixelActionDigital("jump").also { a ->
+        a.addBinding(FlixelInputBinding.key(FlixelKey.SPACE))
+        a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A))
+        add(a)
+    }
+    val attack = FlixelActionDigital("attack").also { a ->
+        a.addBinding(FlixelInputBinding.key(FlixelKey.Z))
+        a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X))
+        add(a)
+    }
+    val move = FlixelActionAnalog("move").also { a ->
+        a.addBinding(FlixelAnalogAxisBinding.gamepadLeftStick(0))
+        add(a)
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Using the action set
+
+Instantiate it once (typically in your state's `create`) and poll it in `update`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+private final PlayerControls controls = new PlayerControls();
+
+@Override
+public void update(float elapsed) {
+    super.update(elapsed);
+    if (controls.jump.justPressed()) {
+        player.velocity.y = -JUMP_SPEED;
+    }
+    if (controls.attack.isPressed()) {
+        attackTimer -= elapsed;
+    }
+    player.velocity.x = controls.move.getX() * SPEED;
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+private val controls = PlayerControls()
+
+override fun update(elapsed: Float) {
+    super.update(elapsed)
+    if (controls.jump.justPressed()) player.velocity.y = -JUMP_SPEED
+    player.velocity.x = controls.move.x * SPEED
+}
+```
+
+</TabItem>
+</Tabs>
+
+`FlixelActionSet` is registered with `FlixelActionSets` automatically, so the framework calls `update`
+and `endFrame` on it every game loop tick. `destroy()` the set when you no longer need it (e.g., on
+state transition) to unregister it and prevent stale input reads.
+
+---
+
+## Adobe Animate integration — FlixelAnimateSprite
+
+`FlixelAnimateSprite` plays animations exported from **Adobe Animate** as texture atlas sets (the
+`spritemap1.png` / `spritemap1.json` / `Animation.json` triple that Animate's HTML Canvas exporter
+produces). It is a drop-in replacement for `FlixelSprite` with a full nested-symbol timeline engine.
+
+### Loading an animation
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelAnimateSprite character = new FlixelAnimateSprite(x, y);
+character.addSpritesheetAndAnimation(
+    "path/to/spritemap1.png",   // texture atlas image
+    "path/to/spritemap1.json",  // atlas layout
+    "path/to/Animation.json"    // clip/keyframe data
+);
+character.ensureAnimation().playAnimation("Walk");
+add(character);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val character = FlixelAnimateSprite(x, y).apply {
+    addSpritesheetAndAnimation(
+        "path/to/spritemap1.png",
+        "path/to/spritemap1.json",
+        "path/to/Animation.json"
+    )
+    ensureAnimation().playAnimation("Walk")
+}
+add(character)
+```
+
+</TabItem>
+</Tabs>
+
+### Multiple sheets and symbols
+
+If the animation spans multiple sprite sheets (common for large characters or merged exports), call
+`addSpritesheetAndAnimation` again with the next triple. Later calls merge their clips into the same
+controller, so all animation names become available on the same `playAnimation` API.
+
+### Controlling playback
+
+```java
+FlixelAnimationController anim = character.ensureAnimation();
+anim.playAnimation("Run");        // start a clip by name
+anim.stopAnimation();             // pause on current frame
+anim.setCurrentFrame(5);          // jump to frame index
+```
+
+`FlixelAnimateSprite` supports all standard `FlixelSprite` properties — position, velocity, physics,
+flipping, scaling, and color tint — so you can treat it identically to any other sprite.
+
+---
+
+## Advanced asset management
+
+`Flixel.assets` is a `FlixelAssetManager` that wraps libGDX's `AssetManager` with reference counting
+and a cleaner API. It is the right tool for large games that need to control when assets are loaded and
+released rather than holding everything in memory for the lifetime of the app.
+
+### Loading assets
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Queue an asset for async loading using the file extension to pick the type.
+Flixel.assets.load("textures/tileset.png");
+Flixel.assets.load("audio/music/stage1.ogg");
+
+// Explicit type variant (useful when extension is ambiguous).
+Flixel.assets.load("data/map.bin", TiledMap.class);
+
+// Block until all queued loads complete (use only in loading states).
+while (!Flixel.assets.update()) {
+    float progress = Flixel.assets.getProgress();
+    progressBar.setValue(progress);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.assets.load("textures/tileset.png")
+Flixel.assets.load("audio/music/stage1.ogg")
+
+while (!Flixel.assets.update()) {
+    progressBar.setValue(Flixel.assets.getProgress())
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Retrieving and releasing assets
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Get an already-loaded asset (throws if not loaded).
+Texture tileset = Flixel.assets.get("textures/tileset.png", Texture.class);
+
+// Obtain an asset and increment its reference count.
+FlixelAsset<Texture> handle = Flixel.assets.obtainAsset("textures/tileset.png", Texture.class);
+Texture tex = handle.get();
+
+// Release when done -- asset is disposed when the ref count reaches zero.
+handle.release();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val tileset = Flixel.assets.get("textures/tileset.png", Texture::class.java)
+val handle = Flixel.assets.obtainAsset("textures/tileset.png", Texture::class.java)
+val tex = handle.get()
+handle.release()
+```
+
+</TabItem>
+</Tabs>
+
+### Loading state pattern
+
+For large games, use a dedicated loading state that shows a progress bar:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public class LoadingState extends FlixelState {
+    @Override
+    protected void create() {
+        Flixel.assets.load("textures/level1.png");
+        Flixel.assets.load("audio/music/level1.ogg");
+        // ... more queued loads
+    }
+
+    @Override
+    public void update(float elapsed) {
+        super.update(elapsed);
+        if (Flixel.assets.update()) {
+            // All assets are loaded -- switch to the game.
+            Flixel.switchState(new PlayState());
+        }
+        progressBar.setValue(Flixel.assets.getProgress());
+    }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+class LoadingState : FlixelState() {
+    override fun create() {
+        Flixel.assets.load("textures/level1.png")
+        Flixel.assets.load("audio/music/level1.ogg")
+    }
+
+    override fun update(elapsed: Float) {
+        super.update(elapsed)
+        if (Flixel.assets.update()) {
+            Flixel.switchState(PlayState())
+        }
+        progressBar.setValue(Flixel.assets.progress)
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## The logging API
+
+`FlixelLogger` is the framework's structured logging system. You write to it through the static helpers
+on `Flixel`, and it delivers each entry to both the console and (optionally) a rolling log file. The
+debug overlay's Log window listens to it in real time.
+
+### Writing log messages
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Three severity levels, each with an optional tag.
+Flixel.info("Spawner", "Spawned enemy at (100, 200)");
+Flixel.warn("Physics", "Velocity clamped: " + obj.velocity);
+Flixel.error("SaveSystem", "Failed to write save file", exception);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.info("Spawner", "Spawned enemy at (100, 200)")
+Flixel.warn("Physics", "Velocity clamped: ${obj.velocity}")
+Flixel.error("SaveSystem", "Failed to write save file", exception)
+```
+
+</TabItem>
+</Tabs>
+
+The tag is free-form text. Use it as a module/subsystem identifier so you can filter messages in the
+Log window (or `grep` in a log file) when debugging a specific system.
+
+### Enabling file logging
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// In your game's constructor or create():
+Flixel.getLogger().startFileLogging();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.getLogger().startFileLogging()
+```
+
+</TabItem>
+</Tabs>
+
+### Log file location
+
+| Context | Default location |
+|---------|-----------------|
+| Running from IDE | `<project root>/logs/` |
+| Running from a JAR | `logs/` next to the JAR |
+| Custom | Set via `Flixel.getLogger().setLogFolder("path/to/logs")` |
+
+The logger automatically rotates files: each session creates a new file named
+`log_<timestamp>.txt`. Old files beyond the configured limit (default: 5) are pruned on startup.
+
+### Custom log listeners
+
+Attach a listener to receive every log entry as a `FlixelLogEntry`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.getLogger().addLogListener(entry -> {
+    if (entry.level() == FlixelLogLevel.ERROR) {
+        crashReporter.submit(entry.tag(), entry.message());
+    }
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.getLogger().addLogListener { entry ->
+    if (entry.level() == FlixelLogLevel.ERROR) {
+        crashReporter.submit(entry.tag(), entry.message())
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+Listeners receive entries even in `RELEASE` builds where the debug overlay is absent. This makes them
+the right hook for crash reporting, telemetry, or an in-game dev console of your own design.
+
+### Log modes
+
+| Mode | What it prints |
+|------|---------------|
+| `SIMPLE` | Level + message only. |
+| `DETAILED` | Level + timestamp + tag + message. Always used for file output. |
+| `SILENT` | Suppresses all console output (file output still works if enabled). |
+
+```java
+Flixel.getLogger().setLogMode(FlixelLogMode.DETAILED);
+```

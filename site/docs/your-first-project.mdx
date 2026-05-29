@@ -17,22 +17,28 @@ This tutorial is written for people who are new to **FlixelGDX**, not
 new to programming. If you have never written code before, we strongly
 recommend spending an afternoon on the basics of **Java** or **Kotlin**
 first — variables, classes, methods, `if` and `for`.
-Anywhere is fine; some good free starting points:
+Anywhere is fine; some good free starting points (from W3Schools!):
 
-- [Oracle's official Java tutorial](https://docs.oracle.com/javase/tutorial/) (Java)
-- [Kotlin Koans](https://play.kotlinlang.org/koans/overview) (Kotlin)
-
-Or if those don't suit you, W3Schools is a great option too:
-
-- [Java](https://www.w3schools.com/java/default.asp)
-- [Kotlin](https://www.w3schools.com/kotlin/index.php)
+- [W3Schools Java Tutorial](https://www.w3schools.com/java/default.asp)
+- [W3Schools Kotlin Tutorial](https://www.w3schools.com/kotlin/index.php)
 
 You don't need to be an expert — just comfortable reading a simple
 class with a field, a constructor, and a method.
 
+## Which one should I pick?
+
+While both work flawlessly, don't use Java if you:
+
+1. Are transitioning from **HaxeFlixel** (Kotlin's modern feature set closely mirrors Haxe).
+2. Want a cleaner, more concise language that is easier for game development beginners.
+
+Because of this, **Kotlin** is an obvious choice, <i>especially</i> if you're coming from the Haxe ecosystem.
+When you combine FlixelGDX's simple, modular and backend-agnostic API with a simple, easy to use language, you
+will immediately fall in love with the ecosystem and have a lot of fun making games!
+
 :::
 
-What's up dude! In this tutorial we're going to build the classic Pong
+Hey there! In this tutorial, we're going to build the classic Pong
 game in FlixelGDX. You know the one — two paddles on either side of the
 screen, a tiny ball bouncing back and forth, and the first player to
 miss the ball loses.
@@ -92,19 +98,19 @@ Gradle toolchains, and gets timely security updates through Adoptium.
 :::info[Want a different JDK?]
 
 If you would rather use **GraalVM**, **Amazon Corretto** or **Azul Zulu**,
-[project generator](./getting-started) — picking a vendor there will
+head to the [project generator](./getting-started) — picking a vendor there will
 show you the matching install instructions for every OS.
 
 :::
 
 ## 1. Generate the project
 
-Head to **[Getting Started](./getting-started)** and generate a project
+Head to **[the project generator](./getting-started)** and generate a project
 with these settings:
 
 - **Game name:** `Pong`
 - **Game id:** `pong`
-- **Package name:** `com.example.pong` (or your own)
+- **Package name:** `com.example.pong` (or your own, i.e. `io.yourusername.yourgame`)
 - **Template:** **Blank play state**
 - **Platforms:** **Desktop**
 - **Language:** Java *(or Kotlin — your choice)*
@@ -118,6 +124,15 @@ Download the zip, unzip it, and run:
 
 (Use `gradlew.bat :lwjgl3:run` on Windows.)
 
+:::tip
+
+If you're using **[IntelliJ IDEA](https://www.jetbrains.com/idea/)**, you don't have to run the command
+manually! On the **right side** (shown in the image below), all of the Gradle tasks are clickable buttons!
+You can do this by opening the Gradle panel shown below, opening the `lwjgl3/application` group, and execute
+the `run` task.
+
+:::
+
 That is it — no `gradle wrapper`, no installer prompts. The zip already
 ships with the Gradle wrapper, and Gradle will auto-download the
 matching JDK toolchain on the first build via the Foojay Toolchains
@@ -128,8 +143,8 @@ If you take a peep inside the `core` folder, you'll find two files were made for
 
 - `PongGame.java` (or `.kt`) — the `FlixelGame` subclass. It's where the heart of the game loop lives. If
   you're coming from HaxeFlixel, this is the same equivalent of `Main.hx`, except instead of extending an OpenFL sprite
-  and adding an `FlxGame` as a child, FlixelGDX has you extend `FlixelGame` directly.
-- `PlayState.java` (etc.) — the empty state we are about to fill in. This is the "episode" of our game where the Pong action happens!
+  and adding an `FlxGame` as a child display object, FlixelGDX has you extend `FlixelGame` directly and pass it to a platform launcher.
+- `PlayState.java` (or `.kt`) — the empty state we are about to fill in. This is the "episode" of our game where the Pong action happens!
 
 It also dropped an `.editorconfig` at the root of the project. Most
 IDEs (IntelliJ IDEA, Eclipse, VS Code, …) pick that up automatically —
@@ -239,9 +254,9 @@ class PlayState : FlixelState() {
 - `create()` is the method FlixelGDX calls when your state first appears.
   Think of it as the **set-up scene** of the episode.
 - `new FlixelSprite(x, y)` creates an actor at a position. The numbers
-  are the **`x` / `y` of the sprite's upper-left corner in world
+  are the **`x` / `y` of the sprite's bottom-left (not top-left like HaxeFlixel!) corner in world
   space** (as documented on
-  [`FlixelObject`](/api/core/-flixel-object/#x) in the API reference).
+  [`FlixelObject`](/api/core/FlixelObject) in the API reference).
 - `makeGraphic(8, 64, new FlixelColor(255, 255, 255, 255))` paints a tall thin **white** rectangle.
   `new FlixelColor(255, 255, 255, 255)` is a way of saying "fully opaque white" — the parameters are red, green, blue, and
   alpha (opacity) from 0 to 255.

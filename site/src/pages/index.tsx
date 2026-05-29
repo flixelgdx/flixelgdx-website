@@ -92,10 +92,10 @@ function Hero(): JSX.Element {
             beginners and experts alike.
           </p>
           <div className={styles.heroButtons}>
-            <Link className="flx-btn flx-btn--primary" to="/learn/getting-started">
+            <Link className="flx-btn flx-btn--primary" to="/docs/getting-started">
               Get started
             </Link>
-            <Link className="flx-btn flx-btn--ghost" to="/learn/your-first-project">
+            <Link className="flx-btn flx-btn--ghost" to="/docs/your-first-project">
               Your first project
             </Link>
             <Link className="flx-btn flx-btn--ghost" to="/api/">
