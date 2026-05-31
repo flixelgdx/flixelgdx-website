@@ -6,10 +6,11 @@ import {{PACKAGE}}.{{GAME}}Game
 /**
  * Desktop entry point.
  *
- * FlixelLwjgl3Launcher wires libGDX, logging, and window events for you.
+ * `FlixelLwjgl3Launcher` wires libGDX, logging, and window events for you. The [StartupHelper] (same package)
+ * restarts the JVM on macOS and NVIDIA Linux when needed.
  *
- * StartupHelper (same package) restarts the JVM on macOS and NVIDIA Linux when needed.
- * If it returns true, stop here -- the real launch will happen in the child process.
+ * If you're new, don't worry about this file too much; focus on the `core` folder, as that's where your
+ * game's code will live.
  */
 fun main() {
   if (StartupHelper.startNewJvmIfRequired()) {

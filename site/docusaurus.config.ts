@@ -119,8 +119,8 @@ const config: Config = {
         src: 'img/logo-square.png',
       },
       items: [
-        {to: '/docs/getting-started', label: 'Getting Started', position: 'left'},
-        {to: '/docs/your-first-project', label: 'Your First Project', position: 'left'},
+        {to: '/getting-started', label: 'Getting Started', position: 'left'},
+        {to: '/docs/your-first-project', label: 'Docs', position: 'left'},
         {
           type: 'dropdown',
           label: 'API',
@@ -148,7 +148,7 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {label: 'Getting Started', to: '/docs/getting-started'},
+            {label: 'Getting Started', to: '/getting-started'},
             {label: 'Your First Project', to: '/docs/your-first-project'},
             {label: 'API Reference', to: '/api/'},
           ],

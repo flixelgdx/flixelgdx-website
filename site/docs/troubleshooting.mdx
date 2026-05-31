@@ -33,9 +33,9 @@ is compiling against an older JDK. Fix it in two places:
 
 ```groovy
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
 }
 ```
 
@@ -64,11 +64,11 @@ If the error persists, verify that your `settings.gradle` has JitPack in the `de
 
 ```groovy
 dependencyResolutionManagement {
-    repositories {
-        maven { url 'https://jitpack.io' }
-        mavenCentral()
-        // ...
-    }
+  repositories {
+    maven { url 'https://jitpack.io' }
+    mavenCentral()
+    // ...
+  }
 }
 ```
 
@@ -105,7 +105,7 @@ Guard any debug-only code:
 
 ```java
 if (Flixel.debug != null) {
-    Flixel.debug.registerCommand("spawn", args -> { /* ... */ });
+  Flixel.debug.registerCommand("spawn", args -> { /* ... */ });
 }
 ```
 
@@ -115,7 +115,7 @@ Or better, wrap it in a constant so the compiler eliminates the block in release
 private static final boolean DEV = true; // set to false before shipping
 
 if (DEV && Flixel.debug != null) {
-    Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
+  Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
 }
 ```
 
@@ -145,8 +145,8 @@ Common causes:
 - **Off-screen.** The camera is centered on world position `(0, 0)` by default. An object at
   `(5000, 5000)` is off camera. Use `Flixel.debug.setDrawDebug(true)` to draw hitboxes and see
   where everything actually is.
-- **Alpha is 0.** The sprite's `alpha` field defaults to `1f`; some constructors accept a color
-  that includes alpha.
+- **Alpha is 0.** A sprite's alpha (read with `getAlpha()`, changed with `setAlpha(float)`)
+  defaults to `1f`. A fully transparent color passed to `makeGraphic` also renders nothing.
 - **Wrong layer.** Groups and sub-states render in insertion order. An opaque sprite added first
   will sit behind one added second.
 
@@ -154,13 +154,15 @@ Common causes:
 
 ### Collision / `Flixel.collide()` is not separating objects
 
-- Both objects must have `immovable = false`, or at least one must be movable. If both are
-  `immovable = true`, the overlap callback fires but neither object is pushed apart.
-- The object's `body` is only used for physics if `allowPhysics = true` (the default). Setting
-  `velocity` directly bypasses the physics integrator, which is fine, but mixing direct-position
-  updates with `Flixel.collide()` in the same frame can cause jitter.
-- Tile map collision works through `FlixelTilemap.collide(map, player)`, not through the generic
-  `Flixel.collide()`. Using the wrong overload silently does nothing.
+- At least one object must be movable. Call `setImmovable(false)` on the object you want pushed
+  apart. If both objects are immovable (`setImmovable(true)`), the notify callback still fires but
+  neither object is separated.
+- An object only collides while it is solid. `setSolid(false)` (or
+  `setAllowCollisions(FlixelObject.DirectionFlags.NONE)`) makes it pass straight through everything.
+  The default is `FlixelObject.DirectionFlags.ANY`, which collides on all sides.
+- `Flixel.collide()` separates by moving positions. If you also move an object by hand
+  (`setX(...)` / `setY(...)`) in the same frame, the two can fight each other and cause jitter.
+  Prefer driving movement through `setVelocity(...)` and letting collision do the separating.
 
 ---
 
@@ -191,9 +193,9 @@ Watch entries are evaluated every frame while the overlay is **visible**. If the
 (F2 toggled off), suppliers are not called. Values shown when you reopen the overlay are from the
 first frame after it became visible, which should be up to date.
 
-If a supplier returns `null`, confirm the object it references is not `null` itself — `player.x`
+If a supplier returns `null`, confirm the object it references is not `null` itself — `player.getX()`
 will throw a `NullPointerException` if `player` is `null`, which the watch panel silently catches
-and shows as the last non-null value.
+and shows as `<error>`.
 
 ---
 
@@ -336,7 +338,7 @@ GraalVM JDK. Install GraalVM 21+ and set `GRAALVM_HOME` (or set the Gradle toolc
 
 ```groovy
 graalvmNative {
-    toolchainDetection = true
+  toolchainDetection = true
 }
 ```
 
@@ -366,11 +368,11 @@ iteration:
 
 ```groovy
 graalvmNative {
-    binaries {
-        main {
-            buildArgs.add('-Ob')
-        }
+  binaries {
+    main {
+      buildArgs.add('-Ob')
     }
+  }
 }
 ```
 

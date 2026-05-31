@@ -18,9 +18,9 @@ code examples in both Java and Kotlin.
 
 ## 1. FlixelGame — the heart of every game
 
-`FlixelGame` is the root of your application. You extend it once, configure your screen size and initial
-state, and the framework handles the rest: the game loop, input routing, camera management, the debug
-overlay, and the lifecycle of your states.
+`FlixelGame` is the root of your application. You extend it once, configure your window title, screen size,
+and initial state, and the framework handles the rest: the game loop, input routing, camera management, the
+debug overlay, and the lifecycle of your states.
 
 **HaxeFlixel equivalent:** `FlxGame`
 
@@ -29,12 +29,13 @@ overlay, and the lifecycle of your states.
 
 ```java
 public class MyGame extends FlixelGame {
-    public MyGame() {
-        super(
-            1280, 720,     // world dimensions (virtual resolution)
-            new PlayState() // initial state
-        );
-    }
+  public MyGame() {
+    super(
+      "My Game",       // window title
+      1280, 720,       // world dimensions (virtual resolution)
+      new PlayState()  // initial state
+    );
+  }
 }
 ```
 
@@ -42,7 +43,7 @@ public class MyGame extends FlixelGame {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-class MyGame : FlixelGame(1280, 720, PlayState())
+class MyGame : FlixelGame("My Game", 1280, 720, PlayState())
 ```
 
 </TabItem>
@@ -55,7 +56,7 @@ Launch it from the platform launcher in `main`:
 
 ```java
 public static void main(String[] args) {
-    FlixelLwjgl3Launcher.launch(new MyGame());
+  FlixelLwjgl3Launcher.launch(new MyGame());
 }
 ```
 
@@ -79,7 +80,8 @@ of the player's screen size.
 
 `FlixelState` is the container for everything in a single "screen" of your game — a menu, a level, a
 cutscene. You add sprites, groups, and other objects to a state, and the framework calls `update` and
-`draw` on all of them every frame.
+`draw` on all of them every frame. Override `create()` to build the screen and `update(float)` for
+per-frame logic.
 
 **HaxeFlixel equivalent:** `FlxState`
 
@@ -88,20 +90,21 @@ cutscene. You add sprites, groups, and other objects to a state, and the framewo
 
 ```java
 public class PlayState extends FlixelState {
-    private FlixelSprite player;
+  private FlixelSprite player;
 
-    @Override
-    protected void create() {
-        player = new FlixelSprite(100, 100);
-        player.loadGraphic(Gdx.files.internal("assets/player.png"));
-        add(player);
-    }
+  @Override
+  public void create() {
+    super.create();
+    player = new FlixelSprite(100, 100);
+    player.loadGraphic(Gdx.files.internal("assets/player.png"));
+    add(player);
+  }
 
-    @Override
-    public void update(float elapsed) {
-        super.update(elapsed);
-        // game logic here
-    }
+  @Override
+  public void update(float elapsed) {
+    super.update(elapsed);
+    // game logic here
+  }
 }
 ```
 
@@ -110,18 +113,19 @@ public class PlayState extends FlixelState {
 
 ```kotlin
 class PlayState : FlixelState() {
-    private lateinit var player: FlixelSprite
+  private lateinit var player: FlixelSprite
 
-    override fun create() {
-        player = FlixelSprite(100f, 100f).apply {
-            loadGraphic(Gdx.files.internal("assets/player.png"))
-        }
-        add(player)
+  override fun create() {
+    super.create()
+    player = FlixelSprite(100f, 100f).apply {
+      loadGraphic(Gdx.files.internal("assets/player.png"))
     }
+    add(player)
+  }
 
-    override fun update(elapsed: Float) {
-        super.update(elapsed)
-    }
+  override fun update(elapsed: Float) {
+    super.update(elapsed)
+  }
 }
 ```
 
@@ -154,13 +158,13 @@ sprite.loadGraphic(Gdx.files.internal("assets/tile.png"));
 // Or make a solid-color rectangle (useful for prototyping).
 sprite.makeGraphic(32, 32, Color.RED);
 
-// Move with velocity.
-sprite.velocity.set(200f, 0f);
+// Move with velocity (pixels per second).
+sprite.setVelocity(200f, 0f);
 
 // Scale, rotate, flip.
 sprite.setScale(2f);
 sprite.setAngle(45f);
-sprite.setFlipX(true);
+sprite.flip(true, false); // flip horizontally
 ```
 
 </TabItem>
@@ -168,9 +172,9 @@ sprite.setFlipX(true);
 
 ```kotlin
 val sprite = FlixelSprite(x, y).apply {
-    loadGraphic(Gdx.files.internal("assets/tile.png"))
-    velocity.set(200f, 0f)
-    setScale(2f)
+  loadGraphic(Gdx.files.internal("assets/tile.png"))
+  setVelocity(200f, 0f)
+  setScale(2f)
 }
 ```
 
@@ -184,8 +188,9 @@ allocated on demand via `sprite.ensureAnimation()` to keep memory usage low for 
 
 ## 4. FlixelText — text objects and custom fonts
 
-`FlixelText` renders a string inside the game world as a sprite. It shares the same positioning,
-scaling, and lifecycle as `FlixelSprite`, so you can add it to any state or group.
+`FlixelText` renders a string inside the game world as a sprite. It extends `FlixelSprite`, so it shares
+the same positioning, scaling, and lifecycle, and you can add it to any state or group. The constructor
+takes the position, a field width, and the text.
 
 **HaxeFlixel equivalent:** `FlxText`
 
@@ -193,8 +198,8 @@ scaling, and lifecycle as `FlixelSprite`, so you can add it to any state or grou
 <TabItem value="java" label="Java" default>
 
 ```java
-FlixelText label = new FlixelText(10, 10, "Hello, world!");
-label.setFontSize(24);
+FlixelText label = new FlixelText(10, 10, 200, "Hello, world!");
+label.setTextSize(24);
 label.setColor(Color.WHITE);
 add(label);
 
@@ -206,9 +211,9 @@ label.setText("Score: " + score);
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val label = FlixelText(10f, 10f, "Hello, world!").apply {
-    setFontSize(24)
-    setColor(Color.WHITE)
+val label = FlixelText(10f, 10f, 200f, "Hello, world!").apply {
+  setTextSize(24)
+  setColor(Color.WHITE)
 }
 add(label)
 ```
@@ -224,18 +229,18 @@ Load a TrueType or OpenType font file directly on the `FlixelText` object:
 <TabItem value="java" label="Java" default>
 
 ```java
-FlixelText label = new FlixelText(10, 10, "Custom font!");
+FlixelText label = new FlixelText(10, 10, 200, "Custom font!");
 label.setFont(Gdx.files.internal("fonts/PressStart2P.ttf"));
-label.setFontSize(16);
+label.setTextSize(16);
 ```
 
 </TabItem>
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val label = FlixelText(10f, 10f, "Custom font!").apply {
-    setFont(Gdx.files.internal("fonts/PressStart2P.ttf"))
-    setFontSize(16)
+val label = FlixelText(10f, 10f, 200f, "Custom font!").apply {
+  setFont(Gdx.files.internal("fonts/PressStart2P.ttf"))
+  setTextSize(16)
 }
 ```
 
@@ -256,7 +261,7 @@ participate in collision detection, so `Flixel.collide(group, other)` checks eve
 
 | Class | Holds | Notes |
 |-------|-------|-------|
-| `FlixelBasicGroup` | Any `FlixelBasic` | Lightweight; no sprite-specific features. |
+| `FlixelBasicGroup` | Any `IFlixelBasic` | Lightweight; no sprite-specific features. |
 | `FlixelGroup` | Any `FlixelObject` | The most common choice; supports physics members. |
 | `FlixelSpriteGroup` | `FlixelSprite` only | Extends `FlixelSprite`; transforms propagate to members. |
 
@@ -266,9 +271,9 @@ participate in collision detection, so `Flixel.collide(group, other)` checks eve
 ```java
 FlixelGroup enemies = new FlixelGroup();
 for (int i = 0; i < 10; i++) {
-    FlixelSprite enemy = new FlixelSprite(i * 64, 200);
-    enemy.loadGraphic(Gdx.files.internal("assets/enemy.png"));
-    enemies.add(enemy);
+  FlixelSprite enemy = new FlixelSprite(i * 64, 200);
+  enemy.loadGraphic(Gdx.files.internal("assets/enemy.png"));
+  enemies.add(enemy);
 }
 add(enemies);
 
@@ -282,9 +287,9 @@ Flixel.collide(player, enemies);
 ```kotlin
 val enemies = FlixelGroup()
 repeat(10) { i ->
-    enemies.add(FlixelSprite((i * 64).toFloat(), 200f).apply {
-        loadGraphic(Gdx.files.internal("assets/enemy.png"))
-    })
+  enemies.add(FlixelSprite((i * 64).toFloat(), 200f).apply {
+    loadGraphic(Gdx.files.internal("assets/enemy.png"))
+  })
 }
 add(enemies)
 Flixel.collide(player, enemies)
@@ -296,18 +301,19 @@ Flixel.collide(player, enemies)
 ### FlixelSpriteGroup and advanced rotation
 
 `FlixelSpriteGroup` propagates its own position, scale, alpha, color tint, and rotation to all member
-sprites. It supports three rotation modes:
+sprites. Its `RotationMode` enum (nested in `FlixelSpriteGroup`) supports three modes:
 
-- **`INDIVIDUAL`** (default) — each sprite rotates around its own center; position is unchanged.
+- **`INDIVIDUAL`** (default) — the rotation delta is applied to each sprite's own rotation; positions are unchanged.
 - **`ORBIT`** — sprites orbit the group origin as a rigid body; both position and sprite rotation update.
-- **`WHEEL`** — sprites orbit at a fixed radius from the group origin; useful for circular formations.
+- **`WHEEL`** — sprites are arranged radially at a fixed radius from the group origin; useful for circular formations.
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
+// Constructor: maxSize, rotationRadius (for WHEEL mode), starting rotation.
 FlixelSpriteGroup formation = new FlixelSpriteGroup(4, 80f, 0f);
-formation.setRotationMode(RotationMode.ORBIT);
+formation.setRotationMode(FlixelSpriteGroup.RotationMode.ORBIT);
 formation.setX(400);
 formation.setY(300);
 // Rotating the group moves all sprites in orbit around (400, 300).
@@ -319,8 +325,9 @@ formation.setAngle(formation.getAngle() + 90f * elapsed);
 
 ```kotlin
 val formation = FlixelSpriteGroup(4, 80f, 0f).apply {
-    setRotationMode(RotationMode.ORBIT)
-    setPosition(400f, 300f)
+  setRotationMode(FlixelSpriteGroup.RotationMode.ORBIT)
+  setX(400f)
+  setY(300f)
 }
 formation.setAngle(formation.angle + 90f * elapsed)
 ```
@@ -343,9 +350,9 @@ Common access points:
 | Field / method | What it gives you |
 |----------------|-------------------|
 | `Flixel.sound` | Audio manager (`FlixelAudioManager`) |
-| `Flixel.assets` | Asset manager |
+| `Flixel.assets` | Asset manager (`FlixelAssetManager`) |
 | `Flixel.debug` | Debug manager (`FlixelDebugManager`) |
-| `Flixel.watch` | Watch panel manager |
+| `Flixel.watch` | Watch panel manager (`FlixelDebugWatchManager`) |
 | `Flixel.keys` | Keyboard input |
 | `Flixel.mouse` | Mouse input |
 | `Flixel.switchState(state)` | Transition to a new state |
@@ -357,9 +364,10 @@ Common access points:
 ## 7. Flixel.collide() — physics and collision
 
 FlixelGDX makes collision detection simple. `Flixel.collide(a, b)` checks for overlap between any two
-objects, groups, or combinations and applies simple arcade physics (velocity reversal / separation) to
-resolve them. `Flixel.overlap(a, b)` reports the overlap without moving anything — useful for trigger
-zones and pickups.
+objects, groups, or combinations and applies simple arcade physics (separation) to resolve them.
+`Flixel.overlap(a, b)` reports the overlap without moving anything — useful for trigger zones and pickups.
+Pass a notify callback to react to each overlapping pair; the optional fourth argument is a process
+callback that decides whether a pair counts as overlapping (pass `null` for plain AABB overlap).
 
 **HaxeFlixel equivalent:** `FlxG.collide`, `FlxG.overlap`
 
@@ -369,16 +377,16 @@ zones and pickups.
 ```java
 @Override
 public void update(float elapsed) {
-    super.update(elapsed);
+  super.update(elapsed);
 
-    // Solid collision: player bounces off walls.
-    Flixel.collide(player, walls);
+  // Solid collision: player bounces off walls.
+  Flixel.collide(player, walls);
 
-    // Trigger: collect a coin without physics response.
-    Flixel.overlap(player, coins, (p, coin) -> {
-        score++;
-        coin.destroy();
-    });
+  // Trigger: collect a coin without physics response.
+  Flixel.overlap(player, coins, (p, coin) -> {
+    score++;
+    coin.destroy();
+  }, null);
 }
 ```
 
@@ -387,29 +395,29 @@ public void update(float elapsed) {
 
 ```kotlin
 override fun update(elapsed: Float) {
-    super.update(elapsed)
-    Flixel.collide(player, walls)
-    Flixel.overlap(player, coins) { _, coin ->
-        score++
-        coin.destroy()
-    }
+  super.update(elapsed)
+  Flixel.collide(player, walls)
+  Flixel.overlap(player, coins, { _, coin ->
+    score++
+    coin.destroy()
+  }, null)
 }
 ```
 
 </TabItem>
 </Tabs>
 
-Key physics fields on `FlixelObject`:
+Key physics properties on `FlixelObject` (accessed through getters and setters):
 
-| Field | What it does |
-|-------|-------------|
-| `velocity` | Current movement speed (pixels per second). |
-| `acceleration` | Per-frame velocity change (gravity, friction ramps). |
-| `drag` | Friction-like deceleration applied when no acceleration is active. |
-| `maxVelocity` | Caps how fast the object can move. |
-| `immovable` | When `true`, the object is a solid wall that does not move on collision. |
+| Property | What it does |
+|----------|-------------|
+| `setVelocity(x, y)` | Current movement speed (pixels per second). |
+| `setAcceleration(x, y)` | Per-frame velocity change (gravity, friction ramps). |
+| `setDrag(x, y)` | Friction-like deceleration applied when no acceleration is active. |
+| `setMaxVelocity(x, y)` | Caps how fast the object can move. |
+| `setImmovable(true)` | Makes the object a solid wall that does not move on collision. |
 
-Setting `immovable = true` on your tilemap or wall group turns it into a one-sided solid surface that
+Calling `setImmovable(true)` on your tilemap or wall group turns it into a one-sided solid surface that
 player objects will bounce off of, without requiring any custom collision code.
 
 ---
@@ -428,13 +436,13 @@ picture, and separate UI layers.
 ```java
 // The primary camera is always Flixel.getCamera().
 FlixelCamera cam = Flixel.getCamera();
-cam.follow(player, CameraFollowStyle.TOPDOWN);
+cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN);
 cam.setZoom(1.5f);
 
 // Camera effects.
 cam.flash(Color.WHITE, 0.3f);   // white flash for 0.3 seconds
-cam.shake(0.02f, 0.5f);          // shake intensity 2%, duration 0.5s
-cam.fade(Color.BLACK, 1.0f);     // fade to black over 1 second
+cam.shake(0.02f, 0.5f);         // shake intensity 2%, duration 0.5s
+cam.fade(Color.BLACK, 1.0f);    // fade to black over 1 second
 ```
 
 </TabItem>
@@ -442,7 +450,7 @@ cam.fade(Color.BLACK, 1.0f);     // fade to black over 1 second
 
 ```kotlin
 val cam = Flixel.getCamera()
-cam.follow(player, CameraFollowStyle.TOPDOWN)
+cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN)
 cam.setZoom(1.5f)
 cam.flash(Color.WHITE, 0.3f)
 cam.shake(0.02f, 0.5f)
@@ -450,6 +458,9 @@ cam.shake(0.02f, 0.5f)
 
 </TabItem>
 </Tabs>
+
+Follow styles live in the `FlixelCamera.FollowStyle` enum: `LOCKON`, `PLATFORMER`, `TOPDOWN`,
+`TOPDOWN_TIGHT`, `SCREEN_BY_SCREEN`, and `NO_DEAD_ZONE`.
 
 ### Custom viewport
 
@@ -470,8 +481,8 @@ Flixel.addCamera(uiCamera);
 
 ```kotlin
 val uiCamera = FlixelCamera(
-    Gdx.graphics.width, Gdx.graphics.height,
-    ScreenViewport()
+  Gdx.graphics.width, Gdx.graphics.height,
+  ScreenViewport()
 )
 Flixel.addCamera(uiCamera)
 ```
@@ -481,7 +492,8 @@ Flixel.addCamera(uiCamera)
 
 ### Split-screen
 
-Add multiple cameras and set their screen positions with `setSubScreenViewport`:
+Add multiple cameras, switch each to normalized region mode, and set their screen rectangles with
+`setScreenRegionNormalized`:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -489,10 +501,10 @@ Add multiple cameras and set their screen positions with `setSubScreenViewport`:
 ```java
 FlixelCamera cam1 = new FlixelCamera(640, 720);
 FlixelCamera cam2 = new FlixelCamera(640, 720);
-cam1.setSubScreenViewport(0, 0, 0.5f, 1.0f);   // left half
-cam2.setSubScreenViewport(0.5f, 0, 0.5f, 1.0f); // right half
-cam1.useSubScreenViewport = true;
-cam2.useSubScreenViewport = true;
+cam1.setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT);
+cam2.setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT);
+cam1.setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f);   // left half
+cam2.setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f); // right half
 cam1.follow(player1);
 cam2.follow(player2);
 Flixel.addCamera(cam1);
@@ -504,14 +516,14 @@ Flixel.addCamera(cam2);
 
 ```kotlin
 val cam1 = FlixelCamera(640, 720).apply {
-    setSubScreenViewport(0f, 0f, 0.5f, 1.0f)
-    useSubScreenViewport = true
-    follow(player1)
+  setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT)
+  setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f)
+  follow(player1)
 }
 val cam2 = FlixelCamera(640, 720).apply {
-    setSubScreenViewport(0.5f, 0f, 0.5f, 1.0f)
-    useSubScreenViewport = true
-    follow(player2)
+  setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT)
+  setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f)
+  follow(player2)
 }
 Flixel.addCamera(cam1)
 Flixel.addCamera(cam2)
@@ -520,8 +532,9 @@ Flixel.addCamera(cam2)
 </TabItem>
 </Tabs>
 
-Assign a sprite to specific cameras using `sprite.setCameras(cam1, cam2)` so that UI elements only
-render on a particular camera's viewport.
+Assign a sprite to specific cameras through the public `cameras` array (e.g.
+`sprite.cameras = new FlixelCamera[]{uiCamera};`) so that UI elements only render on a particular
+camera's viewport.
 
 ---
 
@@ -547,7 +560,7 @@ Flixel.sound.playMusic("assets/music/theme.ogg", 0.6f, true); // looping
 // Adjust global volume (0.0 to 1.0).
 Flixel.sound.setMasterVolume(0.5f);
 
-// Stop all audio.
+// Stop the current music track.
 Flixel.sound.music.stop();
 ```
 
@@ -573,7 +586,9 @@ path many times per second is safe and cheap.
 
 The tween engine lets you animate any numeric value over time using easing functions. It is the cleanest
 way to move sprites, fade objects, scale UI elements, or drive any other smooth transition without
-hand-writing lerp logic in `update`.
+hand-writing lerp logic in `update`. You configure a tween with a `FlixelTweenSettings` object and add
+one or more goals via `addGoal(getter, toValue, setter)` — explicit getter and setter references, which
+keeps tweens fully ahead-of-time compatible (no reflection).
 
 **HaxeFlixel equivalent:** `FlxTween`
 
@@ -581,17 +596,22 @@ hand-writing lerp logic in `update`.
 <TabItem value="java" label="Java" default>
 
 ```java
-// Tween a property from its current value to a target value over 1 second.
-FlixelTween.tween(sprite, "x", 400f, 1.0f);
-FlixelTween.tween(sprite, "alpha", 0f, 0.5f, new FlixelTweenSettings()
-    .setEase(Easing.QUAD_OUT)
-    .setOnComplete(t -> sprite.destroy()));
+// Tween sprite.x from its current value to 400 over 1 second.
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX));
 
-// Convenience: fade out and destroy.
-FlixelTween.tween(sprite, "alpha", 0f, 0.5f);
+// Fade out (alpha 1 -> 0) with easing, then destroy.
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(0.5f)
+  .setEase(FlixelEase::quadOut)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setOnComplete(t -> sprite.destroy()));
 
-// Cancel a running tween.
-FlixelTween tween = FlixelTween.tween(sprite, "x", 400f, 2.0f);
+// Keep the handle to cancel a running tween.
+FlixelTween tween = FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(2.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX));
 tween.cancel();
 ```
 
@@ -599,11 +619,15 @@ tween.cancel();
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-FlixelTween.tween(sprite, "x", 400f, 1.0f)
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX))
 
-FlixelTween.tween(sprite, "alpha", 0f, 0.5f, FlixelTweenSettings()
-    .setEase(Easing.QUAD_OUT)
-    .setOnComplete { sprite.destroy() })
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(0.5f)
+  .setEase(FlixelEase::quadOut)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setOnComplete { sprite.destroy() })
 ```
 
 </TabItem>
@@ -611,40 +635,54 @@ FlixelTween.tween(sprite, "alpha", 0f, 0.5f, FlixelTweenSettings()
 
 ### Easing
 
-Pass any constant from `Easing` as the ease function. Common choices:
+Pass any easer function from `FlixelEase` as a method reference. Common choices:
 
-| Easing | Feel |
-|--------|------|
-| `LINEAR` | Constant speed, no acceleration. |
-| `QUAD_OUT` | Starts fast, decelerates — good for slide-in animations. |
-| `QUAD_IN` | Starts slow, accelerates — good for falling objects. |
-| `QUAD_IN_OUT` | S-curve, smooth start and end. |
-| `BOUNCE_OUT` | Bounces at the end — playful, cartoonish. |
-| `ELASTIC_OUT` | Overshoots then snaps back — springy UI feel. |
-| `SINE_IN_OUT` | Very smooth, minimal pop. |
+| Easer | Feel |
+|-------|------|
+| `FlixelEase::linear` | Constant speed, no acceleration. |
+| `FlixelEase::quadOut` | Starts fast, decelerates — good for slide-in animations. |
+| `FlixelEase::quadIn` | Starts slow, accelerates — good for falling objects. |
+| `FlixelEase::quadInOut` | S-curve, smooth start and end. |
+| `FlixelEase::bounceOut` | Bounces at the end — playful, cartoonish. |
+| `FlixelEase::elasticOut` | Overshoots then snaps back — springy UI feel. |
+| `FlixelEase::sineInOut` | Very smooth, minimal pop. |
 
 ### Callbacks
 
-`FlixelTweenSettings` lets you attach callbacks for key tween events:
+`FlixelTweenSettings` lets you attach callbacks for key tween events. Each callback receives the
+running `FlixelTween`:
 
 ```java
 new FlixelTweenSettings()
-    .setOnStart(t -> Flixel.info("Tween started"))
-    .setOnUpdate(t -> updateUI(t.getProgress()))  // 0.0 to 1.0
-    .setOnComplete(t -> nextAnimation())
+  .setOnStart(t -> Flixel.info("Tween started"))
+  .setOnUpdate(t -> updateUI())
+  .setOnComplete(t -> nextAnimation())
+```
+
+If you need the interpolated value itself on every frame, use `FlixelTween.num`, whose update callback
+is handed the current value:
+
+```java
+FlixelTween.num(0f, 1f, new FlixelTweenSettings().setDuration(1.0f), value -> updateUI(value));
 ```
 
 ### Looping and types
 
+Looping behavior is controlled by the `FlixelTweenType` on the settings:
+
 ```java
 // Loop forever.
-FlixelTween.tween(sprite, "angle", 360f, 2.0f, new FlixelTweenSettings()
-    .setLoops(FlixelTweenSettings.LOOP_INFINITE));
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setType(FlixelTweenType.LOOPING)
+  .setDuration(2.0f)
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle));
 
-// Ping-pong (forward then backward, forever).
-FlixelTween.tween(sprite, "x", 500f, 1.0f, new FlixelTweenSettings()
-    .setLoops(FlixelTweenSettings.LOOP_PINGPONG));
+// Ping-pong (forward then backward, repeating).
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setType(FlixelTweenType.PINGPONG)
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 500f, sprite::setX));
 ```
 
-Each tween targets a field by name via reflection, so any `float` field on any object is tweenable
-without any framework coupling — including fields on your own custom classes.
+Because each goal uses explicit getter and setter references, any `float` property on any object is
+tweenable — including properties on your own custom classes — with no reflection and no framework coupling.

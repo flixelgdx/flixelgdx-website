@@ -40,10 +40,10 @@ public void update(float elapsed) {
   super.update(elapsed);
 
   // Bad: moves 3 pixels every frame -- fast machine = fast game.
-  // player.x += 3;
+  // player.setX(player.getX() + 3);
 
   // Good: moves 200 pixels every real-world second, always.
-  player.x += SPEED * elapsed;
+  player.setX(player.getX() + SPEED * elapsed);
 }
 ```
 
@@ -94,14 +94,13 @@ the object is gone for good.
 
 ```java
 // Bullet flies off screen -- silence it, don't remove it.
-if (bullet.x > 640) {
+if (bullet.getX() > 640) {
   bullet.kill(); // stops updating and drawing, stays in the group
 }
 
 // Something respawned -- wake it back up.
 bullet.revive();
-bullet.x = player.x;
-bullet.y = player.y;
+bullet.setPosition(player.getX(), player.getY());
 
 // Truly done (like a one-time explosion effect) -- free it.
 explosion.destroy();
@@ -148,6 +147,7 @@ group is not yet at its `maxSize`.
 <TabItem value="java" label="Java" default>
 
 ```java
+import com.badlogic.gdx.graphics.Color;
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup;
 
@@ -160,7 +160,7 @@ private FlixelSpriteGroup bullets;
 bullets = new FlixelSpriteGroup(20, 0f, 0f); // pool of up to 20 bullets
 for (int i = 0; i < 20; i++) {
   FlixelSprite b = new FlixelSprite();
-  b.makeGraphic(4, 8, 0xFFFFFF00); // yellow
+  b.makeGraphic(4, 8, Color.YELLOW);
   b.kill(); // start them all asleep
   bullets.add(b);
 }
@@ -168,12 +168,11 @@ add(bullets);
 
 // When the player fires:
 FlixelSprite bullet = bullets.recycle();
-bullet.x = player.x + 4;
-bullet.y = player.y;
+bullet.setPosition(player.getX() + 4, player.getY());
 
 // In update(), when a bullet leaves the screen:
 for (FlixelSprite b : bullets.getMembers()) {
-  if (b != null && b.alive && b.x > 640) b.kill();
+  if (b != null && b.alive && b.getX() > 640) b.kill();
 }
 ```
 
@@ -181,6 +180,7 @@ for (FlixelSprite b : bullets.getMembers()) {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
+import com.badlogic.gdx.graphics.Color
 import me.stringdotjar.flixelgdx.FlixelSprite
 import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup
 
@@ -192,7 +192,7 @@ private lateinit var bullets: FlixelSpriteGroup
 bullets = FlixelSpriteGroup(20, 0f, 0f) // pool of up to 20 bullets
 repeat(20) {
   val b = FlixelSprite().apply {
-    makeGraphic(4, 8, 0xFFFFFF00.toInt()) // yellow
+    makeGraphic(4, 8, Color.YELLOW)
     kill() // start them all asleep
   }
   bullets.add(b)
@@ -240,10 +240,12 @@ pair.
 // }
 
 // Good: one line, handles dead members automatically.
+// The fourth argument is the optional "process" filter; pass null for
+// a plain AABB overlap.
 Flixel.overlap(bullets, enemies, (bullet, enemy) -> {
   bullet.kill();
   enemy.kill();
-});
+}, null);
 ```
 
 </TabItem>
@@ -260,10 +262,12 @@ Flixel.overlap(bullets, enemies, (bullet, enemy) -> {
 // }
 
 // Good: one line, handles dead members automatically.
-Flixel.overlap(bullets, enemies) { bullet, enemy ->
+// The fourth argument is the optional "process" filter; pass null for
+// a plain AABB overlap.
+Flixel.overlap(bullets, enemies, { bullet, enemy ->
   bullet.kill()
   enemy.kill()
-}
+}, null)
 ```
 
 </TabItem>
@@ -346,7 +350,7 @@ Create your objects once in `create()`, then reuse them every frame.
 @Override
 public void update(float elapsed) {
   super.update(elapsed);
-  Vector2 dir = new Vector2(ball.x - player.x, ball.y - player.y);
+  Vector2 dir = new Vector2(ball.getX() - player.getX(), ball.getY() - player.getY());
   // ... use dir
 }
 
@@ -362,7 +366,7 @@ public void create() {
 @Override
 public void update(float elapsed) {
   super.update(elapsed);
-  dir.set(ball.x - player.x, ball.y - player.y);
+  dir.set(ball.getX() - player.getX(), ball.getY() - player.getY());
   // ... use dir
 }
 ```

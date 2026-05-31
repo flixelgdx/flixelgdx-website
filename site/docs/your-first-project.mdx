@@ -58,7 +58,7 @@ FlixelGDX idea:
 :::tip[Pick your language]
 
 Every code block on this page has tabs for **Java** and **Kotlin** —
-the same two languages the [project generator](./getting-started)
+the same two languages the [project generator](/getting-started)
 supports. Pick whichever matches the project you generated, and stick
 with it for the whole tutorial.
 
@@ -82,7 +82,7 @@ Think of your game like a **TV show**.
 - **`Flixel`** (capital F) is the **remote control** — it lets us say
   *switch the channel* (`Flixel.switchState`), *listen to the
   microphone* (`Flixel.keys`), or *talk on the studio intercom*
-  (`Flixel.log`).
+  (`Flixel.info`).
 
 Easy, right? Let's build the show.
 
@@ -98,14 +98,14 @@ Gradle toolchains, and gets timely security updates through Adoptium.
 :::info[Want a different JDK?]
 
 If you would rather use **GraalVM**, **Amazon Corretto** or **Azul Zulu**,
-head to the [project generator](./getting-started) — picking a vendor there will
+head to the [project generator](/getting-started) — picking a vendor there will
 show you the matching install instructions for every OS.
 
 :::
 
 ## 1. Generate the project
 
-Head to **[the project generator](./getting-started)** and generate a project
+Head to **[the project generator](/getting-started)** and generate a project
 with these settings:
 
 - **Game name:** `Pong`
@@ -179,10 +179,10 @@ Open `PlayState` and replace the body with:
 ```java
 package com.example.pong;
 
+import com.badlogic.gdx.graphics.Color;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.FlixelState;
-import me.stringdotjar.flixelgdx.util.FlixelColor;
 
 public class PlayState extends FlixelState {
 
@@ -197,12 +197,12 @@ public class PlayState extends FlixelState {
 
     // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, new FlixelColor(255, 255, 255, 255)); // White.
+    player.makeGraphic(8, 64, Color.WHITE);
     add(player);
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, new FlixelColor(255, 255, 255, 255));
+    enemy.makeGraphic(8, 64, Color.WHITE);
     add(enemy);
   }
 }
@@ -215,10 +215,10 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
+import com.badlogic.gdx.graphics.Color
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelSprite
 import me.stringdotjar.flixelgdx.FlixelState
-import me.stringdotjar.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
 
@@ -232,13 +232,13 @@ class PlayState : FlixelState() {
 
     // Left paddle. This is the human player.
     player = FlixelSprite(20f, 200f).apply {
-      makeGraphic(8, 64, FlixelColor(255, 255, 255, 255)) // White.
+      makeGraphic(8, 64, Color.WHITE) // White.
     }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = FlixelSprite(612f, 200f).apply {
-      makeGraphic(8, 64, FlixelColor(255, 255, 255, 255))
+      makeGraphic(8, 64, Color.WHITE)
     }
     add(enemy)
   }
@@ -257,9 +257,11 @@ class PlayState : FlixelState() {
   are the **`x` / `y` of the sprite's bottom-left (not top-left like HaxeFlixel!) corner in world
   space** (as documented on
   [`FlixelObject`](/api/core/FlixelObject) in the API reference).
-- `makeGraphic(8, 64, new FlixelColor(255, 255, 255, 255))` paints a tall thin **white** rectangle.
-  `new FlixelColor(255, 255, 255, 255)` is a way of saying "fully opaque white" — the parameters are red, green, blue, and
-  alpha (opacity) from 0 to 255.
+- `makeGraphic(8, 64, Color.WHITE)` paints a tall thin **white**
+  rectangle. `Color` comes from libGDX
+  (`com.badlogic.gdx.graphics.Color`); it ships handy constants like
+  `Color.WHITE`, and you can build any color from a hex string with
+  `Color.valueOf("ff2a3c")`.
 - `add(player)` tells the state *"please include this actor when you
   update and draw the scene each frame"*.
 
@@ -289,7 +291,7 @@ Add the `update` method below `create`:
 <TabItem value="java" label="Java" default>
 
 ```java
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 
 // ...inside PlayState
 
@@ -299,12 +301,12 @@ private static final float PADDLE_SPEED = 220f;
 public void update(float elapsed) {
   super.update(elapsed);
 
-  if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed;
-  if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed;
+  if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
+  if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
 
   // Don't let the paddle leave the screen.
-  if (player.y < 0)        player.y = 0;
-  if (player.y > 480 - 64) player.y = 480 - 64;
+  if (player.getY() < 0)        player.setY(0);
+  if (player.getY() > 480 - 64) player.setY(480 - 64);
 }
 ```
 
@@ -312,7 +314,7 @@ public void update(float elapsed) {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 
 // ...inside PlayState
 
@@ -321,10 +323,10 @@ companion object { private const val PADDLE_SPEED = 220f }
 override fun update(elapsed: Float) {
   super.update(elapsed)
 
-  if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed
-  if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed
+  if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
+  if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
 
-  if (player.y < 0)        player.y = 0f
+  if (player.y < 0f)        player.y = 0f
   if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
 }
 ```
@@ -347,10 +349,11 @@ key went down) which we will use in a moment.
 ```java
 package com.example.pong;
 
+import com.badlogic.gdx.graphics.Color;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.FlixelState;
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 
 public class PlayState extends FlixelState {
   private static final float PADDLE_SPEED = 220f;
@@ -364,11 +367,11 @@ public class PlayState extends FlixelState {
     Flixel.info("Pong is starting!");
 
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, 0xFFFFFFFF);
+    player.makeGraphic(8, 64, Color.WHITE);
     add(player);
 
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, 0xFFFFFFFF);
+    enemy.makeGraphic(8, 64, Color.WHITE);
     add(enemy);
   }
 
@@ -376,11 +379,11 @@ public class PlayState extends FlixelState {
   public void update(float elapsed) {
     super.update(elapsed);
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed;
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed;
+    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
 
-    if (player.y < 0)        player.y = 0;
-    if (player.y > 480 - 64) player.y = 480 - 64;
+    if (player.getY() < 0)        player.setY(0);
+    if (player.getY() > 480 - 64) player.setY(480 - 64);
   }
 }
 ```
@@ -391,10 +394,11 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
+import com.badlogic.gdx.graphics.Color
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelSprite
 import me.stringdotjar.flixelgdx.FlixelState
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 
 class PlayState : FlixelState() {
   companion object { private const val PADDLE_SPEED = 220f }
@@ -407,21 +411,21 @@ class PlayState : FlixelState() {
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(enemy)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
 
-    if (player.y < 0)        player.y = 0f
+    if (player.y < 0f)        player.y = 0f
     if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
   }
 }
@@ -447,7 +451,7 @@ position. Same delta-time trick as the paddle.
 
 :::
 
-Add a ball and two velocity fields, then use the built-in `overlaps`:
+Add a ball and two velocity fields, then use the built-in overlap check:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -462,19 +466,19 @@ Inside `create()`, after the paddles:
 
 ```java
 ball = new FlixelSprite(316, 236);
-ball.makeGraphic(8, 8, 0xFFFF2A3CFF); // FlixelGDX red
+ball.makeGraphic(8, 8, Color.valueOf("ff2a3c")); // FlixelGDX red
 add(ball);
 ```
 
 Inside `update(elapsed)`, after the paddle clamps:
 
 ```java
-ball.x += ballVx * elapsed;
-ball.y += ballVy * elapsed;
+ball.setX(ball.getX() + ballVx * elapsed);
+ball.setY(ball.getY() + ballVy * elapsed);
 
 // Bounce off top/bottom.
-if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy; }
-if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy; }
+if (ball.getY() < 0)       { ball.setY(0);       ballVy = -ballVy; }
+if (ball.getY() > 480 - 8) { ball.setY(480 - 8); ballVy = -ballVy; }
 
 // Bounce off paddles using the framework's AABB overlap check.
 if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
@@ -492,7 +496,7 @@ private var ballVy = 140f
 
 ```kotlin
 // Inside create(), after the paddles:
-ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, 0xFFFF2A3CFF.toInt()) }
+ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) }
 add(ball)
 ```
 
@@ -513,9 +517,9 @@ if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
 </TabItem>
 </Tabs>
 
-`overlaps` runs the same AABB ("axis-aligned bounding box") check you
-would write by hand — *"do these two rectangles touch?"* — but it also
-quietly handles edge cases like sprites that have been `kill()`ed or
+`Flixel.overlap` runs the same AABB ("axis-aligned bounding box") check
+you would write by hand — *"do these two rectangles touch?"* — but it
+also quietly handles edge cases like sprites that have been `kill()`ed or
 have `exists == false`, so your collision code stays one line.
 
 > **Bonus:** when you want to handle a *whole group* of things, take a
@@ -537,11 +541,11 @@ beat it. We just slide it toward the ball's vertical center each frame:
 private static final float ENEMY_SPEED = 160f;
 
 // inside update(elapsed):
-float targetY = ball.y - 28; // 28 = half-paddle minus half-ball
-if (enemy.y < targetY) enemy.y += Math.min(ENEMY_SPEED * elapsed, targetY - enemy.y);
-if (enemy.y > targetY) enemy.y -= Math.min(ENEMY_SPEED * elapsed, enemy.y - targetY);
-if (enemy.y < 0)        enemy.y = 0;
-if (enemy.y > 480 - 64) enemy.y = 480 - 64;
+float targetY = ball.getY() - 28; // 28 = half-paddle minus half-ball
+if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+if (enemy.getY() < 0)        enemy.setY(0);
+if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
 ```
 
 </TabItem>
@@ -574,10 +578,11 @@ nicer than a wobbly tracker.
 ```java
 package com.example.pong;
 
+import com.badlogic.gdx.graphics.Color;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.FlixelState;
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 
 public class PlayState extends FlixelState {
   private static final float PADDLE_SPEED = 220f;
@@ -595,15 +600,15 @@ public class PlayState extends FlixelState {
     Flixel.info("Pong is starting!");
 
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, 0xFFFFFFFF);
+    player.makeGraphic(8, 64, Color.WHITE);
     add(player);
 
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, 0xFFFFFFFF);
+    enemy.makeGraphic(8, 64, Color.WHITE);
     add(enemy);
 
     ball = new FlixelSprite(316, 236);
-    ball.makeGraphic(8, 8, 0xFFFF2A3CFF);
+    ball.makeGraphic(8, 8, Color.valueOf("ff2a3c"));
     add(ball);
   }
 
@@ -611,24 +616,24 @@ public class PlayState extends FlixelState {
   public void update(float elapsed) {
     super.update(elapsed);
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed;
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed;
-    if (player.y < 0)        player.y = 0;
-    if (player.y > 480 - 64) player.y = 480 - 64;
+    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
+    if (player.getY() < 0)        player.setY(0);
+    if (player.getY() > 480 - 64) player.setY(480 - 64);
 
-    ball.x += ballVx * elapsed;
-    ball.y += ballVy * elapsed;
-    if (ball.y < 0)       { ball.y = 0;       ballVy = -ballVy; }
-    if (ball.y > 480 - 8) { ball.y = 480 - 8; ballVy = -ballVy; }
+    ball.setX(ball.getX() + ballVx * elapsed);
+    ball.setY(ball.getY() + ballVy * elapsed);
+    if (ball.getY() < 0)       { ball.setY(0);       ballVy = -ballVy; }
+    if (ball.getY() > 480 - 8) { ball.setY(480 - 8); ballVy = -ballVy; }
 
     if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
     if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 
-    float targetY = ball.y - 28;
-    if (enemy.y < targetY) enemy.y += Math.min(ENEMY_SPEED * elapsed, targetY - enemy.y);
-    if (enemy.y > targetY) enemy.y -= Math.min(ENEMY_SPEED * elapsed, enemy.y - targetY);
-    if (enemy.y < 0)        enemy.y = 0;
-    if (enemy.y > 480 - 64) enemy.y = 480 - 64;
+    float targetY = ball.getY() - 28;
+    if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+    if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+    if (enemy.getY() < 0)        enemy.setY(0);
+    if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
   }
 }
 ```
@@ -639,10 +644,11 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
+import com.badlogic.gdx.graphics.Color
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelSprite
 import me.stringdotjar.flixelgdx.FlixelState
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 
 class PlayState : FlixelState() {
   companion object {
@@ -661,22 +667,22 @@ class PlayState : FlixelState() {
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(enemy)
 
-    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, 0xFFFF2A3CFF.toInt()) } // FlixelGDX red
+    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) } // FlixelGDX red
     add(ball)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
     if (player.y < 0f)        player.y = 0f
     if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
 
@@ -738,11 +744,11 @@ Inside `create()`:
 
 ```java
 playerLabel = new FlixelText(150, 20, 200, "0");
-playerLabel.setSize(48);
+playerLabel.setTextSize(48);
 add(playerLabel);
 
 enemyLabel = new FlixelText(450, 20, 200, "0");
-enemyLabel.setSize(48);
+enemyLabel.setTextSize(48);
 add(enemyLabel);
 ```
 
@@ -751,14 +757,14 @@ text, and reset the ball to the center. Add this **goal check** at the
 end of `update(elapsed)`:
 
 ```java
-if (ball.x < 0) {
+if (ball.getX() < 0) {
   enemyScore++;
-  enemyLabel.text = String.valueOf(enemyScore);
+  enemyLabel.setText(String.valueOf(enemyScore));
   resetBall(+1);
 }
-if (ball.x > 640 - 8) {
+if (ball.getX() > 640 - 8) {
   playerScore++;
-  playerLabel.text = String.valueOf(playerScore);
+  playerLabel.setText(String.valueOf(playerScore));
   resetBall(-1);
 }
 ```
@@ -767,8 +773,7 @@ And a helper:
 
 ```java
 private void resetBall(int towardSign) {
-  ball.x = 316;
-  ball.y = 236;
+  ball.setPosition(316, 236);
   ballVx = 200f * towardSign;
   ballVy = 140f;
   Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
@@ -789,30 +794,29 @@ private lateinit var enemyLabel: FlixelText
 
 ```kotlin
 // inside create():
-playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setSize(48) }
+playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
 add(playerLabel)
 
-enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setSize(48) }
+enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setTextSize(48) }
 add(enemyLabel)
 ```
 
 ```kotlin
 if (ball.x < 0f) {
   enemyScore++
-  enemyLabel.text = enemyScore.toString()
+  enemyLabel.setText(enemyScore.toString())
   resetBall(+1)
 }
 if (ball.x > 640f - 8f) {
   playerScore++
-  playerLabel.text = playerScore.toString()
+  playerLabel.setText(playerScore.toString())
   resetBall(-1)
 }
 ```
 
 ```kotlin
 private fun resetBall(towardSign: Int) {
-  ball.x = 316f
-  ball.y = 236f
+  ball.setPosition(316f, 236f)
   ballVx = 200f * towardSign
   ballVy = 140f
   Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
@@ -848,7 +852,7 @@ package com.example.pong;
 
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelSubState;
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 import me.stringdotjar.flixelgdx.text.FlixelText;
 
 public class PauseSubState extends FlixelSubState {
@@ -856,14 +860,14 @@ public class PauseSubState extends FlixelSubState {
   public void create() {
     super.create();
     FlixelText label = new FlixelText(220, 200, 200, "PAUSED");
-    label.setSize(48);
+    label.setTextSize(48);
     add(label);
   }
 
   @Override
   public void update(float elapsed) {
     super.update(elapsed);
-    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) close();
+    if (Flixel.keys.justPressed(FlixelKey.SPACE)) close();
   }
 }
 ```
@@ -876,19 +880,19 @@ package com.example.pong
 
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelSubState
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 import me.stringdotjar.flixelgdx.text.FlixelText
 
 class PauseSubState : FlixelSubState() {
   override fun create() {
     super.create()
-    val label = FlixelText(220f, 200f, 200f, "PAUSED").apply { setSize(48) }
+    val label = FlixelText(220f, 200f, 200f, "PAUSED").apply { setTextSize(48) }
     add(label)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
-    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) close()
+    if (Flixel.keys.justPressed(FlixelKey.SPACE)) close()
   }
 }
 ```
@@ -902,7 +906,7 @@ Then, in `PlayState.update`, add this at the top:
 <TabItem value="java" label="Java" default>
 
 ```java
-if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
+if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
   openSubState(new PauseSubState());
   return; // skip the rest of this frame
 }
@@ -912,7 +916,7 @@ if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
+if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
   openSubState(PauseSubState())
   return
 }
@@ -941,7 +945,7 @@ package com.example.pong;
 
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelState;
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 import me.stringdotjar.flixelgdx.text.FlixelText;
 
 public class GameOverState extends FlixelState {
@@ -949,14 +953,14 @@ public class GameOverState extends FlixelState {
   public void create() {
     super.create();
     FlixelText label = new FlixelText(180, 200, 320, "GAME OVER\nPress ENTER");
-    label.setSize(36);
+    label.setTextSize(36);
     add(label);
   }
 
   @Override
   public void update(float elapsed) {
     super.update(elapsed);
-    if (Flixel.keys.justPressed(FlixelKeys.ENTER)) {
+    if (Flixel.keys.justPressed(FlixelKey.ENTER)) {
       Flixel.switchState(new PlayState());
     }
   }
@@ -980,19 +984,19 @@ package com.example.pong
 
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelState
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 import me.stringdotjar.flixelgdx.text.FlixelText
 
 class GameOverState : FlixelState() {
   override fun create() {
     super.create()
-    val label = FlixelText(180f, 200f, 320f, "GAME OVER\nPress ENTER").apply { setSize(36) }
+    val label = FlixelText(180f, 200f, 320f, "GAME OVER\nPress ENTER").apply { setTextSize(36) }
     add(label)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
-    if (Flixel.keys.justPressed(FlixelKeys.ENTER)) {
+    if (Flixel.keys.justPressed(FlixelKey.ENTER)) {
       Flixel.switchState(PlayState())
     }
   }
@@ -1022,10 +1026,11 @@ if (playerScore >= 5 || enemyScore >= 5) {
 ```java
 package com.example.pong;
 
+import com.badlogic.gdx.graphics.Color;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.FlixelState;
-import me.stringdotjar.flixelgdx.input.FlixelKeys;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
 import me.stringdotjar.flixelgdx.text.FlixelText;
 
 public class PlayState extends FlixelState {
@@ -1048,23 +1053,23 @@ public class PlayState extends FlixelState {
     Flixel.info("Pong is starting!");
 
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, 0xFFFFFFFF);
+    player.makeGraphic(8, 64, Color.WHITE);
     add(player);
 
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, 0xFFFFFFFF);
+    enemy.makeGraphic(8, 64, Color.WHITE);
     add(enemy);
 
     ball = new FlixelSprite(316, 236);
-    ball.makeGraphic(8, 8, 0xFFFF2A3CFF);
+    ball.makeGraphic(8, 8, Color.valueOf("ff2a3c"));
     add(ball);
 
     playerLabel = new FlixelText(150, 20, 200, "0");
-    playerLabel.setSize(48);
+    playerLabel.setTextSize(48);
     add(playerLabel);
 
     enemyLabel = new FlixelText(450, 20, 200, "0");
-    enemyLabel.setSize(48);
+    enemyLabel.setTextSize(48);
     add(enemyLabel);
   }
 
@@ -1072,51 +1077,50 @@ public class PlayState extends FlixelState {
   public void update(float elapsed) {
     super.update(elapsed);
 
-    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
+    if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
       openSubState(new PauseSubState());
       return;
     }
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed;
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed;
-    if (player.y < 0)        player.y = 0;
-    if (player.y > 480 - 64) player.y = 480 - 64;
+    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
+    if (player.getY() < 0)        player.setY(0);
+    if (player.getY() > 480 - 64) player.setY(480 - 64);
 
-    ball.x += ballVx * elapsed;
-    ball.y += ballVy * elapsed;
-    if (ball.y < 0) {
-      ball.y = 0;
+    ball.setX(ball.getX() + ballVx * elapsed);
+    ball.setY(ball.getY() + ballVy * elapsed);
+    if (ball.getY() < 0) {
+      ball.setY(0);
       ballVy = -ballVy;
     }
-    if (ball.y > 480 - 8) {
-      ball.y = 480 - 8;
+    if (ball.getY() > 480 - 8) {
+      ball.setY(480 - 8);
       ballVy = -ballVy;
     }
 
     if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
     if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 
-    float targetY = ball.y - 28;
-    if (enemy.y < targetY) enemy.y += Math.min(ENEMY_SPEED * elapsed, targetY - enemy.y);
-    if (enemy.y > targetY) enemy.y -= Math.min(ENEMY_SPEED * elapsed, enemy.y - targetY);
-    if (enemy.y < 0)        enemy.y = 0;
-    if (enemy.y > 480 - 64) enemy.y = 480 - 64;
+    float targetY = ball.getY() - 28;
+    if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+    if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+    if (enemy.getY() < 0)        enemy.setY(0);
+    if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
 
-    if (ball.x < 0) {
+    if (ball.getX() < 0) {
       enemyScore++;
-      enemyLabel.text = String.valueOf(enemyScore);
+      enemyLabel.setText(String.valueOf(enemyScore));
       resetBall(+1);
     }
-    if (ball.x > 640 - 8) {
+    if (ball.getX() > 640 - 8) {
       playerScore++;
-      playerLabel.text = String.valueOf(playerScore);
+      playerLabel.setText(String.valueOf(playerScore));
       resetBall(-1);
     }
   }
 
   private void resetBall(int towardSign) {
-    ball.x = 316;
-    ball.y = 236;
+    ball.setPosition(316, 236);
     ballVx = 200f * towardSign;
     ballVy = 140f;
     Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
@@ -1134,10 +1138,11 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
+import com.badlogic.gdx.graphics.Color
 import me.stringdotjar.flixelgdx.Flixel
 import me.stringdotjar.flixelgdx.FlixelSprite
 import me.stringdotjar.flixelgdx.FlixelState
-import me.stringdotjar.flixelgdx.input.FlixelKeys
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
 import me.stringdotjar.flixelgdx.text.FlixelText
 
 class PlayState : FlixelState() {
@@ -1161,33 +1166,33 @@ class PlayState : FlixelState() {
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(player)
 
     // Right paddle. This is the enemy AI.
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, 0xFFFFFFFF.toInt()) }
+    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
     add(enemy)
 
-    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, 0xFFFF2A3CFF.toInt()) }
+    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) }
     add(ball)
 
-    playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setSize(48) }
+    playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
     add(playerLabel)
 
-    enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setSize(48) }
+    enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setTextSize(48) }
     add(enemyLabel)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
 
-    if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
+    if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
       openSubState(PauseSubState())
       return
     }
 
-    if (Flixel.keys.pressed(FlixelKeys.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKeys.S)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
     if (player.y < 0f)        player.y = 0f
     if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
 
@@ -1213,19 +1218,18 @@ class PlayState : FlixelState() {
 
     if (ball.x < 0f) {
       enemyScore++
-      enemyLabel.text = enemyScore.toString()
+      enemyLabel.setText(enemyScore.toString())
       resetBall(+1)
     }
     if (ball.x > 640f - 8f) {
       playerScore++
-      playerLabel.text = playerScore.toString()
+      playerLabel.setText(playerScore.toString())
       resetBall(-1)
     }
   }
 
   private fun resetBall(towardSign: Int) {
-    ball.x = 316f
-    ball.y = 236f
+    ball.setPosition(316f, 236f)
     ballVx = 200f * towardSign
     ballVy = 140f
     Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
@@ -1253,7 +1257,7 @@ Take a breath. In one afternoon you used:
 - `FlixelSprite` + `makeGraphic` for everything you can see.
 - `Flixel.overlap(a, b)` for AABB collision — the same static helper
   works for single objects and groups.
-- `Flixel.keys` (`pressed`, `justPressed`) and `FlixelKeys` for input.
+- `Flixel.keys` (`pressed`, `justPressed`) and `FlixelKey` for input.
 - The **delta time** pattern (`speed * elapsed`) so the game runs the
   same on every machine.
 - `FlixelText` for HUD text.
@@ -1266,7 +1270,7 @@ Those are the **same building blocks** every FlixelGDX game uses, from
 ## Where next?
 
 - Open the **[API reference](/api/)** and look up the real classes you
-  just touched — `FlixelSprite`, `FlixelText`, `Flixel`, `FlixelKeys`,
+  just touched — `FlixelSprite`, `FlixelText`, `Flixel`, `FlixelKey`,
   `FlixelObject`.
 - Try replacing your `makeGraphic` rectangles with images you load
   through `Flixel.assets`.

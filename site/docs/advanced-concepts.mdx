@@ -25,35 +25,39 @@ The pattern mirrors HaxeFlixel's `FlxActionManager`.
 
 ### Defining an action set
 
-Extend `FlixelActionSet` and declare each action as a field. In the constructor, add bindings:
+Extend `FlixelActionSet` and declare each action as a field. In the constructor, add bindings. Key and
+gamepad codes are plain `int` constants on `FlixelKey` and `FlixelGamepadInput`:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 public class PlayerControls extends FlixelActionSet {
-    public final FlixelActionDigital jump;
-    public final FlixelActionDigital attack;
-    public final FlixelActionAnalog move;
+  public final FlixelActionDigital jump;
+  public final FlixelActionDigital attack;
+  public final FlixelActionAnalog move;
 
-    public PlayerControls() {
-        jump = new FlixelActionDigital("jump");
-        jump.addBinding(FlixelInputBinding.key(FlixelKey.SPACE));
-        jump.addBinding(FlixelInputBinding.key(FlixelKey.W));
-        jump.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A));
-        add(jump);
+  public PlayerControls() {
+    jump = new FlixelActionDigital("jump");
+    jump.addBinding(FlixelInputBinding.key(FlixelKey.SPACE));
+    jump.addBinding(FlixelInputBinding.key(FlixelKey.W));
+    jump.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A));
+    add(jump);
 
-        attack = new FlixelActionDigital("attack");
-        attack.addBinding(FlixelInputBinding.key(FlixelKey.Z));
-        attack.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X));
-        add(attack);
+    attack = new FlixelActionDigital("attack");
+    attack.addBinding(FlixelInputBinding.key(FlixelKey.Z));
+    attack.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X));
+    add(attack);
 
-        move = new FlixelActionAnalog("move");
-        move.addBinding(FlixelAnalogAxisBinding.keyAxis(
-            FlixelKey.LEFT, FlixelKey.RIGHT, FlixelKey.UP, FlixelKey.DOWN));
-        move.addBinding(FlixelAnalogAxisBinding.gamepadLeftStick(0));
-        add(move);
-    }
+    move = new FlixelActionAnalog("move");
+    move.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT));
+    move.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT));
+    move.addAxisBinding(FlixelAnalogAxisBinding.negYKey(FlixelKey.UP));
+    move.addAxisBinding(FlixelAnalogAxisBinding.posYKey(FlixelKey.DOWN));
+    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X));
+    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y));
+    add(move);
+  }
 }
 ```
 
@@ -62,20 +66,22 @@ public class PlayerControls extends FlixelActionSet {
 
 ```kotlin
 class PlayerControls : FlixelActionSet() {
-    val jump = FlixelActionDigital("jump").also { a ->
-        a.addBinding(FlixelInputBinding.key(FlixelKey.SPACE))
-        a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A))
-        add(a)
-    }
-    val attack = FlixelActionDigital("attack").also { a ->
-        a.addBinding(FlixelInputBinding.key(FlixelKey.Z))
-        a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X))
-        add(a)
-    }
-    val move = FlixelActionAnalog("move").also { a ->
-        a.addBinding(FlixelAnalogAxisBinding.gamepadLeftStick(0))
-        add(a)
-    }
+  val jump = FlixelActionDigital("jump").also { a ->
+    a.addBinding(FlixelInputBinding.key(FlixelKey.SPACE))
+    a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A))
+    add(a)
+  }
+  val attack = FlixelActionDigital("attack").also { a ->
+    a.addBinding(FlixelInputBinding.key(FlixelKey.Z))
+    a.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X))
+    add(a)
+  }
+  val move = FlixelActionAnalog("move").also { a ->
+    a.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT))
+    a.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT))
+    a.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X))
+    add(a)
+  }
 }
 ```
 
@@ -84,7 +90,8 @@ class PlayerControls : FlixelActionSet() {
 
 ### Using the action set
 
-Instantiate it once (typically in your state's `create`) and poll it in `update`:
+Instantiate it once (typically in your state's `create`) and poll it in `update`. Digital actions expose
+`pressed()`, `justPressed()`, and `justReleased()`; analog actions expose `getX()` and `getY()`:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -94,14 +101,14 @@ private final PlayerControls controls = new PlayerControls();
 
 @Override
 public void update(float elapsed) {
-    super.update(elapsed);
-    if (controls.jump.justPressed()) {
-        player.velocity.y = -JUMP_SPEED;
-    }
-    if (controls.attack.isPressed()) {
-        attackTimer -= elapsed;
-    }
-    player.velocity.x = controls.move.getX() * SPEED;
+  super.update(elapsed);
+  if (controls.jump.justPressed()) {
+    player.setVelocityY(-JUMP_SPEED);
+  }
+  if (controls.attack.pressed()) {
+    attackTimer -= elapsed;
+  }
+  player.setVelocityX(controls.move.getX() * SPEED);
 }
 ```
 
@@ -112,9 +119,9 @@ public void update(float elapsed) {
 private val controls = PlayerControls()
 
 override fun update(elapsed: Float) {
-    super.update(elapsed)
-    if (controls.jump.justPressed()) player.velocity.y = -JUMP_SPEED
-    player.velocity.x = controls.move.x * SPEED
+  super.update(elapsed)
+  if (controls.jump.justPressed()) player.setVelocityY(-JUMP_SPEED)
+  player.setVelocityX(controls.move.x * SPEED)
 }
 ```
 
@@ -141,9 +148,9 @@ produces). It is a drop-in replacement for `FlixelSprite` with a full nested-sym
 ```java
 FlixelAnimateSprite character = new FlixelAnimateSprite(x, y);
 character.addSpritesheetAndAnimation(
-    "path/to/spritemap1.png",   // texture atlas image
-    "path/to/spritemap1.json",  // atlas layout
-    "path/to/Animation.json"    // clip/keyframe data
+  "path/to/spritemap1.png",   // texture atlas image
+  "path/to/spritemap1.json",  // atlas layout
+  "path/to/Animation.json"    // clip/keyframe data
 );
 character.ensureAnimation().playAnimation("Walk");
 add(character);
@@ -154,12 +161,12 @@ add(character);
 
 ```kotlin
 val character = FlixelAnimateSprite(x, y).apply {
-    addSpritesheetAndAnimation(
-        "path/to/spritemap1.png",
-        "path/to/spritemap1.json",
-        "path/to/Animation.json"
-    )
-    ensureAnimation().playAnimation("Walk")
+  addSpritesheetAndAnimation(
+    "path/to/spritemap1.png",
+    "path/to/spritemap1.json",
+    "path/to/Animation.json"
+  )
+  ensureAnimation().playAnimation("Walk")
 }
 add(character)
 ```
@@ -177,9 +184,9 @@ controller, so all animation names become available on the same `playAnimation` 
 
 ```java
 FlixelAnimationController anim = character.ensureAnimation();
-anim.playAnimation("Run");        // start a clip by name
-anim.stopAnimation();             // pause on current frame
-anim.setCurrentFrame(5);          // jump to frame index
+anim.playAnimation("Run");            // start a clip by name (loops by default)
+anim.playAnimation("Attack", false);  // play once, no looping
+anim.pause();                         // pause on the current frame
 ```
 
 `FlixelAnimateSprite` supports all standard `FlixelSprite` properties — position, velocity, physics,
@@ -208,8 +215,8 @@ Flixel.assets.load("data/map.bin", TiledMap.class);
 
 // Block until all queued loads complete (use only in loading states).
 while (!Flixel.assets.update()) {
-    float progress = Flixel.assets.getProgress();
-    progressBar.setValue(progress);
+  float progress = Flixel.assets.getProgress();
+  progressBar.setValue(progress);
 }
 ```
 
@@ -221,7 +228,7 @@ Flixel.assets.load("textures/tileset.png")
 Flixel.assets.load("audio/music/stage1.ogg")
 
 while (!Flixel.assets.update()) {
-    progressBar.setValue(Flixel.assets.getProgress())
+  progressBar.setValue(Flixel.assets.getProgress())
 }
 ```
 
@@ -237,9 +244,9 @@ while (!Flixel.assets.update()) {
 // Get an already-loaded asset (throws if not loaded).
 Texture tileset = Flixel.assets.get("textures/tileset.png", Texture.class);
 
-// Obtain an asset and increment its reference count.
-FlixelAsset<Texture> handle = Flixel.assets.obtainAsset("textures/tileset.png", Texture.class);
-Texture tex = handle.get();
+// Obtain a reference-counted handle (this also retains it).
+FlixelAsset<Texture> handle = Flixel.assets.obtainTypedAsset("textures/tileset.png", Texture.class);
+Texture tex = handle.require();
 
 // Release when done -- asset is disposed when the ref count reaches zero.
 handle.release();
@@ -250,8 +257,8 @@ handle.release();
 
 ```kotlin
 val tileset = Flixel.assets.get("textures/tileset.png", Texture::class.java)
-val handle = Flixel.assets.obtainAsset("textures/tileset.png", Texture::class.java)
-val tex = handle.get()
+val handle = Flixel.assets.obtainTypedAsset("textures/tileset.png", Texture::class.java)
+val tex = handle.require()
 handle.release()
 ```
 
@@ -267,22 +274,23 @@ For large games, use a dedicated loading state that shows a progress bar:
 
 ```java
 public class LoadingState extends FlixelState {
-    @Override
-    protected void create() {
-        Flixel.assets.load("textures/level1.png");
-        Flixel.assets.load("audio/music/level1.ogg");
-        // ... more queued loads
-    }
+  @Override
+  public void create() {
+    super.create();
+    Flixel.assets.load("textures/level1.png");
+    Flixel.assets.load("audio/music/level1.ogg");
+    // ... more queued loads
+  }
 
-    @Override
-    public void update(float elapsed) {
-        super.update(elapsed);
-        if (Flixel.assets.update()) {
-            // All assets are loaded -- switch to the game.
-            Flixel.switchState(new PlayState());
-        }
-        progressBar.setValue(Flixel.assets.getProgress());
+  @Override
+  public void update(float elapsed) {
+    super.update(elapsed);
+    if (Flixel.assets.update()) {
+      // All assets are loaded -- switch to the game.
+      Flixel.switchState(new PlayState());
     }
+    progressBar.setValue(Flixel.assets.getProgress());
+  }
 }
 ```
 
@@ -291,18 +299,19 @@ public class LoadingState extends FlixelState {
 
 ```kotlin
 class LoadingState : FlixelState() {
-    override fun create() {
-        Flixel.assets.load("textures/level1.png")
-        Flixel.assets.load("audio/music/level1.ogg")
-    }
+  override fun create() {
+    super.create()
+    Flixel.assets.load("textures/level1.png")
+    Flixel.assets.load("audio/music/level1.ogg")
+  }
 
-    override fun update(elapsed: Float) {
-        super.update(elapsed)
-        if (Flixel.assets.update()) {
-            Flixel.switchState(PlayState())
-        }
-        progressBar.setValue(Flixel.assets.progress)
+  override fun update(elapsed: Float) {
+    super.update(elapsed)
+    if (Flixel.assets.update()) {
+      Flixel.switchState(PlayState())
     }
+    progressBar.setValue(Flixel.assets.getProgress())
+  }
 }
 ```
 
@@ -325,7 +334,7 @@ debug overlay's Log window listens to it in real time.
 ```java
 // Three severity levels, each with an optional tag.
 Flixel.info("Spawner", "Spawned enemy at (100, 200)");
-Flixel.warn("Physics", "Velocity clamped: " + obj.velocity);
+Flixel.warn("Physics", "Velocity clamped: " + obj.getVelocityX());
 Flixel.error("SaveSystem", "Failed to write save file", exception);
 ```
 
@@ -334,7 +343,7 @@ Flixel.error("SaveSystem", "Failed to write save file", exception);
 
 ```kotlin
 Flixel.info("Spawner", "Spawned enemy at (100, 200)")
-Flixel.warn("Physics", "Velocity clamped: ${obj.velocity}")
+Flixel.warn("Physics", "Velocity clamped: ${obj.velocityX}")
 Flixel.error("SaveSystem", "Failed to write save file", exception)
 ```
 
@@ -370,23 +379,21 @@ Flixel.getLogger().startFileLogging()
 |---------|-----------------|
 | Running from IDE | `<project root>/logs/` |
 | Running from a JAR | `logs/` next to the JAR |
-| Custom | Set via `Flixel.getLogger().setLogFolder("path/to/logs")` |
-
-The logger automatically rotates files: each session creates a new file named
-`log_<timestamp>.txt`. Old files beyond the configured limit (default: 5) are pruned on startup.
+| Custom | Set via `Flixel.getLogger().setLogsFolder("path/to/logs")` |
 
 ### Custom log listeners
 
-Attach a listener to receive every log entry as a `FlixelLogEntry`:
+Attach a listener to receive every log entry as a `FlixelLogEntry` (a record exposing `level()`, `tag()`,
+and `message()`):
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 Flixel.getLogger().addLogListener(entry -> {
-    if (entry.level() == FlixelLogLevel.ERROR) {
-        crashReporter.submit(entry.tag(), entry.message());
-    }
+  if (entry.level() == FlixelLogLevel.ERROR) {
+    crashReporter.submit(entry.tag(), entry.message());
+  }
 });
 ```
 
@@ -395,9 +402,9 @@ Flixel.getLogger().addLogListener(entry -> {
 
 ```kotlin
 Flixel.getLogger().addLogListener { entry ->
-    if (entry.level() == FlixelLogLevel.ERROR) {
-        crashReporter.submit(entry.tag(), entry.message())
-    }
+  if (entry.level() == FlixelLogLevel.ERROR) {
+    crashReporter.submit(entry.tag(), entry.message())
+  }
 }
 ```
 
@@ -413,7 +420,6 @@ the right hook for crash reporting, telemetry, or an in-game dev console of your
 |------|---------------|
 | `SIMPLE` | Level + message only. |
 | `DETAILED` | Level + timestamp + tag + message. Always used for file output. |
-| `SILENT` | Suppresses all console output (file output still works if enabled). |
 
 ```java
 Flixel.getLogger().setLogMode(FlixelLogMode.DETAILED);

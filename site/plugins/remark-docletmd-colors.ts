@@ -154,7 +154,41 @@ function colorize(sig: string, kind: string): string {
   return out;
 }
 
+// Relocate the DocletMD "View source" link onto the same row as the page's H1
+// class heading and wrap both in a flex container so CSS can lay them out side
+// by side. Only API class pages carry a docletmd-source-link node, so docs pages
+// and package index pages are left untouched.
+function liftSourceLink(tree: Root): void {
+  const children = tree.children as (Node & {type: string; value?: string; depth?: number; children?: {value?: string}[]})[];
+
+  let srcIdx = -1;
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i];
+    if (c.type === 'html' && typeof c.value === 'string' && c.value.includes('docletmd-source-link')) {
+      srcIdx = i;
+      break;
+    }
+  }
+  if (srcIdx < 0) return;
+
+  const h1Idx = children.findIndex(c => c.type === 'heading' && c.depth === 1);
+  if (h1Idx < 0) return;
+
+  const srcHtml = children[srcIdx].value as string;
+  const h1 = children[h1Idx];
+  const title = (h1.children ?? []).map(ch => ch.value ?? '').join('');
+
+  // The source link always sits after the H1, so removing it does not shift h1Idx.
+  children.splice(srcIdx, 1);
+  children[h1Idx] = {
+    type: 'html',
+    value: `<div class="dm-class-header"><h1>${esc(title)}</h1>${srcHtml}</div>`,
+  } as Node & {type: string};
+}
+
 const remarkDocletmdColors: Plugin<[], Root> = () => (tree) => {
+  liftSourceLink(tree);
+
   visit(tree, 'html', (node: Html, index: number | undefined, parent: Parent | undefined) => {
     if (index == null || parent == null) return;
     const match = node.value.match(MARKER_RE);

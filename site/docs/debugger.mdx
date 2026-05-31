@@ -33,7 +33,7 @@ Pass `FlixelRuntimeMode.DEBUG` when launching:
 
 ```java
 public static void main(String[] args) {
-    FlixelLwjgl3Launcher.launch(new MyGame(), FlixelRuntimeMode.DEBUG);
+  FlixelLwjgl3Launcher.launch(new MyGame(), FlixelRuntimeMode.DEBUG);
 }
 ```
 
@@ -100,10 +100,11 @@ frame, making it perfect for tracking moving values (sprite positions, velocity,
 // Register any supplier — evaluated every frame while the overlay is visible.
 Flixel.watch.add("Player X", () -> player.getX());
 Flixel.watch.add("Player Y", () -> player.getY());
-Flixel.watch.add("Speed", () -> player.velocity.len());
-Flixel.watch.add("State", () -> player.getStateName());
+// Float-valued suppliers bind to a primitive overload (no boxing).
+Flixel.watch.add("Speed", () ->
+    (float) Math.hypot(player.getVelocityX(), player.getVelocityY()));
 
-// Convenience helper: adds "Mouse X" and "Mouse Y" entries.
+// Convenience helper: adds a "Mouse" entry with the cursor's screen position.
 Flixel.watch.addMouse();
 ```
 
@@ -113,7 +114,7 @@ Flixel.watch.addMouse();
 ```kotlin
 Flixel.watch.add("Player X") { player.x }
 Flixel.watch.add("Player Y") { player.y }
-Flixel.watch.add("Speed") { player.velocity.len() }
+Flixel.watch.add("Speed") { Math.hypot(player.velocityX.toDouble(), player.velocityY.toDouble()).toFloat() }
 Flixel.watch.addMouse()
 ```
 
@@ -183,11 +184,12 @@ Key constants live in `FlixelKey` (which wraps libGDX's `Input.Keys`). Example:
 
 ```java
 @Override
-protected void create() {
-    // Remap the overlay toggle to F1 and disable the default F2 binding.
-    Flixel.setDebugToggleKey(FlixelKey.F1);
-    // Remap pause to F5.
-    Flixel.setDebugPauseKey(FlixelKey.F5);
+public void create() {
+  super.create();
+  // Remap the overlay toggle to F1 and disable the default F2 binding.
+  Flixel.setDebugToggleKey(FlixelKey.F1);
+  // Remap pause to F5.
+  Flixel.setDebugPauseKey(FlixelKey.F5);
 }
 ```
 
@@ -196,8 +198,9 @@ protected void create() {
 
 ```kotlin
 override fun create() {
-    Flixel.setDebugToggleKey(FlixelKey.F1)
-    Flixel.setDebugPauseKey(FlixelKey.F5)
+  super.create()
+  Flixel.setDebugToggleKey(FlixelKey.F1)
+  Flixel.setDebugPauseKey(FlixelKey.F5)
 }
 ```
 
@@ -265,12 +268,12 @@ Command names may only contain ASCII letters and periods (e.g. `spawn`, `ai.togg
 ```java
 // Register during create() or in the constructor of your game.
 Flixel.debug.registerCommand("spawn", args -> {
-    String type = args.getString(0, "enemy");  // first arg, default "enemy"
-    int count = args.getInt(1, 1);             // second arg, default 1
-    for (int i = 0; i < count; i++) {
-        spawnEnemy(type);
-    }
-    Flixel.info("Spawner", "Spawned " + count + " " + type);
+  String type = args.getString(0, "enemy");  // first arg, default "enemy"
+  int count = args.getInt(1, 1);             // second arg, default 1
+  for (int i = 0; i < count; i++) {
+    spawnEnemy(type);
+  }
+  Flixel.info("Spawner", "Spawned " + count + " " + type);
 });
 
 // To remove a command later:
@@ -282,10 +285,10 @@ Flixel.debug.unregisterCommand("spawn");
 
 ```kotlin
 Flixel.debug.registerCommand("spawn") { args ->
-    val type = args.getString(0, "enemy")
-    val count = args.getInt(1, 1)
-    repeat(count) { spawnEnemy(type) }
-    Flixel.info("Spawner", "Spawned $count $type")
+  val type = args.getString(0, "enemy")
+  val count = args.getInt(1, 1)
+  repeat(count) { spawnEnemy(type) }
+  Flixel.info("Spawner", "Spawned $count $type")
 }
 ```
 
@@ -331,7 +334,7 @@ Use a reset command combined with a `switchState` call:
 
 ```java
 Flixel.debug.registerCommand("goto.battle", args ->
-    Flixel.switchState(new BattleState()));
+  Flixel.switchState(new BattleState()));
 ```
 
 Then type `goto.battle` in the command line whenever you want to jump straight to the battle state from

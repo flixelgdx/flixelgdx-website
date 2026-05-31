@@ -665,6 +665,32 @@ nav[class*="docsBreadcrumbs"] {
 .dm-sig .dm-param { color: var(--dm-param); }
 .dm-sig .dm-const { color: var(--dm-const); }
 
+/* Compact class-page header: the class title and the "View source" link share one
+   row. The remark-docletmd-colors plugin wraps both in this flex container so the
+   header no longer stacks the title, then the source button, on separate lines. */
+.dm-class-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Shrink the class title so the header stays close in size to the kind label and
+   qualified-name lines beneath it, rather than towering over them. */
+.dm-class-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+/* Tighten the kind label and qualified-name paragraphs that follow the header. */
+.dm-class-header + p,
+.dm-class-header + p + p {
+  margin-bottom: 0.25rem;
+}
+
 /* Type declaration header emitted by DocletMD above every class/interface/record/enum page. */
 .dm-decl {
   display: inline-block;
@@ -703,6 +729,11 @@ nav[class*="docsBreadcrumbs"] {
   font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none !important;
+}
+
+.dm-class-header .docletmd-source-link {
+  margin: 0;
+  flex: none;
 }
 
 .docletmd-source-link::before {
