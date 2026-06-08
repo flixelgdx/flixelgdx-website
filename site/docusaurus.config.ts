@@ -16,8 +16,8 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://flixelgdx.github.io',
-  baseUrl: '/flixelgdx-website/',
+  url: 'https://flixelgdx.org',
+  baseUrl: '/',
 
   organizationName: 'flixelgdx',
   projectName: 'flixelgdx-website',
