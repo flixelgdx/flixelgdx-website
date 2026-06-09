@@ -1,5 +1,6 @@
 plugins {
   id 'java-library'
+  id 'org.flixelgdx.logging' version "${flixelVersion}"
 }
 
 java {

@@ -79,7 +79,7 @@ function HeroBadges(): JSX.Element {
 }
 
 function Hero(): JSX.Element {
-  const logo = useBaseUrl('/img/logo-square.png');
+  const logo = useBaseUrl('/img/logo.png');
   return (
     <header className={styles.hero}>
       <div className={styles.heroBackdrop} aria-hidden="true" />

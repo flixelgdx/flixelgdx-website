@@ -28,10 +28,9 @@ First build downloads dependencies (and, if needed, the JDK).
 ### If Gradle reports an unknown plugin / unresolved plugin artifact
 
 FlixelGDX publishes Gradle plugins to JitPack under coordinates like
-`com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:<version>`, while
-the **plugin IDs** remain `me.stringdotjar.flixelgdx.teavm` (logging:
-`me.stringdotjar.flixelgdx.logging`). The generated `settings.gradle`
-maps those IDs to JitPack so the `plugins {}` DSL works.
+`com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:<version>`.
+JitPack does not publish plugin marker artifacts, so the generated `settings.gradle`
+maps the `org.flixelgdx.*` plugin IDs to their JitPack modules via `resolutionStrategy`.
 If this block is missing, copy it from
 [COMPILING.md](https://github.com/flixelgdx/flixelgdx/blob/master/COMPILING.md)
 in the framework repo.

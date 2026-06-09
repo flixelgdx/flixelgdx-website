@@ -1,7 +1,7 @@
 package {{PACKAGE}}
 
-import me.stringdotjar.flixelgdx.Flixel
-import me.stringdotjar.flixelgdx.FlixelState
+import org.flixelgdx.Flixel
+import org.flixelgdx.FlixelState
 
 /**
  * Your first FlixelState (think of it as one "screen" of your game).

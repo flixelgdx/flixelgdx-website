@@ -1,6 +1,6 @@
 package {{PACKAGE}}.lwjgl3
 
-import me.stringdotjar.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher
+import org.flixelgdx.backend.lwjgl3.FlixelLwjgl3Launcher
 import {{PACKAGE}}.{{GAME}}Game
 
 /**

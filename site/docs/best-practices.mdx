@@ -70,7 +70,7 @@ override fun update(elapsed: Float) {
 The rule is simple: **every number that represents a speed or a rate
 should be multiplied by `elapsed`.**
 
-## 2. `kill()` and `revive()` -- the lazy way to hide things
+## 2. `kill()` and `revive()` — the lazy way to hide things
 
 When you are done with an object for a while (a bullet that has
 flown off screen, an enemy that just died), your first instinct might
@@ -93,16 +93,16 @@ the object is gone for good.
 <TabItem value="java" label="Java" default>
 
 ```java
-// Bullet flies off screen -- silence it, don't remove it.
+// Bullet flies off screen. Silence it, don't remove it.
 if (bullet.getX() > 640) {
-  bullet.kill(); // stops updating and drawing, stays in the group
+  bullet.kill(); // Stops updating and drawing, stays in the group.
 }
 
-// Something respawned -- wake it back up.
+// Something respawned, wake it back up.
 bullet.revive();
 bullet.setPosition(player.getX(), player.getY());
 
-// Truly done (like a one-time explosion effect) -- free it.
+// Truly done (like a one-time explosion effect), free it.
 explosion.destroy();
 ```
 
@@ -110,17 +110,16 @@ explosion.destroy();
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-// Bullet flies off screen -- silence it, don't remove it.
+// Bullet flies off screen. Silence it, don't remove it.
 if (bullet.x > 640f) {
-  bullet.kill() // stops updating and drawing, stays in the group
+  bullet.kill() // Stops updating and drawing, stays in the group.
 }
 
-// Something respawned -- wake it back up.
+// Something respawned, wake it back up.
 bullet.revive()
-bullet.x = player.x
-bullet.y = player.y
+bullet.setPosition(player.x, player.y)
 
-// Truly done (like a one-time explosion effect) -- free it.
+// Truly done (like a one-time explosion effect), free it.
 explosion.destroy()
 ```
 
@@ -130,26 +129,26 @@ explosion.destroy()
 This pattern is fast, simple, and sets you up perfectly for the next
 tip.
 
-## 3. Pooling with `recycle()` -- stop making new objects
+## 3. Pooling with `recycle()` — stop making new objects
 
-Imagine a swimming pool. When someone is done swimming, they climb out
-and sit in a chair. The pool is still there. The next person who wants
-to swim does not need a brand new pool -- they just use the same one.
+Think of pooling like a stage production with a fixed cast. You hire all
+your actors up front in `create()` — no new ones are brought in mid-show.
+When a bullet leaves the screen, that actor walks offstage (`kill()`).
+When the player fires again, `recycle()` taps the first offstage actor on
+the shoulder and sends them back out. The cast never grows, no new objects
+are allocated mid-game, and the garbage collector has nothing to clean up.
 
-Object pooling works the same way. Instead of creating a new bullet
-every time the player fires, you keep a group of them, `kill()` the
-ones that are done, and grab a "sleeping" one the next time you need
-it. `recycle()` on a `FlixelSpriteGroup` does this for you: it finds
-the first dead member and revives it, or creates a new one if the
-group is not yet at its `maxSize`.
+`recycle()` on a `FlixelBasicGroup` / `FlixelSpriteGroup` does this for you:
+it finds the first dead member and revives it, or creates a new one if the
+group has not yet reached its `maxSize`.
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 import com.badlogic.gdx.graphics.Color;
-import me.stringdotjar.flixelgdx.FlixelSprite;
-import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup;
+import org.flixelgdx.FlixelSprite;
+import org.flixelgdx.group.FlixelSpriteGroup;
 
 // In your state fields:
 private FlixelSpriteGroup bullets;
@@ -170,7 +169,8 @@ add(bullets);
 FlixelSprite bullet = bullets.recycle();
 bullet.setPosition(player.getX() + 4, player.getY());
 
-// In update(), when a bullet leaves the screen:
+// In update(), when a bullet leaves the screen.
+// Use a plain for loop to avoid allocating temporary lists every frame.
 for (FlixelSprite b : bullets.getMembers()) {
   if (b != null && b.alive && b.getX() > 640) b.kill();
 }
@@ -181,14 +181,15 @@ for (FlixelSprite b : bullets.getMembers()) {
 
 ```kotlin
 import com.badlogic.gdx.graphics.Color
-import me.stringdotjar.flixelgdx.FlixelSprite
-import me.stringdotjar.flixelgdx.group.FlixelSpriteGroup
+import org.flixelgdx.FlixelSprite
+import org.flixelgdx.group.FlixelSpriteGroup
 
 // In your state fields:
 private lateinit var bullets: FlixelSpriteGroup
 
 // In create():
 // FlixelSpriteGroup takes (maxSize, rotationRadius, rotation).
+// rotationRadius and rotation only matter if you rotate the group.
 bullets = FlixelSpriteGroup(20, 0f, 0f) // pool of up to 20 bullets
 repeat(20) {
   val b = FlixelSprite().apply {
@@ -232,7 +233,7 @@ pair.
 ```java
 // In update(elapsed):
 
-// Bad: manual nested loop -- slow and error-prone.
+// Bad: manual nested loop, which is slow and error-prone.
 // for (FlixelSprite b : bullets.getMembers()) {
 //   for (FlixelSprite e : enemies.getMembers()) {
 //     if (b != null && e != null && b.alive && e.alive && b.overlaps(e)) { ... }
@@ -254,7 +255,7 @@ Flixel.overlap(bullets, enemies, (bullet, enemy) -> {
 ```kotlin
 // In update(elapsed):
 
-// Bad: manual nested loop -- slow and error-prone.
+// Bad: manual nested loop, which is slow and error-prone.
 // bullets.members.filterNotNull().filter { it.alive }.forEach { b ->
 //   enemies.members.filterNotNull().filter { it.alive }.forEach { e ->
 //     if (b.overlaps(e)) { ... }
@@ -298,7 +299,7 @@ you do not need to manage them yourself.
 <TabItem value="java" label="Java" default>
 
 ```java
-import me.stringdotjar.flixelgdx.util.FlixelTimer;
+import org.flixelgdx.util.timer.FlixelTimer;
 
 // Fire once after 2 seconds.
 FlixelTimer.wait(2f, timer -> spawnEnemy());
@@ -316,7 +317,7 @@ FlixelTimer.loop(1f, timer -> {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-import me.stringdotjar.flixelgdx.util.FlixelTimer
+import org.flixelgdx.util.timer.FlixelTimer
 
 // Fire once after 2 seconds.
 FlixelTimer.wait(2f) { spawnEnemy() }
@@ -338,7 +339,7 @@ FlixelTimer.loop(1f, {
 Every time Java or Kotlin sees `new SomeThing(...)`, it asks the
 runtime to carve out a fresh chunk of memory. Do this every frame, and
 you fill up memory fast. When the garbage collector kicks in to clean
-it up, you get a brief hiccup -- a stutter your players will notice.
+it up, you get a brief hiccup — a stutter your players will notice.
 
 Create your objects once in `create()`, then reuse them every frame.
 
@@ -403,6 +404,21 @@ override fun update(elapsed: Float) {
 The same rule applies to strings built with concatenation inside
 `update()`. If you are building a string just to log it every frame,
 consider logging only when the value actually changes.
+
+:::tip[Reach for allocation-free tools in hot loops]
+
+When you genuinely need to build a string or hold a collection every frame, pick tools that do not allocate:
+
+- **`FlixelString`** instead of `"..." + value`. It reuses one backing buffer and appends primitives without
+  creating throwaway `String` objects. This is the go-to for live HUD text like a score or timer (see
+  [Core Concepts](/docs/core-concepts) for a full example).
+- **libGDX collections** instead of the `java.util` ones. `ObjectMap` (a `HashMap` that does not allocate an
+  `Entry` per insert), `IntSet` / `IntArray` (no boxing of `int` into `Integer`), and `Array` (a leaner
+  `ArrayList`) all avoid the hidden garbage that the standard collections create.
+
+The pattern is always the same: allocate once, reuse forever, and keep the garbage collector asleep.
+
+:::
 
 ## 7. A quick checklist
 

@@ -2,7 +2,7 @@
 id: core-concepts
 title: Core Concepts
 sidebar_position: 3
-description: The 10 essential building blocks of every FlixelGDX game, with HaxeFlixel comparisons and practical code examples.
+description: The 10 essential building blocks of every FlixelGDX game.
 ---
 
 import Tabs from '@theme/Tabs';
@@ -18,22 +18,21 @@ code examples in both Java and Kotlin.
 
 ## 1. FlixelGame — the heart of every game
 
-`FlixelGame` is the root of your application. You extend it once, configure your window title, screen size,
+`FlixelGame` is the root and core part of your game. You extend it once, configure your window title, screen size,
 and initial state, and the framework handles the rest: the game loop, input routing, camera management, the
 debug overlay, and the lifecycle of your states.
-
-**HaxeFlixel equivalent:** `FlxGame`
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 public class MyGame extends FlixelGame {
+
   public MyGame() {
     super(
-      "My Game",       // window title
-      1280, 720,       // world dimensions (virtual resolution)
-      new PlayState()  // initial state
+      "My Game",       // Window title.
+      1280, 720,       // World dimensions (virtual resolution).
+      new PlayState()  // Initial state.
     );
   }
 }
@@ -43,13 +42,17 @@ public class MyGame extends FlixelGame {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-class MyGame : FlixelGame("My Game", 1280, 720, PlayState())
+class MyGame : FlixelGame(
+  "My Game",   // Window title.
+  1280, 720,   // World dimensions (virtual resolution).
+  PlayState()  // Initial state.
+)
 ```
 
 </TabItem>
 </Tabs>
 
-Launch it from the platform launcher in `main`:
+Then use a simple, dedicated platform launcher:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -70,40 +73,40 @@ fun main() = FlixelLwjgl3Launcher.launch(MyGame())
 </TabItem>
 </Tabs>
 
-The world dimensions define the virtual resolution your game logic works in. `FlixelCamera` maps this
-to the physical window at runtime, so your sprites can move in `0..1280` x `0..720` space regardless
-of the player's screen size.
+The world dimensions define the virtual resolution your game logic works in. When your game launches, the *world* size
+will match your window's starting size, too. In the example above, when the initial size is set to be `1280x720`, your
+game's window will start at `1280x720` pixels, and your game's world view will stay at that size regardless when your
+window size changes.
 
 ---
 
 ## 2. FlixelState — organizing different parts of your game
 
-`FlixelState` is the container for everything in a single "screen" of your game — a menu, a level, a
-cutscene. You add sprites, groups, and other objects to a state, and the framework calls `update` and
-`draw` on all of them every frame. Override `create()` to build the screen and `update(float)` for
+`FlixelState` is the container for everything in a single "screen" of your game — a menu, a level, or a
+cutscene. You add sprites, groups, and other objects to a state, and the framework calls `update(float)` and
+`draw(Batch)` on all of them every frame. Override `create()` to build the screen and `update(float)` for
 per-frame logic.
-
-**HaxeFlixel equivalent:** `FlxState`
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 public class PlayState extends FlixelState {
+
   private FlixelSprite player;
 
   @Override
   public void create() {
     super.create();
     player = new FlixelSprite(100, 100);
-    player.loadGraphic(Gdx.files.internal("assets/player.png"));
+    player.loadGraphic("player.png"); // Assuming it's from the assets folder!
     add(player);
   }
 
   @Override
   public void update(float elapsed) {
     super.update(elapsed);
-    // game logic here
+    // Game logic here!
   }
 }
 ```
@@ -113,18 +116,20 @@ public class PlayState extends FlixelState {
 
 ```kotlin
 class PlayState : FlixelState() {
+
   private lateinit var player: FlixelSprite
 
   override fun create() {
     super.create()
     player = FlixelSprite(100f, 100f).apply {
-      loadGraphic(Gdx.files.internal("assets/player.png"))
+      loadGraphic("player.png") // Assuming it's from the assets folder!
     }
     add(player)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
+    // Game logic here!
   }
 }
 ```
@@ -132,8 +137,8 @@ class PlayState : FlixelState() {
 </TabItem>
 </Tabs>
 
-Switch between states with `Flixel.switchState(new MenuState())`. The old state is destroyed
-automatically. `FlixelSubState` lets you overlay a temporary state (pause menu, inventory screen)
+Switch between states with `Flixel.switchState(new YourState());` (or `Flixel.switchState(YourState())` for Kotlin).
+The old state is destroyed automatically. `FlixelSubState` lets you overlay a temporary state (pause menu, inventory screen)
 on top of the current one without destroying it.
 
 ---
@@ -144,38 +149,46 @@ on top of the current one without destroying it.
 with position, size, texture, animation, velocity, and a hitbox. Most visible game objects extend
 `FlixelSprite` or hold one as a field.
 
-**HaxeFlixel equivalent:** `FlxSprite`
-
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 FlixelSprite sprite = new FlixelSprite(x, y);
 
-// Load a static image.
-sprite.loadGraphic(Gdx.files.internal("assets/tile.png"));
+// Load a static image (this is assumed it's stored in the assets folder!).
+sprite.loadGraphic("tile.png");
 
 // Or make a solid-color rectangle (useful for prototyping).
-sprite.makeGraphic(32, 32, Color.RED);
+sprite.makeGraphic(32, 32, FlixelColor.RED);
 
-// Move with velocity (pixels per second).
-sprite.setVelocity(200f, 0f);
+// Move with velocity on the X axis (pixels per second).
+sprite.setVelocityX(200f);
 
 // Scale, rotate, flip.
-sprite.setScale(2f);
+sprite.setScale(2f); // Scales the sprite twice as large both horizontally and vertically.
 sprite.setAngle(45f);
-sprite.flip(true, false); // flip horizontally
+sprite.flip(true, false); // Flip horizontally.
 ```
 
 </TabItem>
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val sprite = FlixelSprite(x, y).apply {
-  loadGraphic(Gdx.files.internal("assets/tile.png"))
-  setVelocity(200f, 0f)
-  setScale(2f)
-}
+val sprite = FlixelSprite(x, y)
+
+// Load a static image (this is assumed it's stored in the assets folder!).
+sprite.loadGraphic("tile.png")
+
+// Or make a solid-color rectangle (useful for prototyping).
+sprite.makeGraphic(32, 32, FlixelColor.RED)
+
+// Move with velocity on the X axis (pixels per second).
+sprite.velocityX = 200f
+
+// Scale, rotate, flip.
+sprite.setScale(2f) // Scales the sprite twice as large both horizontally and vertically.
+sprite.angle = 45f
+sprite.flip(true, false) // Flip horizontally.
 ```
 
 </TabItem>
@@ -192,15 +205,13 @@ allocated on demand via `sprite.ensureAnimation()` to keep memory usage low for 
 the same positioning, scaling, and lifecycle, and you can add it to any state or group. The constructor
 takes the position, a field width, and the text.
 
-**HaxeFlixel equivalent:** `FlxText`
-
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 FlixelText label = new FlixelText(10, 10, 200, "Hello, world!");
 label.setTextSize(24);
-label.setColor(Color.WHITE);
+label.setColor(FlixelColor.WHITE);
 add(label);
 
 // Update the text any time.
@@ -213,24 +224,84 @@ label.setText("Score: " + score);
 ```kotlin
 val label = FlixelText(10f, 10f, 200f, "Hello, world!").apply {
   setTextSize(24)
-  setColor(Color.WHITE)
+  setColor(FlixelColor.WHITE)
 }
 add(label)
+
+// Update the text any time.
+label.setText("Score: $score")
 ```
 
 </TabItem>
 </Tabs>
 
-### Custom fonts
+:::tip[Use FlixelString for optimization!]
 
-Load a TrueType or OpenType font file directly on the `FlixelText` object:
+In the JVM, there's a very subtle and sneaky thing that can make the garbage collector stutter and ruin your
+consistent framerate: <u>**string concatenation**</u>. When you use the example above, `"Score: " + score` / `"Score: $score"`
+seem pretty harmless on the surface, but it secretly creates new `String` objects. When inside an update loop, this can be fatal for
+a game's framerate.
+
+You can avoid this problem using the framework's built-in utility `FlixelString`. Not only does it solve the per-frame
+allocation problem, but it also doesn't create additional `String` objects when primitives (like the `int` score below)
+are concatenated to a `FlixelString`!
+
+**Example usage:**
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-FlixelText label = new FlixelText(10, 10, 200, "Custom font!");
-label.setFont(Gdx.files.internal("fonts/PressStart2P.ttf"));
+// 16 is the initial capacity (in characters) of the backing CharArray.
+// Sizing it up front matters: if the text ever grows past the current capacity,
+// the FlixelString has to allocate a bigger array and copy everything over. Pick a
+// number a little larger than your longest expected string and that copy never happens.
+FlixelString labelText = new FlixelString(16);
+FlixelText label = new FlixelText(10, 10, 200);
+
+// Reuse the same FlixelString every frame. set(...) replaces the contents (no need to
+// clear() first), and each concat(...) appends without allocating a new String.
+label.setText(labelText
+  .set("Score: ")
+  .concat(score));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// 16 is the initial capacity (in characters) of the backing CharArray.
+// Sizing it up front matters: if the text ever grows past the current capacity,
+// the FlixelString has to allocate a bigger array and copy everything over. Pick a
+// number a little larger than your longest expected string and that copy never happens.
+val labelText = FlixelString(16)
+val label = FlixelText(10f, 10f, 200f)
+
+// Reuse the same FlixelString every frame. set(...) replaces the contents (no need to
+// clear() first), and each concat(...) appends without allocating a new String.
+label.setText(labelText
+  .set("Score: ")
+  .concat(score))
+```
+
+</TabItem>
+</Tabs>
+
+:::
+
+### Custom fonts
+
+Load and register a TrueType or OpenType font file on `FlixelFontRegistry`, then apply it on a `FlixelText` object:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+final String MY_FONT = "my_font_id";
+FlixelFontRegistry.register(MY_FONT, Gdx.files.internal("path/to/my/font.ttf")); // Assumes it's from the assets folder!
+
+FlixelText label = new FlixelText(10, 10, 200);
+label.setFont(MY_FONT); // Applies it from your ID!
 label.setTextSize(16);
 ```
 
@@ -238,8 +309,11 @@ label.setTextSize(16);
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val label = FlixelText(10f, 10f, 200f, "Custom font!").apply {
-  setFont(Gdx.files.internal("fonts/PressStart2P.ttf"))
+val MY_FONT = "my_font_id"
+FlixelFontRegistry.register(MY_FONT, Gdx.files.internal("path/to/my/font.ttf")) // Assumes it's from the assets folder!
+
+val label = FlixelText(10f, 10f, 200f).apply {
+  setFont(MY_FONT) // Applies it from your ID!
   setTextSize(16)
 }
 ```
@@ -254,26 +328,31 @@ The font is rasterized at the exact pixel size you request, which keeps text cri
 
 ## 5. FlixelGroup / FlixelBasicGroup / FlixelSpriteGroup — organizing objects
 
-Groups are containers that call `update` and `draw` on all their members automatically. They also
-participate in collision detection, so `Flixel.collide(group, other)` checks every member at once.
-
-**HaxeFlixel equivalent:** `FlxGroup` / `FlxSpriteGroup`
+Groups are containers that hold objects, making it easy to organize your game. A `FlixelSpriteGroup` (or your own
+`FlixelBasicGroup` subclass) is itself a `FlixelBasic`, so you can add it straight to a state and pass it to
+`Flixel.collide(group, other)` to check every member at once.
 
 | Class | Holds | Notes |
 |-------|-------|-------|
-| `FlixelBasicGroup` | Any `IFlixelBasic` | Lightweight; no sprite-specific features. |
-| `FlixelGroup` | Any `FlixelObject` | The most common choice; supports physics members. |
-| `FlixelSpriteGroup` | `FlixelSprite` only | Extends `FlixelSprite`; transforms propagate to members. |
+| `FlixelGroup<T>` | Any type `T` | A plain container for organizing objects. It is **not** part of the scene graph: it does not update, draw, or collide on its own. Its constructor needs an array factory (e.g. `Actor[]::new`) because Java cannot create generic arrays. |
+| `FlixelBasicGroup<T>` | Any `IFlixelBasic` | An **abstract** base. Extend it to build a custom group whose members are updated, drawn, and collided automatically. (`FlixelState` itself is a `FlixelBasicGroup`.) |
+| `FlixelSpriteGroup` | `FlixelSprite` (and subclasses) | The ready-to-use, concrete group most games reach for. Add it to a state, collide it, and it propagates position, scale, alpha, tint, and rotation to its members. |
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-FlixelGroup enemies = new FlixelGroup();
+// FlixelGroup is a plain container. It needs an array factory because Java cannot
+// allocate generic arrays, and it does not update, draw, or collide on its own.
+FlixelGroup<Actor> actors = new FlixelGroup<>(Actor[]::new);
+actors.add(new MyActorClass());
+
+// FlixelSpriteGroup is the ready-to-use group: it updates, draws, and collides.
+FlixelSpriteGroup enemies = new FlixelSpriteGroup();
 for (int i = 0; i < 10; i++) {
-  FlixelSprite enemy = new FlixelSprite(i * 64, 200);
-  enemy.loadGraphic(Gdx.files.internal("assets/enemy.png"));
-  enemies.add(enemy);
+  EnemySprite e = new EnemySprite();
+  e.loadGraphic("enemy.png");
+  enemies.add(e);
 }
 add(enemies);
 
@@ -285,13 +364,21 @@ Flixel.collide(player, enemies);
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val enemies = FlixelGroup()
-repeat(10) { i ->
-  enemies.add(FlixelSprite((i * 64).toFloat(), 200f).apply {
-    loadGraphic(Gdx.files.internal("assets/enemy.png"))
-  })
+// FlixelGroup is a plain container. It needs an array factory (the lambda) and does
+// not update, draw, or collide on its own.
+val actors = FlixelGroup<Actor>() { arrayOfNulls<Actor>(it) }
+actors.add(MyActorClass())
+
+// FlixelSpriteGroup is the ready-to-use group: it updates, draws, and collides.
+val enemies = FlixelSpriteGroup()
+for (i in 0 until 10) {
+  val e = EnemySprite()
+  e.loadGraphic("enemy.png")
+  enemies.add(e)
 }
 add(enemies)
+
+// Collide the player against every member in one call.
 Flixel.collide(player, enemies)
 ```
 
@@ -311,25 +398,23 @@ sprites. Its `RotationMode` enum (nested in `FlixelSpriteGroup`) supports three 
 <TabItem value="java" label="Java" default>
 
 ```java
-// Constructor: maxSize, rotationRadius (for WHEEL mode), starting rotation.
-FlixelSpriteGroup formation = new FlixelSpriteGroup(4, 80f, 0f);
-formation.setRotationMode(FlixelSpriteGroup.RotationMode.ORBIT);
+FlixelSpriteGroup formation = new FlixelSpriteGroup();
 formation.setX(400);
 formation.setY(300);
-// Rotating the group moves all sprites in orbit around (400, 300).
-formation.setAngle(formation.getAngle() + 90f * elapsed);
+formation.changeAngle(90f);
+formation.setRotationMode(FlixelSpriteGroup.RotationMode.ORBIT); // Rotate all sprites around the group's origin. (400, 300).
 ```
 
 </TabItem>
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val formation = FlixelSpriteGroup(4, 80f, 0f).apply {
-  setRotationMode(FlixelSpriteGroup.RotationMode.ORBIT)
-  setX(400f)
-  setY(300f)
+val formation = FlixelSpriteGroup().apply {
+  x = 400f
+  y = 300f
+  angle += 90f
+  rotationMode = FlixelSpriteGroup.RotationMode.ORBIT // Rotate all sprites around the group's origin. (400, 300).
 }
-formation.setAngle(formation.angle + 90f * elapsed)
 ```
 
 </TabItem>
@@ -343,8 +428,6 @@ formation.setAngle(formation.angle + 90f * elapsed)
 of `FlxG` in HaxeFlixel — one central place that holds references to the active state, cameras, input,
 audio, assets, the debugger, and more.
 
-**HaxeFlixel equivalent:** `FlxG`
-
 Common access points:
 
 | Field / method | What it gives you |
@@ -355,9 +438,10 @@ Common access points:
 | `Flixel.watch` | Watch panel manager (`FlixelDebugWatchManager`) |
 | `Flixel.keys` | Keyboard input |
 | `Flixel.mouse` | Mouse input |
+| `Flixel.gamepads` | Gamepad(s) input |
 | `Flixel.switchState(state)` | Transition to a new state |
-| `Flixel.getCamera()` | The primary camera |
-| `Flixel.getCameras()` | All active cameras |
+| `Flixel.cameras` | The live list of all active cameras |
+| `Flixel.cameras.first()` | The main (first) camera |
 
 ---
 
@@ -368,8 +452,6 @@ objects, groups, or combinations and applies simple arcade physics (separation) 
 `Flixel.overlap(a, b)` reports the overlap without moving anything — useful for trigger zones and pickups.
 Pass a notify callback to react to each overlapping pair; the optional fourth argument is a process
 callback that decides whether a pair counts as overlapping (pass `null` for plain AABB overlap).
-
-**HaxeFlixel equivalent:** `FlxG.collide`, `FlxG.overlap`
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -396,7 +478,11 @@ public void update(float elapsed) {
 ```kotlin
 override fun update(elapsed: Float) {
   super.update(elapsed)
+
+  // Solid collision: player bounces off walls.
   Flixel.collide(player, walls)
+
+  // Trigger: collect a coin without physics response.
   Flixel.overlap(player, coins, { _, coin ->
     score++
     coin.destroy()
@@ -425,35 +511,37 @@ player objects will bounce off of, without requiring any custom collision code.
 ## 8. FlixelCamera — the camera system
 
 Every FlixelGDX game has at least one `FlixelCamera`. It maps the virtual world to the physical screen
-and can follow sprites, zoom, shake, and flash. Adding more cameras enables split-screen, picture-in-
-picture, and separate UI layers.
-
-**HaxeFlixel equivalent:** `FlxCamera`
+and can follow sprites, zoom, shake, and flash. Adding more cameras enables split-screen, picture-in-picture,
+and separate UI layers.
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-// The primary camera is always Flixel.getCamera().
-FlixelCamera cam = Flixel.getCamera();
+// The main camera is always Flixel.cameras.first().
+FlixelCamera cam = Flixel.cameras.first();
 cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN);
 cam.setZoom(1.5f);
 
 // Camera effects.
-cam.flash(Color.WHITE, 0.3f);   // white flash for 0.3 seconds
-cam.shake(0.02f, 0.5f);         // shake intensity 2%, duration 0.5s
-cam.fade(Color.BLACK, 1.0f);    // fade to black over 1 second
+cam.flash(FlixelColor.WHITE, 0.3f);  // White flash for 0.3 seconds.
+cam.shake(0.02f, 0.5f);  // Shake intensity 2%, duration 0.5s.
+cam.fade(FlixelColor.BLACK, 1.0f);  // Fade to black over 1 second.
 ```
 
 </TabItem>
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-val cam = Flixel.getCamera()
+// The main camera is always Flixel.cameras.first().
+val cam = Flixel.cameras.first()
 cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN)
-cam.setZoom(1.5f)
-cam.flash(Color.WHITE, 0.3f)
-cam.shake(0.02f, 0.5f)
+cam.zoom = 1.5f
+
+// Camera effects.
+cam.flash(FlixelColor.WHITE, 0.3f)  // White flash for 0.3 seconds.
+cam.shake(0.02f, 0.5f)  // Shake intensity 2%, duration 0.5s.
+cam.fade(FlixelColor.BLACK, 1.0f)  // Fade to black over 1 second.
 ```
 
 </TabItem>
@@ -473,7 +561,7 @@ virtual world is mapped to the screen. For example, a `ScreenViewport` uses actu
 ```java
 Viewport vp = new ScreenViewport();
 FlixelCamera uiCamera = new FlixelCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), vp);
-Flixel.addCamera(uiCamera);
+Flixel.cameras.add(uiCamera);
 ```
 
 </TabItem>
@@ -484,7 +572,7 @@ val uiCamera = FlixelCamera(
   Gdx.graphics.width, Gdx.graphics.height,
   ScreenViewport()
 )
-Flixel.addCamera(uiCamera)
+Flixel.cameras.add(uiCamera)
 ```
 
 </TabItem>
@@ -507,8 +595,9 @@ cam1.setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f);   // left half
 cam2.setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f); // right half
 cam1.follow(player1);
 cam2.follow(player2);
-Flixel.addCamera(cam1);
-Flixel.addCamera(cam2);
+Flixel.cameras.clear(); // Clear the list so you can use only your explicit cameras!
+Flixel.cameras.add(cam1);
+Flixel.cameras.add(cam2);
 ```
 
 </TabItem>
@@ -516,17 +605,18 @@ Flixel.addCamera(cam2);
 
 ```kotlin
 val cam1 = FlixelCamera(640, 720).apply {
-  setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT)
-  setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f)
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT)
+  setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f)  // left half
   follow(player1)
 }
 val cam2 = FlixelCamera(640, 720).apply {
-  setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT)
-  setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f)
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT)
+  setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f)  // right half
   follow(player2)
 }
-Flixel.addCamera(cam1)
-Flixel.addCamera(cam2)
+Flixel.cameras.clear() // Clear the list so you can use only your explicit cameras!
+Flixel.cameras.add(cam1)
+Flixel.cameras.add(cam2)
 ```
 
 </TabItem>
@@ -540,20 +630,19 @@ camera's viewport.
 
 ## 9. Audio — sounds, music, and volume control
 
-All audio goes through `Flixel.sound`. The manager wraps libGDX's `Sound` (short effects) and `Music`
-(streaming tracks) behind a unified API that handles volume, looping, and grouping.
-
-**HaxeFlixel equivalent:** `FlxG.sound`
+All audio goes through `Flixel.sound`. The entire system runs on a powerful low-level library
+called [miniaudio](https://github.com/mackron/miniaudio) (with the Java wrapper the framework
+uses being [gdx-miniaudio](https://github.com/rednblackgames/gdx-miniaudio))
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-// Play a short sound effect (internally uses Sound, cached).
+// Play a short sound effect (cached after the first load).
 Flixel.sound.play("assets/sfx/jump.wav");
 Flixel.sound.play("assets/sfx/jump.wav", 0.8f); // at 80% volume
 
-// Play background music (uses streaming Music).
+// Play background music (streamed, not cached).
 Flixel.sound.playMusic("assets/music/theme.ogg");
 Flixel.sound.playMusic("assets/music/theme.ogg", 0.6f, true); // looping
 
@@ -568,9 +657,19 @@ Flixel.sound.music.stop();
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
+// Play a short sound effect (cached after the first load).
 Flixel.sound.play("assets/sfx/jump.wav")
-Flixel.sound.playMusic("assets/music/theme.ogg", 0.6f, true)
+Flixel.sound.play("assets/sfx/jump.wav", 0.8f) // at 80% volume
+
+// Play background music (streamed, not cached).
+Flixel.sound.playMusic("assets/music/theme.ogg")
+Flixel.sound.playMusic("assets/music/theme.ogg", 0.6f, true) // looping
+
+// Adjust global volume (0.0 to 1.0).
 Flixel.sound.setMasterVolume(0.5f)
+
+// Stop the current music track.
+Flixel.sound.music.stop()
 ```
 
 </TabItem>
@@ -589,8 +688,6 @@ way to move sprites, fade objects, scale UI elements, or drive any other smooth 
 hand-writing lerp logic in `update`. You configure a tween with a `FlixelTweenSettings` object and add
 one or more goals via `addGoal(getter, toValue, setter)` — explicit getter and setter references, which
 keeps tweens fully ahead-of-time compatible (no reflection).
-
-**HaxeFlixel equivalent:** `FlxTween`
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -619,15 +716,23 @@ tween.cancel();
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
+// Tween sprite.x from its current value to 400 over 1 second.
 FlixelTween.tween(sprite, FlixelTweenSettings()
   .setDuration(1.0f)
   .addGoal(sprite::getX, 400f, sprite::setX))
 
+// Fade out (alpha 1 -> 0) with easing, then destroy.
 FlixelTween.tween(sprite, FlixelTweenSettings()
   .setDuration(0.5f)
   .setEase(FlixelEase::quadOut)
   .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setOnComplete { sprite.destroy() })
+
+// Keep the handle to cancel a running tween.
+val tween = FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(2.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX))
+tween.cancel()
 ```
 
 </TabItem>
@@ -652,6 +757,9 @@ Pass any easer function from `FlixelEase` as a method reference. Common choices:
 `FlixelTweenSettings` lets you attach callbacks for key tween events. Each callback receives the
 running `FlixelTween`:
 
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
 ```java
 new FlixelTweenSettings()
   .setOnStart(t -> Flixel.info("Tween started"))
@@ -659,16 +767,45 @@ new FlixelTweenSettings()
   .setOnComplete(t -> nextAnimation())
 ```
 
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+FlixelTweenSettings()
+  .setOnStart { Flixel.info("Tween started") }
+  .setOnUpdate { updateUI()) }
+  .setOnComplete { nextAnimation()) })
+```
+
+</TabItem>
+</Tabs>
+
 If you need the interpolated value itself on every frame, use `FlixelTween.num`, whose update callback
 is handed the current value:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
 
 ```java
 FlixelTween.num(0f, 1f, new FlixelTweenSettings().setDuration(1.0f), value -> updateUI(value));
 ```
 
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+FlixelTween.num(0f, 1f, FlixelTweenSettings().setDuration(1.0f)) { value -> updateUI(value) }
+```
+
+</TabItem>
+</Tabs>
+
 ### Looping and types
 
 Looping behavior is controlled by the `FlixelTweenType` on the settings:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
 
 ```java
 // Loop forever.
@@ -683,6 +820,26 @@ FlixelTween.tween(sprite, new FlixelTweenSettings()
   .setDuration(1.0f)
   .addGoal(sprite::getX, 500f, sprite::setX));
 ```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Loop forever.
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setType(FlixelTweenType.LOOPING)
+  .setDuration(2.0f)
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle))
+
+// Ping-pong (forward then backward, repeating).
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setType(FlixelTweenType.PINGPONG)
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 500f, sprite::setX))
+```
+
+</TabItem>
+</Tabs>
 
 Because each goal uses explicit getter and setter references, any `float` property on any object is
 tweenable — including properties on your own custom classes — with no reflection and no framework coupling.

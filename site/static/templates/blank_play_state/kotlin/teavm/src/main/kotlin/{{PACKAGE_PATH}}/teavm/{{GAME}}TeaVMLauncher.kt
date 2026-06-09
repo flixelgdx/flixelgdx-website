@@ -1,6 +1,6 @@
 package {{PACKAGE}}.teavm
 
-import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher
+import org.flixelgdx.backend.teavm.FlixelTeaVMLauncher
 import {{PACKAGE}}.{{GAME}}Game
 
 /**

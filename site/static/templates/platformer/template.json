@@ -1,7 +1,0 @@
-{
-  "id": "platformer",
-  "name": "Pre-made platformer",
-  "description": "A tiny pre-made platformer (one player, gravity, jumping) you can extend right away.",
-  "languages": ["java", "kotlin", "groovy"],
-  "variables": ["GAME", "PACKAGE", "PACKAGE_PATH"]
-}

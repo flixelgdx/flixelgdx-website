@@ -96,25 +96,29 @@ For Java code changes you still need to restart the JVM.
 
 ## Runtime errors
 
-### `NullPointerException` when accessing `Flixel.debug`
+### Do I need to null-check `Flixel.debug`?
 
-`Flixel.debug` is only populated when the game is launched in `FlixelRuntimeMode.DEBUG` mode. In
-`RELEASE` mode the field is `null` by design — debug overhead is zero in shipped builds.
-
-Guard any debug-only code:
+No. `Flixel.debug` and `Flixel.watch` are created during startup and are present in **every** build — they are
+never `null`. What changes between `DEBUG` and `RELEASE` is whether a *visual overlay* is attached. In `RELEASE`
+mode their methods become harmless no-ops: a command you register has no console to appear in, and watch suppliers
+are never evaluated, so there is no per-frame cost. You can call them unconditionally:
 
 ```java
-if (Flixel.debug != null) {
-  Flixel.debug.registerCommand("spawn", args -> { /* ... */ });
-}
+// Safe in every build -- no null guard required. Do this in your state's create().
+Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
 ```
 
-Or better, wrap it in a constant so the compiler eliminates the block in release builds:
+The managers are wired up by `Flixel.initialize(...)` (called by the launcher), so they are ready from your first
+state's `create()` onward. The only place they can still be `null` is inside your `FlixelGame` subclass's own
+constructor, which runs *before* initialization — register commands from `create()`, not the game constructor.
+
+If you want to skip registering debug-only commands in a shipped build (purely to save the tiny memory they
+occupy), gate them behind your own flag rather than a null check:
 
 ```java
 private static final boolean DEV = true; // set to false before shipping
 
-if (DEV && Flixel.debug != null) {
+if (DEV) {
   Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
 }
 ```
@@ -123,16 +127,16 @@ if (DEV && Flixel.debug != null) {
 
 ### State does not transition / `switchState` seems to do nothing
 
-`Flixel.switchState` queues the transition — it does not happen immediately. The new state is
-created at the end of the current update tick, after all updates and collision checks complete.
-This means you cannot read the new state's fields immediately after the call.
+`Flixel.switchState` happens **immediately and synchronously**: the moment you call it, the current state is
+`destroy()`ed and the new state's `create()` runs right there in the call. (By default it also cancels all active
+tweens and triggers a garbage-collection pass.) If a switch "does nothing," the usual causes are:
 
-If the transition appears to not happen at all, check:
-
-- The current state's `update()` calls `super.update(elapsed)`. The transition queue is drained
-  there.
-- Nothing is throwing an exception during `create()` of the new state (check the console / log
-  window for a red error).
+- **An exception during the new state's `create()`.** If `create()` throws, the new state is left half-built.
+  Check the console / Log window for a red `ERROR` entry.
+- **You kept using the old state after switching.** Because the switch is immediate, any code that runs *after*
+  `switchState(...)` in the same `update()` is touching a state that has already been destroyed. Call
+  `switchState(...)` last in your update logic, or `return` right after it, so you do not read or mutate fields that
+  no longer exist.
 
 ---
 
@@ -158,8 +162,9 @@ Common causes:
   apart. If both objects are immovable (`setImmovable(true)`), the notify callback still fires but
   neither object is separated.
 - An object only collides while it is solid. `setSolid(false)` (or
-  `setAllowCollisions(FlixelObject.DirectionFlags.NONE)`) makes it pass straight through everything.
-  The default is `FlixelObject.DirectionFlags.ANY`, which collides on all sides.
+  `setAllowCollisions(FlixelDirectionFlags.NONE)`) makes it pass straight through everything.
+  The default is `FlixelDirectionFlags.ANY`, which collides on all sides. `FlixelDirectionFlags`
+  lives in `org.flixelgdx.util`.
 - `Flixel.collide()` separates by moving positions. If you also move an object by hand
   (`setX(...)` / `setY(...)`) in the same frame, the two can fight each other and cause jitter.
   Prefer driving movement through `setVelocity(...)` and letting collision do the separating.
@@ -168,8 +173,9 @@ Common causes:
 
 ### Audio does not play
 
-- **File format.** The LWJGL3 backend uses libGDX's audio pipeline. OGG Vorbis (`.ogg`) is
-  universally supported. MP3 playback requires the `gdx-audio` extension. WAV works but is large.
+- **File format.** Every backend (excluding web/TeaVM) is powered by [gdx-miniaudio](https://github.com/rednblackgames/gdx-miniaudio).
+  `.mp3`, `.ogg` Vorbis/Opus, `.wav` and `.flac` files are the default supported audio formats — any other
+  format will not work.
 - **Path is wrong.** Asset paths are relative to the `assets/` folder at the root of the `assets`
   module (or wherever your `assets` source root points). Pass the path without a leading slash.
 - **TeaVM.** Web builds use the Web Audio API. Audio autoplay is blocked by browsers until the
@@ -182,16 +188,14 @@ Common causes:
 
 - Calling `tween.cancel()` or `FlixelTween.cancelTweensOf(target)` early will stop them.
 - If the owning state is destroyed mid-tween, all tweens are automatically cancelled.
-- Make sure the tween's `target` object is not being garbage-collected (possible if you hold only
-  the tween reference and nothing else references the target).
 
 ---
 
 ### Watch panel shows `null` or stale values
 
-Watch entries are evaluated every frame while the overlay is **visible**. If the overlay is hidden
-(F2 toggled off), suppliers are not called. Values shown when you reopen the overlay are from the
-first frame after it became visible, which should be up to date.
+Watch entries are refreshed at **~10Hz** (roughly ten times per second) while the overlay is
+**visible**. If the overlay is hidden (F2 toggled off), suppliers are not called. Values shown when
+you reopen the overlay are from the first refresh after it became visible, which should be up to date.
 
 If a supplier returns `null`, confirm the object it references is not `null` itself — `player.getX()`
 will throw a `NullPointerException` if `player` is `null`, which the watch panel silently catches
@@ -303,15 +307,26 @@ exercise that code path during config generation, or add the pattern manually.
 
 ### `native-image` build fails with `OutOfMemoryError`
 
-The `native-image` compiler is memory-hungry. For mid-size games, 4-8 GB of heap is typical:
+This is the **compiler's** memory, not your game's. The `native-image` tool performs whole-program
+static analysis — it traces every reachable class, builds a call graph, and AOT-compiles everything
+to a native binary. That process is genuinely memory-intensive at build time. Your finished native
+executable still runs on the usual small heap (typically 4-8 MB for a FlixelGDX game).
 
-```
--J-Xmx8g
+For mid-size games, the compiler typically needs 4-8 GB. Set the compiler JVM heap via the Gradle
+`graalvmNative` block:
+
+```groovy
+graalvmNative {
+  binaries {
+    main {
+      jvmArgs.add('-Xmx8g')
+    }
+  }
+}
 ```
 
-Pass this as an argument to `native-image` or set `org.graalvm.nativeimage.imagecode=true` in
-your Gradle config. If the build still runs out of memory, disable unused features like
-`--no-fallback` to reduce analysis scope during iteration (re-enable for the final build).
+If the build still runs out of memory, add `-Ob` (quick-build mode) while iterating — it skips the
+heaviest optimizations and cuts peak memory significantly. Remove it for your final release build.
 
 ---
 
@@ -349,13 +364,21 @@ images.
 
 ### "Image generation has failed" with no clear error
 
-Run the build with `-H:+ReportExceptionStackTraces` to get the full stack trace:
+Run the build with `-H:+ReportExceptionStackTraces` to get the full stack trace. Add it to
+`buildArgs` in your Gradle config:
 
-```
-./gradlew nativeCompile -Pnative-image.jvmArgs="-H:+ReportExceptionStackTraces"
+```groovy
+graalvmNative {
+  binaries {
+    main {
+      buildArgs.add('-H:+ReportExceptionStackTraces')
+      buildArgs.add('--verbose')
+    }
+  }
+}
 ```
 
-Also add `--verbose` to see which class or feature triggered the failure. Most "silent" failures
+`--verbose` shows which class or feature triggered the failure. Most "silent" failures
 are caused by a missing class registration (reflection or JNI), a missing resource pattern, or
 an initializer that tried to access disk/network at build time.
 
@@ -386,6 +409,6 @@ If none of the above solves your problem:
 
 1. Check the **Log window** (if you are in debug mode) — red `ERROR` entries almost always point
    directly at the cause.
-2. Run with `Flixel.getLogger().startFileLogging()` and share the log file.
+2. Run with `Flixel.log.startFileLogging()` and share the log file.
 3. Open an issue at the [FlixelGDX repository](https://github.com/flixelgdx/flixelgdx) with your
    stack trace and a minimal reproduction.

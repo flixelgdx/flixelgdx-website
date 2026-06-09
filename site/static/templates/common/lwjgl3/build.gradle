@@ -36,19 +36,23 @@ run {
 
   jvmArgs = ["-Xms8M", "-Xmx{{HEAP_MB}}M"]
   if (isMacOs) jvmArgs += "-XstartOnFirstThread"
+
+  // Always re-run even when no sources changed; without this Gradle marks the
+  // task up-to-date on the second launch and the game never opens.
+  outputs.upToDateWhen { false }
 }
 
 dependencies {
   implementation project(":core")
-  implementation "com.github.flixelgdx.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
-  
+  implementation "org.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
+
   if (enableGraalNative == 'true') {
     nativeImageOnly "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
   }
 }
 
 jar {
-  // Sets the name of the .jar file this produces to the name of the game or app, with the version after.
+  // Sets the name of the .jar file this produces to the name of the game, with the version after.
   archiveFileName.set("${gameId}-${version}.jar")
   // The duplicatesStrategy matters starting in Gradle 7.0; this setting works.
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE

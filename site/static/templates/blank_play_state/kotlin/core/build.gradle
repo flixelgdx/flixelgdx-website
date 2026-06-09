@@ -1,6 +1,7 @@
 plugins {
   id 'org.jetbrains.kotlin.jvm'
   id 'java-library'
+  id 'org.flixelgdx.logging' version "${flixelVersion}"
 }
 
 java {
@@ -15,4 +16,10 @@ java {
 dependencies {
   api "com.github.flixelgdx.flixelgdx:flixelgdx-core:${flixelVersion}"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+
+  // KTX: Kotlin-friendly extensions for libGDX.
+  // ktx-math adds operator overloads for Vector2, Vector3, Matrix4, etc.
+  // ktx-collections adds Kotlin extension functions for libGDX Array, ObjectMap, and friends.
+  implementation "io.github.libktx:ktx-math:${ktxVersion}"
+  implementation "io.github.libktx:ktx-collections:${ktxVersion}"
 }

@@ -1,7 +1,7 @@
 // Plugin versions + repositories. JitPack hosts Flixel Gradle plugins
 // under maven coordinates (com.github.flixelgdx.flixelgdx:flixelgdx-*-plugin).
-// Plugin IDs are still me.stringdotjar.flixelgdx.*. Without the mapping
-// below, Gradle fails to resolve the plugin marker from the portal.
+// JitPack does not publish plugin marker artifacts, so the mapping below
+// tells Gradle which JitPack module to use for each org.flixelgdx.* plugin ID.
 pluginManagement {
   plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.9.24'
@@ -17,10 +17,10 @@ pluginManagement {
   resolutionStrategy {
     eachPlugin {
       switch (requested.id.id) {
-        case 'me.stringdotjar.flixelgdx.teavm':
+        case 'org.flixelgdx.teavm':
           useModule('com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:' + requested.version.toString())
           break
-        case 'me.stringdotjar.flixelgdx.logging':
+        case 'org.flixelgdx.logging':
           useModule('com.github.flixelgdx.flixelgdx:flixelgdx-logging-plugin:' + requested.version.toString())
           break
         default:

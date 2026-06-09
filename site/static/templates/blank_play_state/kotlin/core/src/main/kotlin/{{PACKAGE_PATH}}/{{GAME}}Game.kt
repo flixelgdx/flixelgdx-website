@@ -1,6 +1,6 @@
 package {{PACKAGE}}
 
-import me.stringdotjar.flixelgdx.FlixelGame
+import org.flixelgdx.FlixelGame
 
 /**
  * Your game entry class.

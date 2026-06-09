@@ -89,6 +89,17 @@ function desktopConvenienceTask(platforms: Platform[]): string {
   ].join('\n');
 }
 
+function kotlinGradleProperties(lang: Language): string {
+  if (lang !== 'kotlin') return '';
+  return [
+    '',
+    '# KTX version (Kotlin extensions for libGDX).',
+    '# Check https://github.com/libktx/ktx/releases for the latest version matching your gdxVersion.',
+    'ktxVersion=1.13.1-rc1',
+    '',
+  ].join('\n');
+}
+
 function webGradleProperties(platforms: Platform[]): string {
   if (!platforms.includes('web')) return '';
   return [
@@ -129,24 +140,28 @@ function vscodeLaunchConfigsJson(o: GeneratorOptions, mainClass: string): string
   );
 }
 
-function lwjgl3PluginsBlock(lang: Language): string {
+function lwjgl3PluginsBlock(lang: Language, flixelVersion: string): string {
   if (lang === 'kotlin') {
     return `id 'org.jetbrains.kotlin.jvm'
   id 'application'
   id 'org.graalvm.buildtools.native'
-  id 'io.github.fourlastor.construo'`;
+  id 'io.github.fourlastor.construo'
+  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
   }
   return `id 'application'
   id 'org.graalvm.buildtools.native'
-  id 'io.github.fourlastor.construo'`;
+  id 'io.github.fourlastor.construo'
+  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
 }
 
-function teavmPluginsBlock(lang: Language): string {
+function teavmPluginsBlock(lang: Language, flixelVersion: string): string {
   if (lang === 'kotlin') {
     return `id 'org.jetbrains.kotlin.jvm'
-  id 'java-library'`;
+  id 'java-library'
+  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
   }
-  return `id 'java-library'`;
+  return `id 'java-library'
+  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
 }
 
 function teavmLangDeps(lang: Language): string {
@@ -247,6 +262,7 @@ export async function buildSubstitutionMap(
     SETTINGS_SUBPROJECT_INCLUDES: settingsSubprojectIncludes(o.platforms),
     DESKTOP_CONVENIENCE_TASK: desktopConvenienceTask(o.platforms),
     WEB_GRADLE_PROPERTIES: webGradleProperties(o.platforms),
+    KOTLIN_GRADLE_PROPERTIES: kotlinGradleProperties(o.language),
     GRADLE_EXPERT_APPEND: expertGradle,
     LWJGL3_MAIN_CLASS: `${pkg}.lwjgl3.${game}Lwjgl3Launcher${o.language === 'kotlin' ? 'Kt' : ''}`,
     TEAVM_MAIN_CLASS: teavmMain,
@@ -254,8 +270,8 @@ export async function buildSubstitutionMap(
     JVM_ARG_STRING: jvmArgString(o),
     NATIVE_IMAGE_NAME: nativeImageName,
     CONSTRUO_IDENTIFIER: `${pkg}.desktop`,
-    LWJGL3_PLUGINS: lwjgl3PluginsBlock(o.language),
-    TEAVM_PLUGINS: teavmPluginsBlock(o.language),
+    LWJGL3_PLUGINS: lwjgl3PluginsBlock(o.language, o.flixelVersion),
+    TEAVM_PLUGINS: teavmPluginsBlock(o.language, o.flixelVersion),
     TEAVM_LANG_DEPS: teavmLangDeps(o.language),
     IDEA_MAIN_CLASS: ideaMain,
     ECLIPSE_CLASSPATH_ENTRIES: eclipseClasspathEntries(o),

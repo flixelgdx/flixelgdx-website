@@ -1,6 +1,6 @@
 package {{PACKAGE}}.teavm;
 
-import me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher;
+import org.flixelgdx.backend.teavm.FlixelTeaVMLauncher;
 import {{PACKAGE}}.{{GAME}}Game;
 
 /**
@@ -12,8 +12,9 @@ import {{PACKAGE}}.{{GAME}}Game;
  */
 public final class {{GAME}}TeaVMLauncher {
 
-  private {{GAME}}TeaVMLauncher() {}
   public static void main(String[] args) {
     FlixelTeaVMLauncher.launch(new {{GAME}}Game());
   }
+
+  private {{GAME}}TeaVMLauncher() {}
 }
