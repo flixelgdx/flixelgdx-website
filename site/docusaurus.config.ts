@@ -1,6 +1,10 @@
-import type {Config} from '@docusaurus/types';
+import type {Config, PluginConfig} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {githubLight, githubDark} from './src/prismThemes';
+import remarkDocletmdColors from './plugins/remark-docletmd-colors';
+
+const devTemplateEditorPlugins: PluginConfig[] =
+  process.env.NODE_ENV === 'development' ? [['./plugins/dev-template-editor-api', {}]] : [];
 
 const config: Config = {
   title: 'FlixelGDX',
@@ -12,8 +16,8 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://flixelgdx.github.io',
-  baseUrl: '/flixelgdx-website/',
+  url: 'https://flixelgdx.org',
+  baseUrl: '/',
 
   organizationName: 'flixelgdx',
   projectName: 'flixelgdx-website',
@@ -29,15 +33,13 @@ const config: Config = {
 
   markdown: {
     mermaid: false,
-    // 'detect' = .mdx → MDX (JSX-aware), .md → CommonMark. Our hand-
-    // written pages live in .mdx files (they import React components);
-    // every auto-generated API page is .md so they're never run through
-    // MDX's strict JSX parser, which rejects Dokka's link-heavy syntax.
     format: 'detect',
     hooks: {
       onBrokenMarkdownLinks: 'warn',
     },
   },
+
+  clientModules: ['./src/clientModules/devTemplateEditorNav.ts'],
 
   presets: [
     [
@@ -47,8 +49,7 @@ const config: Config = {
           path: 'docs',
           routeBasePath: 'docs',
           sidebarPath: './sidebars.ts',
-          editUrl:
-            'https://github.com/flixelgdx/flixelgdx-website/tree/main/site/',
+          editUrl: 'https://github.com/flixelgdx/flixelgdx-website/tree/main/site/',
         },
         blog: false,
         theme: {
@@ -58,7 +59,20 @@ const config: Config = {
     ],
   ],
 
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        language: ['en'],
+        searchResultLimits: 10,
+        docsRouteBasePath: ['docs', 'api'],
+      },
+    ],
+  ],
+
   plugins: [
+    ...devTemplateEditorPlugins,
     // Single docs plugin for the entire API reference (welcome page +
     // every module's generated content). Per-module sidebars are still
     // distinct because each top-level module folder (core / lwjgl3 /
@@ -78,6 +92,7 @@ const config: Config = {
         routeBasePath: 'api',
         sidebarPath: './sidebars-api.ts',
         editUrl: undefined,
+        beforeDefaultRemarkPlugins: [remarkDocletmdColors],
       },
     ],
   ],
@@ -104,18 +119,19 @@ const config: Config = {
         src: 'img/logo-square.png',
       },
       items: [
-        {to: '/docs/getting-started', label: 'Getting Started', position: 'left'},
-        {to: '/docs/your-first-project', label: 'Your First Project', position: 'left'},
+        {to: '/getting-started', label: 'Getting Started', position: 'left'},
+        {to: '/docs/your-first-project', label: 'Docs', position: 'left'},
         {
           type: 'dropdown',
           label: 'API',
           position: 'left',
           items: [
-            {to: '/api/core/', label: 'Core'},
-            {to: '/api/lwjgl3/', label: 'Desktop (LWJGL3)'},
-            {to: '/api/teavm/', label: 'Web (TeaVM)'},
-            {to: '/api/android/', label: 'Android'},
-            {to: '/api/ios/', label: 'iOS (MobiVM)'},
+            {to: '/api/category/core/', label: 'Core'},
+            {to: '/api/category/desktop-lwjgl3/', label: 'Desktop (LWJGL3)'},
+            {to: '/api/category/web-teavm', label: 'Web (TeaVM)'},
+            // TODO: uncomment when Android and iOS backends are released
+            // {to: '/api/android/', label: 'Android'},
+            // {to: '/api/ios/', label: 'iOS (MobiVM)'},
             {to: '/api/', label: 'About the reference'},
           ],
         },
@@ -130,9 +146,9 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Learn',
+          title: 'Docs',
           items: [
-            {label: 'Getting Started', to: '/docs/getting-started'},
+            {label: 'Getting Started', to: '/getting-started'},
             {label: 'Your First Project', to: '/docs/your-first-project'},
             {label: 'API Reference', to: '/api/'},
           ],

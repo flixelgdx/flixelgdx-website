@@ -1,0 +1,41 @@
+// Plugin versions + repositories. JitPack hosts Flixel Gradle plugins
+// under maven coordinates (com.github.flixelgdx.flixelgdx:flixelgdx-*-plugin).
+// JitPack does not publish plugin marker artifacts, so the mapping below
+// tells Gradle which JitPack module to use for each org.flixelgdx.* plugin ID.
+pluginManagement {
+  plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+    id 'org.teavm' version '0.13.0'
+    id 'org.graalvm.buildtools.native' version '0.10.6'
+    id 'io.github.fourlastor.construo' version '2.1.0'
+  }
+  repositories {
+    mavenLocal()
+    maven { url 'https://jitpack.io' }
+    gradlePluginPortal()
+  }
+  resolutionStrategy {
+    eachPlugin {
+      switch (requested.id.id) {
+        case 'org.flixelgdx.teavm':
+          useModule('com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:' + requested.version.toString())
+          break
+        case 'org.flixelgdx.logging':
+          useModule('com.github.flixelgdx.flixelgdx:flixelgdx-logging-plugin:' + requested.version.toString())
+          break
+        default:
+          break
+      }
+    }
+  }
+}
+
+// Auto-provision the selected JDK at build time.
+// The Foojay Toolchains Resolver lets Gradle download a matching JDK on
+// demand, so you only need a JDK to bootstrap Gradle itself.
+plugins {
+  id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = "{{ROOT_PROJECT_NAME}}"
+{{SETTINGS_SUBPROJECT_INCLUDES}}

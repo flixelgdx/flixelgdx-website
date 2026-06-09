@@ -1,25 +1,39 @@
-import {JSX, ReactNode} from 'react';
+import {useRef, useState, type JSX, type ReactNode} from 'react';
+import {createPortal} from 'react-dom';
 
-/**
- * Inline help bubble.
- *
- * Wraps any child element with a hover/focus tooltip. We keep the markup
- * dead simple (a styled <span> for the tip) so the tooltip works on touch
- * devices via :focus-within as well.
- */
-export default function Hint({
-  tip,
-  children,
-}: {
-  tip: ReactNode;
-  children: ReactNode;
-}): JSX.Element {
+type TooltipPos = {top: number; left: number};
+
+export default function Hint({tip, children}: {tip: ReactNode; children: ReactNode}): JSX.Element {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<TooltipPos | null>(null);
+
+  function show() {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos({top: r.top, left: r.left + r.width / 2});
+  }
+
+  function hide() {
+    setPos(null);
+  }
+
   return (
-    <span className="flx-hint" tabIndex={0}>
+    <span
+      ref={ref}
+      className="flx-hint"
+      tabIndex={0}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
       {children}
-      <span className="flx-hint__tip" role="tooltip">
-        {tip}
-      </span>
+      {pos && createPortal(
+        <span className="flx-hint__tip" role="tooltip" style={{top: pos.top, left: pos.left}}>
+          {tip}
+        </span>,
+        document.body
+      )}
     </span>
   );
 }

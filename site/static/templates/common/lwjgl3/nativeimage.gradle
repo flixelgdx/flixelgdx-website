@@ -1,0 +1,122 @@
+/*
+ * nativeimage.gradle -- GraalVM Native Image support for the lwjgl3 module.
+ *
+ * Applied automatically when enableGraalNative=true in gradle.properties.
+ *
+ * HOW TO ENABLE
+ *   1. Install GraalVM JDK 17+.
+ *   2. Set GRAALVM_HOME=/path/to/graalvm-jdk-17 in your shell profile.
+ *   3. Set enableGraalNative=true in gradle.properties.
+ *
+ * HOW TO BUILD
+ *   ./gradlew :lwjgl3:nativeCompile
+ *   Output lands in lwjgl3/build/native/nativeCompile/.
+ *
+ * ADDING LIBRARIES THAT USE JNI OR REFLECTION
+ *   If you add a library that uses JNI or reflection, run the config generator:
+ *
+ *   ./gradlew :lwjgl3:generateNativeConfig
+ *
+ *   Play through every feature in your game, then close the window.
+ *   The task merges the recorded configuration into META-INF/native-image/
+ *   so it is picked up by the next nativeCompile.
+ */
+
+// Enable agent instrumentation when generateNativeConfig is explicitly requested.
+if (gradle.startParameter.taskNames.any { it.contains('generateNativeConfig') }) {
+    project.extensions.extraProperties.set('agent', '')
+}
+
+def _assetsDir = new File("${project.rootDir}/assets")
+
+graalvmNative {
+  // Disable Gradle's JDK auto-detection so GRAALVM_HOME (or JAVA_HOME) is used directly.
+  toolchainDetection = false
+  metadataRepository {
+    // The community metadata repository requires GraalVM 25+; game projects don't need it.
+    enabled = false
+  }
+
+  agent {
+    defaultMode = "standard"
+    modes {
+      standard {
+        outputTaskNames = ["run"]
+      }
+    }
+    // generateNativeConfig merges agent output here after the game closes.
+    metadataCopy {
+      inputTaskNames = ["run"]
+      outputDirectories = ["src/main/resources/META-INF/native-image"]
+      mergeWithExisting = true
+    }
+  }
+
+  binaries {
+    main {
+      buildArgs.add('-march=compatibility')
+      buildArgs.add('-R:MaxHeapSize={{HEAP_MB}}m')
+      jvmArgs.add('-Dfile.encoding=UTF8')
+      sharedLibrary = false
+
+      // Bundle native shared libraries so they can be extracted at runtime.
+      buildArgs.add('-H:IncludeResources=.+\\.so')
+      buildArgs.add('-H:IncludeResources=.+\\.dll')
+      buildArgs.add('-H:IncludeResources=.+\\.dylib')
+
+      // The default bitmap font is embedded in both the libGDX and FlixelGDX JARs.
+      // The leading .* is required because GraalVM matches the full classpath-relative path.
+      buildArgs.add('-H:IncludeResources=.*lsans.+')
+
+      // Embed each asset file using its exact classpath-relative path.
+      // Based on https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
+      fileTree(_assetsDir).each { file ->
+        def relPath = _assetsDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+        buildArgs.add("-H:IncludeResources=\\Q${relPath}\\E")
+      }
+
+      // Embed module-level resources (icons, config files, shaders, etc.) from
+      // src/main/resources/. These are on the classpath but not in assets/, so they
+      // need explicit entries. META-INF is skipped because it holds GraalVM config,
+      // not runtime files.
+      def _moduleResourcesDir = new File("${projectDir}/src/main/resources")
+      if (_moduleResourcesDir.exists()) {
+        fileTree(_moduleResourcesDir).each { file ->
+          def relPath = _moduleResourcesDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+          if (!relPath.startsWith('META-INF')) {
+            buildArgs.add("-H:IncludeResources=\\Q${relPath}\\E")
+          }
+        }
+      }
+
+      resources.autodetect()
+
+      // imgui-java must initialize at runtime so its native library is loaded from
+      // the classpath after the binary starts, not discarded at build time.
+      buildArgs.add('--initialize-at-run-time=imgui.ImGui,imgui.ImFontAtlas,imgui.ImGuiPlatformIO')
+
+      // JNI configuration for framework libraries (imgui, miniaudio) and any
+      // libraries you add. Run generateNativeConfig to extend this file for your own dependencies.
+      buildArgs.add("-H:JNIConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json")
+    }
+  }
+}
+
+// Include assets in the fat JAR so nativeCompile can find and embed them.
+tasks.named('jar').configure {
+  from fileTree("${project.rootDir}/assets")
+}
+
+// Prevent Gradle from caching the run task, which would skip agent recording.
+tasks.named('run').configure {
+  doNotTrackState('Agent recording must not be skipped by the build cache.')
+}
+
+// Single-command config generator. Launches the game with the tracing agent,
+// then merges the recorded output into META-INF/native-image/ when the game closes.
+tasks.register('generateNativeConfig') {
+  group = 'Native Image'
+  description = 'Launches the game with the GraalVM tracing agent. Play through all features, then close the window. Config is written to META-INF/native-image/ automatically.'
+  dependsOn(tasks.named('run'))
+  finalizedBy(tasks.named('metadataCopy'))
+}

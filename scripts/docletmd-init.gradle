@@ -1,0 +1,77 @@
+/*
+ * Gradle init script -- applies DocletMD to FlixelGDX framework modules.
+ *
+ * Run this from inside the framework repo directory, e.g.:
+ *
+ *   ./gradlew :flixelgdx-core:generateDocletMD   \
+ *             :flixelgdx-lwjgl3:generateDocletMD  \
+ *             :flixelgdx-teavm:generateDocletMD   \
+ *             -I /abs/path/to/scripts/docletmd-init.gradle \
+ *             -PdocletmdOutDir=/abs/path/to/output
+ *
+ * Because the init script is applied to the framework's own Gradle build,
+ * DocletMD is auto-wired to each module's main source set AND its fully
+ * resolved compile classpath (libGDX, etc.), so no manual dependency
+ * configuration is needed here.
+ *
+ * Android and iOS modules are intentionally excluded: they require platform
+ * SDKs (Android SDK, RoboVM) that are not available in a standard CI
+ * environment. The framework's settings.gradle already gates Android behind
+ * -PincludeAndroid=true, so it will not appear as a subproject by default.
+ *
+ * Knobs:
+ *   docletmdOutDir  Absolute path for the output root directory. Per-module
+ *                   trees land under <docletmdOutDir>/<slug>/. Defaults to
+ *                   <framework-root>/build/docletmd-out.
+ */
+initscript {
+    repositories {
+        mavenLocal()
+        maven { url 'https://jitpack.io' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'me.stringdotjar.docletmd:docletmd:0.1.3'
+    }
+}
+
+import me.stringdotjar.docletmd.DocletMDPlugin
+import me.stringdotjar.docletmd.DocletMDTask
+
+def moduleSlugs = [
+    'flixelgdx-core'  : 'core',
+    'flixelgdx-lwjgl3': 'lwjgl3',
+    'flixelgdx-teavm' : 'teavm',
+]
+
+allprojects { proj ->
+    def slug = moduleSlugs[proj.name]
+    if (slug == null) return
+
+    // Wait for the java plugin so DocletMD's auto-wiring picks up the source
+    // set and compile classpath that are registered by the java plugin.
+    proj.plugins.withId('java') {
+        proj.apply plugin: DocletMDPlugin
+
+        def outBase = (rootProject.findProperty('docletmdOutDir') as String)
+            ?: new File(rootProject.buildDir, 'docletmd-out').absolutePath
+
+        proj.tasks.named('generateDocletMD', DocletMDTask) { task ->
+            task.outputDir.set(new File(outBase, slug))
+
+            // gdx-jnigen-loader splits com.badlogic.gdx.utils with gdx, causing a
+            // split-package error in module-path mode. Patch the loader JAR into the
+            // gdx module so the module system sees only one provider of that package.
+            // Evaluated lazily so the configuration is not resolved at config time.
+            task.additionalArgs.set(proj.provider {
+                def jnigenJar = proj.configurations
+                    .getByName('compileClasspath')
+                    .resolvedConfiguration.resolvedArtifacts
+                    .find { it.name.contains('jnigen-loader') }
+                def jnigenArgs = jnigenJar ? ['--patch-module', "gdx=${jnigenJar.file.absolutePath}"] : []
+                def sourceBase = "https://github.com/flixelgdx/flixelgdx/blob/master/${proj.name}/src/main/java/"
+                jnigenArgs + ['-sourceBase', sourceBase]
+            })
+        }
+    }
+}

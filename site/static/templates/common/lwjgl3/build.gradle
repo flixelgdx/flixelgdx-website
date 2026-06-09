@@ -1,0 +1,160 @@
+import io.github.fourlastor.construo.Target
+import java.util.Locale
+
+plugins {
+  {{LWJGL3_PLUGINS}}
+}
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of({{JAVA_VERSION}})
+    vendor = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
+  }
+}
+
+// gdx-svmhelper provides GraalVM substitutions for libGDX. It must be on the
+// native-image classpath during nativeCompile, but should NOT be in the fat JAR
+// because jdeps (used by construo) would see its GraalVM module references and
+// add org.graalvm.nativeimage to jlink's module list, which Temurin does not ship.
+configurations {
+  nativeImageOnly {
+    canBeResolved = true
+    canBeConsumed = false
+  }
+}
+
+def isMacOs = System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contains('mac')
+
+application {
+  mainClass = "{{LWJGL3_MAIN_CLASS}}"
+}
+
+run {
+  workingDir = rootProject.file('assets').path
+  // You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
+  // setIgnoreExitValue(true)
+
+  jvmArgs = ["-Xms8M", "-Xmx{{HEAP_MB}}M"]
+  if (isMacOs) jvmArgs += "-XstartOnFirstThread"
+
+  // Always re-run even when no sources changed; without this Gradle marks the
+  // task up-to-date on the second launch and the game never opens.
+  outputs.upToDateWhen { false }
+}
+
+dependencies {
+  implementation project(":core")
+  implementation "org.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
+
+  if (enableGraalNative == 'true') {
+    nativeImageOnly "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
+  }
+}
+
+jar {
+  // Sets the name of the .jar file this produces to the name of the game, with the version after.
+  archiveFileName.set("${gameId}-${version}.jar")
+  // The duplicatesStrategy matters starting in Gradle 7.0; this setting works.
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  // These "exclude" lines remove unnecessary or harmful duplicate files from the output JAR.
+  // module-info.class files must be excluded because the fat JAR merges named modules
+  // (FlixelGDX core, libGDX) with automatic modules. Leaving module-info.class in causes
+  // jdeps -- used by construo's createRuntimeImage task -- to fail with a FindException
+  // when it tries to resolve the full module graph and cannot find automatic-module peers.
+  exclude('module-info.class', '**/module-info.class')
+  exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
+  dependencies {
+    exclude('META-INF/INDEX.LIST', 'META-INF/maven/**')
+  }
+  // Setting the manifest makes the JAR runnable.
+  // Enabling native access helps avoid a warning when Java 24 or later runs the JAR.
+  manifest {
+    attributes 'Main-Class': application.mainClass, 'Enable-Native-Access': 'ALL-UNNAMED'
+  }
+  // This last step may help on some OSes that need extra instruction to make runnable JARs.
+  doLast {
+    archiveFile.get().asFile.setExecutable(true, false)
+  }
+}
+
+graalvmNative {
+  toolchainDetection = true
+  binaries {
+    main {
+      imageName = "{{NATIVE_IMAGE_NAME}}"
+      buildArgs.add('-H:+ReportExceptionStackTraces')
+      if (isMacOs) {
+        buildArgs.add('-J-XstartOnFirstThread')
+      }
+      // svmhelper is in nativeImageOnly (not runtimeClasspath), so we add it here
+      // explicitly so native-image discovers its substitutions during compilation.
+      classpath(configurations.nativeImageOnly)
+    }
+  }
+}
+
+construo {
+  name.set(providers.gradleProperty("gameId"))
+  humanName.set(providers.gradleProperty("gameName"))
+  mainClass.set(application.mainClass.get())
+  outputDir.set(rootProject.layout.projectDirectory.dir("dist"))
+  roast {
+    runOnFirstThread.set(true)
+    // ZGC is tuned for large server heaps and adds no benefit for a small game heap.
+    useZgc.set(false)
+    // The host GraalVM's jlink embeds JVMCI configuration into the runtime image it
+    // creates. Temurin has no Graal compiler to satisfy it, which crashes the launcher
+    // with "Cannot use JVMCI compiler: No JVMCI compiler found". Disabling JVMCI
+    // entirely at launch prevents the crash.
+    vmArgs.add("-XX:-EnableJVMCI")
+  }
+  targets.configure {
+    create("linuxX64", Target.Linux) {
+      architecture.set(Target.Architecture.X86_64)
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_linux_hotspot_21.0.11_10.tar.gz")
+    }
+    create("macOsX64", Target.MacOs) {
+      architecture.set(Target.Architecture.X86_64)
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_mac_hotspot_21.0.11_10.tar.gz")
+      identifier.set("{{CONSTRUO_IDENTIFIER}}")
+      def v = providers.gradleProperty("version").orElse("0.0.1").get()
+      buildNumber.set(v)
+      versionNumber.set(v)
+    }
+    create("macOsAarch64", Target.MacOs) {
+      architecture.set(Target.Architecture.AARCH64)
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.11_10.tar.gz")
+      identifier.set("{{CONSTRUO_IDENTIFIER}}")
+      def v = providers.gradleProperty("version").orElse("0.0.1").get()
+      buildNumber.set(v)
+      versionNumber.set(v)
+    }
+    create("winX64", Target.Windows) {
+      architecture.set(Target.Architecture.X86_64)
+      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_windows_hotspot_21.0.11_10.zip")
+    }
+  }
+}
+
+distributions {
+  main {
+    contents {
+      into('libs') {
+        project.configurations.runtimeClasspath.files.findAll { file ->
+          file.getName() != project.tasks.jar.outputs.files.singleFile.name
+        }.each { file ->
+          exclude file.name
+        }
+      }
+    }
+  }
+}
+
+startScripts.dependsOn(':lwjgl3:jar')
+startScripts.classpath = project.tasks.jar.outputs.files
+
+if (enableGraalNative == 'true') {
+  apply from: file("nativeimage.gradle")
+}

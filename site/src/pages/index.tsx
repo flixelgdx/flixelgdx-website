@@ -1,4 +1,4 @@
-import {JSX, ReactNode} from 'react';
+import {type JSX, type ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -12,51 +12,48 @@ const FEATURES = [
   {
     icon: '🚀',
     title: 'Beginner friendly, expert powerful',
-    body:
-      'Familiar Flixel-shaped states, sprites, groups, tweens and timers, plus the full power of libGDX when you need it. No magic, no walls.',
+    body: 'Familiar Flixel-shaped states, sprites, groups, tweens and timers, plus the full power of libGDX when you need it. No magic, no walls.',
   },
   {
     icon: '⚡',
     title: 'Featherweight & fast',
-    body:
-      'Designed to bring the features of modern game engines to low-end hardware. A FlixelGDX game runs happily inside a 16 MB JVM heap.',
+    body: 'Designed to bring the features of modern game engines to low-end hardware. A FlixelGDX game runs happily inside a 16 MB JVM heap.',
   },
   {
     icon: '🎯',
     title: 'Built on libGDX',
-    body:
-      'Cross-platform windowing, OpenGL, input and audio under the hood — but with the friendly Flixel API on top.',
+    body: 'Cross-platform windowing, OpenGL, input and audio under the hood — but with the friendly Flixel API on top.',
   },
   {
     icon: '🌐',
-    title: 'Desktop & Web today',
-    body:
-      'Ship to LWJGL3 desktop and to the browser via TeaVM. Mobile (Android & iOS) backends are on the way.',
+    title: 'Multiplatform',
+    body: 'Ship to LWJGL3 desktop and to the browser via TeaVM. Mobile (Android & iOS) backends are on the way.',
   },
   {
     icon: '🧰',
     title: 'Batteries included',
-    body:
-      'Tweens, timers, animations, bitmap text, audio helpers, saves, input action sets and a debug overlay — out of the box.',
+    body: 'Tweens, timers, animations, bitmap text, audio helpers, saves, input actions, powerful debugging tools and more — all out of the box just for you.',
   },
   {
     icon: '☕',
     title: 'Java 17 + Gradle',
-    body:
-      'Modern Java, records, switches, lambdas. A clean Gradle multi-module split that grows with your project.',
+    body: 'Modern Java, records, switches, lambdas. A clean Gradle multi-module split that grows with your project.',
   },
   {
     icon: '🐞',
     title: 'Debug-friendly',
-    body:
-      'In-game watches, a logger that captures file + line, and an optional ImGui-powered overlay so you can see what your game is doing.',
+    body: 'In-game watches, a logger that captures file + line, and an optional ImGui-powered overlay so you can see what your game is doing.',
   },
   {
     icon: '📦',
     title: 'Drop-in with JitPack',
-    body:
-      'No publishing dance — point Gradle at JitPack, pick a tag, you are done. The Getting Started page even generates the project for you.',
+    body: 'No publishing dance — point Gradle at JitPack, pick a tag, you are done. The Getting Started page even generates the project for you.',
   },
+  {
+    'icon': '🎁',
+    'title': '100% free and open source',
+    'body': 'The best part of all, FlixelGDX is completely free for you to use in any project, personal or commercial. Contributions are always welcome!',
+  }
 ];
 
 const HERO_CODE = `// Switch states.
@@ -67,7 +64,7 @@ Flixel.sound.play("explosion.mp3");
 
 // Check if a key is pressed.
 if (Flixel.keys.justPressed(FlixelKeys.SPACE)) {
-    player.jump();
+  player.jump();
 }`;
 
 function HeroBadges(): JSX.Element {
@@ -82,7 +79,7 @@ function HeroBadges(): JSX.Element {
 }
 
 function Hero(): JSX.Element {
-  const logo = useBaseUrl('/img/logo-square.png');
+  const logo = useBaseUrl('/img/logo.png');
   return (
     <header className={styles.hero}>
       <div className={styles.heroBackdrop} aria-hidden="true" />
@@ -95,7 +92,7 @@ function Hero(): JSX.Element {
             beginners and experts alike.
           </p>
           <div className={styles.heroButtons}>
-            <Link className="flx-btn flx-btn--primary" to="/docs/getting-started">
+            <Link className="flx-btn flx-btn--primary" to="/getting-started">
               Get started
             </Link>
             <Link className="flx-btn flx-btn--ghost" to="/docs/your-first-project">
@@ -179,37 +176,6 @@ function CodeShowcase(): JSX.Element {
   );
 }
 
-function LowEndCallout(): JSX.Element {
-  return (
-    <section className={styles.section}>
-      <div className={styles.sectionInner}>
-        <FadeIn className={styles.cta}>
-          <h2 className={styles.ctaTitle}>
-            Modern engines, classic hardware.
-          </h2>
-          <p className={styles.ctaLead}>
-            FlixelGDX is engineered for memory-efficient, frame-stable
-            gameplay even on low-end PCs and old laptops. The default project
-            template ships with a 16 MB JVM heap — that is more than plenty
-            for a FlixelGDX game to run smoothly.
-          </p>
-          <div className={styles.heroButtons}>
-            <Link className="flx-btn flx-btn--primary" to="/docs/getting-started">
-              Generate a project
-            </Link>
-            <Link className="flx-btn flx-btn--ghost" to="/api/">
-              Browse the API
-            </Link>
-          </div>
-        </FadeIn>
-      </div>
-    </section>
-  );
-}
-
-// Docusaurus treats every module under src/pages as a route: it must export
-// exactly one React component as `export default`, or you'll get "This page
-// crashed … doesn't have a default export".
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
@@ -222,7 +188,6 @@ export default function Home(): ReactNode {
       <main>
         <FeatureGrid />
         <CodeShowcase />
-        <LowEndCallout />
       </main>
     </Layout>
   );

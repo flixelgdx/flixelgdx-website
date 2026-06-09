@@ -1,8 +1,6 @@
 ---
-id: getting-started
 title: Getting Started
-sidebar_position: 1
-description: Generate a FlixelGDX game project in a single click — pick a language, platforms, IDE and template.
+description: Generate a FlixelGDX game project in a single click — pick a language, platforms, JDK vendor, and template.
 ---
 
 import ProjectGenerator from '@site/src/components/projectGenerator/ProjectGenerator';
@@ -14,7 +12,7 @@ Welcome to **FlixelGDX**! This page is the fastest way to go from
 form below, click **Download project**, and you will get a zip of a
 ready-to-run Gradle project — with the FlixelGDX framework wired in via
 [JitPack](https://jitpack.io/#flixelgdx/flixelgdx), a game class, a play
-state, and IDE files matching whatever editor you use.
+state, and Gradle tasks you can run from any IDE or terminal.
 
 :::tip[Hover any ? for help]
 
@@ -22,6 +20,13 @@ Every option has a friendly description that pops up on hover. The big
 **Expert mode** toggle at the bottom reveals advanced knobs (heap size,
 extra JVM flags, free-form Gradle config) — leave it off if you are just
 getting started.
+
+:::
+
+:::info[If you're coming from HaxeFlixel...]
+
+It's highly recommended that you use **Kotlin** as your language. It's syntactically similar to Haxe, and you'll feel
+right at home with its null safety, type inference, and concise syntax.
 
 :::
 
@@ -33,7 +38,7 @@ getting started.
 
 1. **Install a JDK** — Java 17 or newer. The generated `README.md`
    has step-by-step install instructions for the JDK and operating
-   system you picked above. The [Pong tutorial's Step 0](./your-first-project#0-install-a-jdk)
+   system you picked above. The [Pong tutorial's Step 0](/docs/your-first-project#0-install-a-jdk)
    has the same walk-through embedded if you'd rather scroll than
    open a separate file.
 2. **Unzip** the downloaded archive anywhere on your computer.
@@ -49,9 +54,6 @@ getting started.
    to auto-download the matching JDK on first run — so the very first
    build takes a minute, every build after that is instant.
 
-A red square (or your platformer player) should appear in a 640×480
-window. You are running a real FlixelGDX game. 🎉
-
 :::tip[JitPack vs Gradle plugin IDs]
 
 The framework JARs resolve as `com.github.flixelgdx.flixelgdx:…` from JitPack,
@@ -65,7 +67,7 @@ so plugins keep resolving.
 
 ## Where to go next
 
-- Head to **[Your First Project](./your-first-project)** to build the
+- Head to **[Your First Project](/docs/your-first-project)** to build the
   classic Pong from scratch, step by step.
 - Browse the **[API reference](/api/)** when you want to look up a class.
 - Drop into the framework repo at

@@ -11,33 +11,33 @@ import Link from '@docusaurus/Link';
 
 # FlixelGDX API Reference
 
-This is the live Java API reference for **FlixelGDX**. It is generated
-from the framework's sources by [Dokka](https://kotlinlang.org/docs/dokka-introduction.html)
-with the **kotlin-as-java** plugin (so every signature reads as native
-Java) and re-shaped for the website by `scripts/postprocess_api.py`.
+This is the live Java API reference for the FlixelGDX framework. All pages you see here are automatically generated from the
+framework's Javadoc comments in its source code, so they are always up-to-date with the latest release. They are parsed
+and translated into Markdown files using the framework's own custom tool [DocletMD](https://github.com/flixelgdx/DocletMD).
 
-Pick a module to start browsing:
+Pick a module below to start browsing the API! If you're new to FlixelGDX, we recommend starting with the "Core" module, which
+contains the essential classes you'll use in your game development journey.
 
 <div className="flx-module-grid">
-  <Link className="flx-module-card" to="/api/core/">
+  <Link className="flx-module-card" to="/api/category/core">
     <strong>Core</strong>
-    <span>The framework heart — entities, states, cameras, tweens, timers, input action sets, saves, debug overlay, asset helpers.</span>
+    <span>The framework heart. It contains all the classes you'll typically use in a game. Start here if you're new to FlixelGDX!</span>
   </Link>
-  <Link className="flx-module-card" to="/api/lwjgl3/">
+  <Link className="flx-module-card" to="/api/category/desktop-lwjgl3">
     <strong>Desktop (LWJGL3)</strong>
-    <span>The desktop launcher: window listeners, debug overlays, mouse cursors, host integrations.</span>
+    <span>The desktop backend, powered by LWJGL3. Most common platform for many games.</span>
   </Link>
-  <Link className="flx-module-card" to="/api/teavm/">
+  <Link className="flx-module-card" to="/api/category/web-teavm">
     <strong>Web (TeaVM)</strong>
-    <span>The browser backend — console sinks, filesystem limits, TeaVM-specific glue.</span>
+    <span>The browser backend, powered by TeaVM.</span>
   </Link>
-  <Link className="flx-module-card flx-module-card--soon" to="/api/android/">
+  <Link className="flx-module-card flx-module-card--soon">
     <strong>Android</strong>
-    <span>Android launcher integration. Still in active development.</span>
+    <span>The Android backend. Still in active development.</span>
   </Link>
-  <Link className="flx-module-card flx-module-card--soon" to="/api/ios/">
+  <Link className="flx-module-card flx-module-card--soon">
     <strong>iOS (MobiVM)</strong>
-    <span>iOS launcher integration. Still in active development.</span>
+    <span>The iOS backend. Still in active development.</span>
   </Link>
 </div>
 

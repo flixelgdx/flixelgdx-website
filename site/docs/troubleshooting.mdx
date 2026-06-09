@@ -1,0 +1,414 @@
+---
+id: troubleshooting
+title: Troubleshooting
+sidebar_position: 6
+description: Solutions for common setup, runtime, and GraalVM native-image problems in FlixelGDX.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Troubleshooting
+
+This page covers the most common problems you may run into while building or running a FlixelGDX
+game — from first-time setup stumbles to runtime surprises to the pitfalls of GraalVM native-image
+compilation. Each section is self-contained; jump straight to the heading that matches your problem.
+
+---
+
+## Setup and environment
+
+### Java version too old
+
+FlixelGDX requires **Java 17 or later**. If Gradle reports an error like:
+
+```
+error: source release 17 requires target release 17
+```
+
+or your IDE shows a red underline on record syntax, switch statements, or text blocks, your project
+is compiling against an older JDK. Fix it in two places:
+
+1. **Gradle toolchain** — in each subproject's `build.gradle`:
+
+```groovy
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
+}
+```
+
+2. **IDE SDK** — point the project SDK at a JDK 17+ installation. In IntelliJ: **File > Project
+Structure > Project > SDK**.
+
+To check what is currently active: `./gradlew -version` prints the JVM Gradle is using;
+`java -version` in a terminal prints the system default.
+
+---
+
+### Gradle sync errors after cloning
+
+If `./gradlew build` fails with something like:
+
+```
+Could not resolve com.github.flixelgdx:flixelgdx:<version>
+```
+
+JitPack needs to build the dependency on its first request. This normally succeeds within a minute.
+Check the JitPack build log for your tag at `https://jitpack.io/com/github/flixelgdx/flixelgdx/`.
+If the build failed, use the **Rebuild** button there. While you wait, your Gradle build will keep
+retrying on `--refresh-dependencies`.
+
+If the error persists, verify that your `settings.gradle` has JitPack in the `dependencyResolutionManagement` block:
+
+```groovy
+dependencyResolutionManagement {
+  repositories {
+    maven { url 'https://jitpack.io' }
+    mavenCentral()
+    // ...
+  }
+}
+```
+
+---
+
+### `Could not find tools.jar` (Windows)
+
+This warning appears when Gradle cannot find the JDK's `tools.jar`. It is harmless on Java 9+ (the
+`tools.jar` API was merged into the JDK itself), but it usually means your `JAVA_HOME` environment
+variable points at a JRE directory rather than a JDK. Set it to your JDK root, for example:
+
+```
+JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.11.9-hotspot
+```
+
+---
+
+### Hot-reload / automatic restart not working
+
+FlixelGDX does not have built-in hot-reload. Use the debug overlay's `resetState` command (or a
+custom command that calls `Flixel.switchState`) to re-enter a state without restarting the process.
+For Java code changes you still need to restart the JVM.
+
+---
+
+## Runtime errors
+
+### Do I need to null-check `Flixel.debug`?
+
+No. `Flixel.debug` and `Flixel.watch` are created during startup and are present in **every** build — they are
+never `null`. What changes between `DEBUG` and `RELEASE` is whether a *visual overlay* is attached. In `RELEASE`
+mode their methods become harmless no-ops: a command you register has no console to appear in, and watch suppliers
+are never evaluated, so there is no per-frame cost. You can call them unconditionally:
+
+```java
+// Safe in every build -- no null guard required. Do this in your state's create().
+Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
+```
+
+The managers are wired up by `Flixel.initialize(...)` (called by the launcher), so they are ready from your first
+state's `create()` onward. The only place they can still be `null` is inside your `FlixelGame` subclass's own
+constructor, which runs *before* initialization — register commands from `create()`, not the game constructor.
+
+If you want to skip registering debug-only commands in a shipped build (purely to save the tiny memory they
+occupy), gate them behind your own flag rather than a null check:
+
+```java
+private static final boolean DEV = true; // set to false before shipping
+
+if (DEV) {
+  Flixel.debug.registerCommand("spawn", args -> spawnEnemy());
+}
+```
+
+---
+
+### State does not transition / `switchState` seems to do nothing
+
+`Flixel.switchState` happens **immediately and synchronously**: the moment you call it, the current state is
+`destroy()`ed and the new state's `create()` runs right there in the call. (By default it also cancels all active
+tweens and triggers a garbage-collection pass.) If a switch "does nothing," the usual causes are:
+
+- **An exception during the new state's `create()`.** If `create()` throws, the new state is left half-built.
+  Check the console / Log window for a red `ERROR` entry.
+- **You kept using the old state after switching.** Because the switch is immediate, any code that runs *after*
+  `switchState(...)` in the same `update()` is touching a state that has already been destroyed. Call
+  `switchState(...)` last in your update logic, or `return` right after it, so you do not read or mutate fields that
+  no longer exist.
+
+---
+
+### Objects are not rendering
+
+Common causes:
+
+- **Not added to the state.** `new FlixelSprite(...)` alone does nothing — call `add(sprite)` in
+  your state's `create()`.
+- **Off-screen.** The camera is centered on world position `(0, 0)` by default. An object at
+  `(5000, 5000)` is off camera. Use `Flixel.debug.setDrawDebug(true)` to draw hitboxes and see
+  where everything actually is.
+- **Alpha is 0.** A sprite's alpha (read with `getAlpha()`, changed with `setAlpha(float)`)
+  defaults to `1f`. A fully transparent color passed to `makeGraphic` also renders nothing.
+- **Wrong layer.** Groups and sub-states render in insertion order. An opaque sprite added first
+  will sit behind one added second.
+
+---
+
+### Collision / `Flixel.collide()` is not separating objects
+
+- At least one object must be movable. Call `setImmovable(false)` on the object you want pushed
+  apart. If both objects are immovable (`setImmovable(true)`), the notify callback still fires but
+  neither object is separated.
+- An object only collides while it is solid. `setSolid(false)` (or
+  `setAllowCollisions(FlixelDirectionFlags.NONE)`) makes it pass straight through everything.
+  The default is `FlixelDirectionFlags.ANY`, which collides on all sides. `FlixelDirectionFlags`
+  lives in `org.flixelgdx.util`.
+- `Flixel.collide()` separates by moving positions. If you also move an object by hand
+  (`setX(...)` / `setY(...)`) in the same frame, the two can fight each other and cause jitter.
+  Prefer driving movement through `setVelocity(...)` and letting collision do the separating.
+
+---
+
+### Audio does not play
+
+- **File format.** Every backend (excluding web/TeaVM) is powered by [gdx-miniaudio](https://github.com/rednblackgames/gdx-miniaudio).
+  `.mp3`, `.ogg` Vorbis/Opus, `.wav` and `.flac` files are the default supported audio formats — any other
+  format will not work.
+- **Path is wrong.** Asset paths are relative to the `assets/` folder at the root of the `assets`
+  module (or wherever your `assets` source root points). Pass the path without a leading slash.
+- **TeaVM.** Web builds use the Web Audio API. Audio autoplay is blocked by browsers until the
+  user interacts with the page. `Flixel.sound.play(...)` called before a click will silently fail
+  in most browsers.
+
+---
+
+### Tweens stop before finishing
+
+- Calling `tween.cancel()` or `FlixelTween.cancelTweensOf(target)` early will stop them.
+- If the owning state is destroyed mid-tween, all tweens are automatically cancelled.
+
+---
+
+### Watch panel shows `null` or stale values
+
+Watch entries are refreshed at **~10Hz** (roughly ten times per second) while the overlay is
+**visible**. If the overlay is hidden (F2 toggled off), suppliers are not called. Values shown when
+you reopen the overlay are from the first refresh after it became visible, which should be up to date.
+
+If a supplier returns `null`, confirm the object it references is not `null` itself — `player.getX()`
+will throw a `NullPointerException` if `player` is `null`, which the watch panel silently catches
+and shows as `<error>`.
+
+---
+
+## TeaVM (browser) builds
+
+### `ClassNotFoundException` at TeaVM compile time
+
+TeaVM traces the reachability of every class at compile time. If it cannot find a class referenced
+by your code, the build fails. Common causes:
+
+- A dependency that uses reflection without TeaVM metadata (`@TeaVMProperties` or
+  `ClassHolderTransformer`). Check if the library has a TeaVM-compatible build.
+- Calling `Class.forName(...)` with a string literal. Replace it with a direct class reference or
+  annotate the class with `@TeaVMInclude`.
+
+### Canvas size is wrong in the browser
+
+The TeaVM launcher sets the canvas size from the `width` and `height` you pass to the launcher
+config. If the game renders in a tiny box, you may have forgotten to apply CSS to let the canvas
+fill its container, or the launcher config does not match your HTML container.
+
+---
+
+## GraalVM native image
+
+GraalVM's `native-image` tool compiles your game to a self-contained native executable. This is
+great for distribution — no JVM required — but it is strict about things the regular JVM is lenient
+about: reflection, JNI, resource loading, and dynamic class loading all require explicit
+configuration.
+
+The project generator already wires up the `generateNativeConfig` task and the `FlixelGraalFeature`
+auto-registration, so most configuration is handled for you. But if you add libraries or use
+reflection yourself, you may hit issues described below.
+
+:::tip[Run `generateNativeConfig` first]
+
+Before trying to build a native image, launch your game in a standard JVM run with all features
+exercised and let `generateNativeConfig` collect reflection/JNI/resource usage at runtime. This
+produces `META-INF/native-image/` config files that `native-image` reads automatically. See
+your project's README for the exact Gradle task name.
+
+:::
+
+---
+
+### `java.lang.reflect.InaccessibleObjectException` in native image
+
+This error means `native-image` found a reflective access at runtime that was not declared in
+`reflect-config.json`. Run `generateNativeConfig` (described above), then rebuild. If the error
+is from a third-party library, check whether that library ships its own native-image metadata
+under `META-INF/native-image/`.
+
+---
+
+### `UnsatisfiedLinkError` for native libraries (JNI)
+
+Native-image bundles JNI libraries differently from a regular JVM run. The linker must know in
+advance which classes and fields cross the JNI boundary.
+
+**imgui-java specifically** calls `GetFieldID()` inside its `nInitJni()` function. GraalVM does not
+automatically register those fields, so it returns `null` for them at runtime, which causes imgui
+to crash or behave incorrectly.
+
+The project generator includes `jni-config.json` entries for the imgui classes that need them. If
+you upgraded imgui-java and the crash returns, re-run `generateNativeConfig` with `--agentlib:
+native-image-agent` so the agent captures the new `GetFieldID` calls, then merge the output back
+into your `jni-config.json`.
+
+You also need the imgui classes to be **runtime-initialized** rather than build-time initialized,
+because imgui's static initializers start the native bridge:
+
+```
+--initialize-at-run-time=imgui.ImGui,imgui.internal.ImGui
+```
+
+The `FlixelGraalFeature` class registers these for you when it is on the classpath. If you are
+not using the project generator's template, add this line to your `native-image.properties` or
+`build.gradle` native-image args.
+
+---
+
+### Resources not found at runtime
+
+Static resource files (images, audio, JSON) must be declared in `resource-config.json` so
+`native-image` includes them in the binary. Pattern:
+
+```json
+{
+  "resources": {
+    "includes": [
+      { "pattern": ".*\\.png" },
+      { "pattern": ".*\\.ogg" },
+      { "pattern": ".*\\.json" }
+    ]
+  }
+}
+```
+
+The `generateNativeConfig` task captures resource accesses that happen during a real run, but only
+for resources that were actually loaded during that session. If a level, sound, or atlas is only
+loaded in a later stage that you did not reach during config generation, it will be missing. Either
+exercise that code path during config generation, or add the pattern manually.
+
+---
+
+### `native-image` build fails with `OutOfMemoryError`
+
+This is the **compiler's** memory, not your game's. The `native-image` tool performs whole-program
+static analysis — it traces every reachable class, builds a call graph, and AOT-compiles everything
+to a native binary. That process is genuinely memory-intensive at build time. Your finished native
+executable still runs on the usual small heap (typically 4-8 MB for a FlixelGDX game).
+
+For mid-size games, the compiler typically needs 4-8 GB. Set the compiler JVM heap via the Gradle
+`graalvmNative` block:
+
+```groovy
+graalvmNative {
+  binaries {
+    main {
+      jvmArgs.add('-Xmx8g')
+    }
+  }
+}
+```
+
+If the build still runs out of memory, add `-Ob` (quick-build mode) while iterating — it skips the
+heaviest optimizations and cuts peak memory significantly. Remove it for your final release build.
+
+---
+
+### Slow startup on first native launch (PGO)
+
+The first run of a fresh native image is slightly slower than subsequent runs because GraalVM's
+Profile-Guided Optimization (PGO) data is not yet warm. For a properly shipped build this is
+rarely noticeable for games. If you are benchmarking, run the binary at least once to warm it,
+or include a PGO profile during the build.
+
+---
+
+### The JVMCI error on Temurin (non-GraalVM JDK)
+
+If you launch the `native-image` build with a standard JDK (e.g., Eclipse Temurin) rather than
+a GraalVM distribution, the build may fail with:
+
+```
+Module java.base does not export ... to module ...
+```
+
+or a JVMCI-related error on startup. `native-image` is a GraalVM tool and must be run with a
+GraalVM JDK. Install GraalVM 21+ and set `GRAALVM_HOME` (or set the Gradle toolchain to use it):
+
+```groovy
+graalvmNative {
+  toolchainDetection = true
+}
+```
+
+The ordinary game JAR runs fine on any JDK 17+; the restriction only applies when compiling native
+images.
+
+---
+
+### "Image generation has failed" with no clear error
+
+Run the build with `-H:+ReportExceptionStackTraces` to get the full stack trace. Add it to
+`buildArgs` in your Gradle config:
+
+```groovy
+graalvmNative {
+  binaries {
+    main {
+      buildArgs.add('-H:+ReportExceptionStackTraces')
+      buildArgs.add('--verbose')
+    }
+  }
+}
+```
+
+`--verbose` shows which class or feature triggered the failure. Most "silent" failures
+are caused by a missing class registration (reflection or JNI), a missing resource pattern, or
+an initializer that tried to access disk/network at build time.
+
+---
+
+### Debug builds vs release builds for native image
+
+During development, build with `-Ob` (quick build mode) to skip heavy optimizations and get faster
+iteration:
+
+```groovy
+graalvmNative {
+  binaries {
+    main {
+      buildArgs.add('-Ob')
+    }
+  }
+}
+```
+
+Remove `-Ob` for your release build to get the full performance benefit of native compilation.
+
+---
+
+## Getting more help
+
+If none of the above solves your problem:
+
+1. Check the **Log window** (if you are in debug mode) — red `ERROR` entries almost always point
+   directly at the cause.
+2. Run with `Flixel.log.startFileLogging()` and share the log file.
+3. Open an issue at the [FlixelGDX repository](https://github.com/flixelgdx/flixelgdx) with your
+   stack trace and a minimal reproduction.

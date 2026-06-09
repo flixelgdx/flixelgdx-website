@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "build-templates": "node scripts/build-template-catalog.mjs",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
+    "prestart": "npm run build-templates",
     "build": "docusaurus build",
+    "prebuild": "npm run build-templates",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
@@ -18,6 +21,7 @@
     "@docusaurus/core": "3.10.1",
     "@docusaurus/faster": "3.10.1",
     "@docusaurus/preset-classic": "3.10.1",
+    "@easyops-cn/docusaurus-search-local": "^0.55.1",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "file-saver": "^2.0.5",
@@ -32,6 +36,7 @@
     "@docusaurus/types": "3.10.1",
     "@types/file-saver": "^2.0.7",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
     "typescript": "~6.0.2"
   },
   "browserslist": {

@@ -1,27 +1,18 @@
-/*
- * Per-vendor, per-OS JDK install walk-through. Shown beneath the project
- * generator (and on the Pong tutorial page) so users do not have to leave
- * the site to figure out where to grab a JDK.
- *
- * The picks-per-OS reflect each vendor's officially-supported channel —
- * package managers where they exist (so the user gets updates), and a
- * fall-back tarball/installer link otherwise.
- */
 import {useState, type JSX} from 'react';
-import type {JdkVendor} from './templates';
+import type {JdkVendor} from './generatorOptions';
 import styles from './JdkSetupGuide.module.css';
 
 type OS = 'windows' | 'macos' | 'ubuntu' | 'fedora' | 'arch';
 
-interface InstallSteps {
-  intro: string;          // 1 sentence framing
-  commands?: string[];    // shell/powershell snippet (already formatted)
-  notes?: string[];       // bullet points after the snippet
+type InstallSteps = {
+  intro: string;
+  commands?: string[];
+  notes?: string[];
   download?: {
     label: string;
     href: string;
   };
-}
+};
 
 /* ------------------------------------------------------------------------- *
  * Instructions per (vendor × OS). Where a vendor has no first-party channel
@@ -182,20 +173,16 @@ const INSTRUCTIONS: Record<JdkVendor, Record<OS, InstallSteps>> = {
 const OS_TABS: {id: OS; label: string}[] = [
   {id: 'windows', label: 'Windows'},
   {id: 'macos', label: 'macOS'},
-  {id: 'ubuntu', label: 'Ubuntu / Debian'},
-  {id: 'fedora', label: 'Fedora / RHEL'},
-  {id: 'arch', label: 'Arch'},
+  {id: 'ubuntu', label: 'Linux (Ubuntu / Debian)'},
+  {id: 'fedora', label: 'Linux (Fedora / RHEL)'},
+  {id: 'arch', label: 'Linux (Arch)'},
 ];
 
-interface Props {
+type Props = {
   vendor: JdkVendor;
   vendorLabel?: string;
-}
+};
 
-/**
- * Quick "verify it worked" snippet that we show at the bottom of every tab,
- * so users always finish by running the same `java -version` sanity check.
- */
 const VERIFY_HINT = 'After install, open a new terminal and run `java -version`.';
 
 export default function JdkSetupGuide({vendor, vendorLabel}: Props): JSX.Element {
