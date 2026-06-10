@@ -1,80 +1,71 @@
 /*
- * DocletMD build for the FlixelGDX API reference.
+ * DocletMD local runner for the FlixelGDX API reference.
  *
- * Generates one Docusaurus-ready Markdown tree per framework module so the
- * website can expose a "Module" dropdown (Core / Desktop / Web / ...) and so
- * each module's sidebar lists only its own packages.
+ * Delegates to the same init script that CI uses (scripts/docletmd-init.gradle),
+ * running it against a local framework checkout. This ensures local and CI docs
+ * are always generated via the exact same code path.
  *
- * Running `./gradlew :docletmd:generateDocletMDAll` (or the higher-level
- * wrapper `scripts/build-api.sh`) builds every module and writes the output
- * under build/docletmd-out/<module>/.
+ * Usage:
+ *   ./gradlew :docletmd:generateDocletMDAll -PflixelgdxSrc=/path/to/flixelgdx
  *
- * The -PflixelgdxSrc knob lets CI or individual contributors point at an
- * already-cloned framework checkout instead of the default build/ location.
+ * If ../DocletMD exists alongside this repo, the task auto-publishes it to
+ * mavenLocal before invoking the init script, so local changes to the plugin
+ * take effect immediately without a manual publish step.
+ *
+ * Output lands under docletmd/build/docletmd-out/<module>/.
+ * Run scripts/build-api.sh to also copy the result into site/api/.
  */
-plugins {
-    id("me.stringdotjar.docletmd") version "0.1.1"
-}
-
-val modules: List<Pair<String, String>> = listOf(
-    "core"    to "flixelgdx-core",
-    "lwjgl3"  to "flixelgdx-lwjgl3",
-    "teavm"   to "flixelgdx-teavm",
-    "android" to "flixelgdx-android",
-    "ios"     to "flixelgdx-ios",
-)
-
-val flixelgdxSrcPath: String = (project.findProperty("flixelgdxSrc") as String?)
-    ?: "${rootDir}/build/flixelgdx-src"
-
-fun srcRoot(moduleDir: String): File? {
-    val main = file("${flixelgdxSrcPath}/${moduleDir}/src/main")
-    if (!main.exists()) return null
-    return listOf(main.resolve("java"), main.resolve("kotlin"))
-        .firstOrNull { it.isDirectory }
-        ?: main.listFiles()?.firstOrNull { it.isDirectory }
-}
-
-val perModuleTasks = modules.map { (slug, dir) ->
-    tasks.register<me.stringdotjar.docletmd.DocletMDTask>("generateDocletMD_$slug") {
-        description = "Generate DocletMD Markdown for the $dir module."
-        group = "documentation"
-        srcRoot(dir)?.let { sourceDirs.from(it) }
-        outputDir.set(layout.buildDirectory.dir("docletmd-out/$slug"))
-        includePrivate.set(false)
-        skipEmptyDocs.set(false)
-    }
-}
-
-// Disable the default single-module task the plugin registers; we use per-module tasks instead.
-tasks.named("generateDocletMD") { enabled = false }
 
 tasks.register("generateDocletMDAll") {
     group = "documentation"
-    description = "Generate DocletMD Markdown for all FlixelGDX modules."
-    dependsOn(perModuleTasks)
+    description = "Generate DocletMD API docs for all FlixelGDX modules via the framework's own Gradle build."
+
     doLast {
-        val found = perModuleTasks.filter { it.get().sourceDirs.files.isNotEmpty() }
-        if (found.isEmpty()) {
+        val flixelgdxSrc: String = (project.findProperty("flixelgdxSrc") as String?)
+            ?: "${rootProject.projectDir}/build/flixelgdx-src"
+        val srcDir = file(flixelgdxSrc)
+
+        if (!srcDir.isDirectory) {
             throw GradleException(
-                "No flixelgdx-* modules found under $flixelgdxSrcPath.\n" +
-                "Run scripts/build-api.sh, or pass -PflixelgdxSrc=/path/to/flixelgdx."
+                "Framework source not found at $flixelgdxSrc\n" +
+                "Pass -PflixelgdxSrc=/path/to/flixelgdx, or run scripts/build-api.sh to clone it."
             )
         }
-        found.forEach {
-            logger.lifecycle("  ok ${it.name} -> build/docletmd-out/${it.name.removePrefix("generateDocletMD_")}")
-        }
-    }
-}
 
-gradle.taskGraph.whenReady {
-    if (allTasks.any { it.name == "generateDocletMDAll" }) {
-        logger.lifecycle("FlixelGDX DocletMD source: $flixelgdxSrcPath")
-        val discovered = modules.filter { (_, dir) -> srcRoot(dir) != null }
-        if (discovered.isEmpty()) {
-            logger.lifecycle("  (no modules discovered -- clone the framework first)")
-        } else {
-            logger.lifecycle("  Modules: ${discovered.joinToString { it.first }}")
+        // If the local DocletMD repo is checked out alongside this one, publish it
+        // to mavenLocal so the init script resolves the local version instead of
+        // whatever is on Maven Central.
+        val docletMDDir = rootProject.file("../DocletMD")
+        if (docletMDDir.isDirectory) {
+            logger.lifecycle("Found local DocletMD checkout -- publishing to mavenLocal...")
+            exec {
+                workingDir = docletMDDir
+                commandLine(
+                    "${docletMDDir.absolutePath}/gradlew",
+                    "publishToMavenLocal",
+                    "--no-daemon",
+                    "-q"
+                )
+            }
         }
+
+        val outDir = layout.buildDirectory.dir("docletmd-out").get().asFile.also { it.mkdirs() }
+        val initScript = rootProject.file("scripts/docletmd-init.gradle")
+
+        logger.lifecycle("Running DocletMD against $flixelgdxSrc...")
+        exec {
+            workingDir = srcDir
+            commandLine(
+                "${srcDir.absolutePath}/gradlew",
+                "-I", initScript.absolutePath,
+                "-PdocletmdOutDir=${outDir.absolutePath}",
+                "--no-daemon",
+                ":flixelgdx-core:generateDocletMD",
+                ":flixelgdx-lwjgl3:generateDocletMD",
+                ":flixelgdx-teavm:generateDocletMD"
+            )
+        }
+
+        logger.lifecycle("DocletMD output -> ${outDir.absolutePath}")
     }
 }

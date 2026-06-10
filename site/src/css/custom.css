@@ -674,21 +674,23 @@ nav[class*="docsBreadcrumbs"] {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0;
 }
 
-/* Shrink the class title so the header stays close in size to the kind label and
-   qualified-name lines beneath it, rather than towering over them. */
 .dm-class-header h1 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: var(--ifm-h1-font-size);
   line-height: 1.25;
 }
 
-/* Tighten the kind label and qualified-name paragraphs that follow the header. */
-.dm-class-header + p,
+/* Space out the kind label and qualified-name paragraphs below the class header. */
+.dm-class-header + p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
 .dm-class-header + p + p {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
 }
 
 /* Type declaration header emitted by DocletMD above every class/interface/record/enum page. */

@@ -2,9 +2,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 /**
  * API reference sidebar. One root entry per framework module, each
- * auto-generated from its respective folder. The post-processor at
- * `scripts/postprocess_api.py` lays out the folders so this just
- * works:
+ * auto-generated from its respective folder.
  *
  *   api/index.mdx          — welcome page (top of the sidebar)
  *   api/core/...           — Core module tree
