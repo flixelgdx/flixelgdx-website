@@ -7,12 +7,12 @@ java {
   // Gradle will auto-download a matching JDK from the configured vendor.
   toolchain {
     languageVersion = JavaLanguageVersion.of({{JAVA_VERSION}})
-    vendor          = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
+    vendor = JvmVendorSpec.{{JDK_VENDOR_SPEC}}
   }
   sourceCompatibility = JavaVersion.VERSION_{{JAVA_VERSION}}
   targetCompatibility = JavaVersion.VERSION_{{JAVA_VERSION}}
 }
 
 dependencies {
-  api "com.github.flixelgdx.flixelgdx:flixelgdx-core:${flixelVersion}"
+  api "{{FLIXEL_GROUP}}:flixelgdx-core:${flixelVersion}"
 }

@@ -1,8 +1,10 @@
-import type {GeneratorOptions, IDE, Language, Platform} from './generatorOptions';
+import type {DependencySource, GeneratorOptions, IDE, Language, Platform} from './generatorOptions';
 import {
   escDoubleQuotedJvm,
   escDoubleQuotedKotlin,
+  flixelGroup,
   gradleVendorSpec,
+  stripVersionPrefix,
 } from './generatorOptions';
 
 export type CatalogFileEntry = {
@@ -140,28 +142,35 @@ function vscodeLaunchConfigsJson(o: GeneratorOptions, mainClass: string): string
   );
 }
 
-function lwjgl3PluginsBlock(lang: Language, flixelVersion: string): string {
+// The FlixelGDX plugin version is always the literal Gradle property reference
+// `version "${flixelVersion}"`, NOT the resolved number. This keeps the version
+// in a single place (gradle.properties) so upgrades are a one-line change. The
+// `\${...}` escape emits the property reference verbatim into the build script
+// rather than interpolating it here in JavaScript.
+const FLIXEL_LOGGING_PLUGIN = `id 'org.flixelgdx.logging' version "\${flixelVersion}"`;
+
+function lwjgl3PluginsBlock(lang: Language): string {
   if (lang === 'kotlin') {
     return `id 'org.jetbrains.kotlin.jvm'
   id 'application'
   id 'org.graalvm.buildtools.native'
   id 'io.github.fourlastor.construo'
-  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
+  ${FLIXEL_LOGGING_PLUGIN}`;
   }
   return `id 'application'
   id 'org.graalvm.buildtools.native'
   id 'io.github.fourlastor.construo'
-  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
+  ${FLIXEL_LOGGING_PLUGIN}`;
 }
 
-function teavmPluginsBlock(lang: Language, flixelVersion: string): string {
+function teavmPluginsBlock(lang: Language): string {
   if (lang === 'kotlin') {
     return `id 'org.jetbrains.kotlin.jvm'
   id 'java-library'
-  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
+  ${FLIXEL_LOGGING_PLUGIN}`;
   }
   return `id 'java-library'
-  id 'org.flixelgdx.logging' version '${flixelVersion}'`;
+  ${FLIXEL_LOGGING_PLUGIN}`;
 }
 
 function teavmLangDeps(lang: Language): string {
@@ -175,6 +184,90 @@ function jvmArgString(o: GeneratorOptions): string {
   const baseFlags = `-Xms${Math.max(8, Math.floor(o.heapMb / 2))}m -Xmx${o.heapMb}m`;
   const userFlags = o.expert && o.jvmFlags.trim() ? ` ${o.jvmFlags.trim()}` : '';
   return `${baseFlags}${userFlags}`;
+}
+
+// --- Repository / dependency-source wiring --------------------------------
+
+// resolutionStrategy that maps the org.flixelgdx.* plugin IDs onto their JitPack
+// modules. JitPack rewrites group coordinates and drops the plugin marker
+// artifacts, so the plugin IDs cannot resolve on their own there.
+const JITPACK_PLUGIN_RESOLUTION = `  resolutionStrategy {
+    eachPlugin {
+      switch (requested.id.id) {
+        case 'org.flixelgdx.teavm':
+          useModule('com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:' + requested.version.toString())
+          break
+        case 'org.flixelgdx.logging':
+          useModule('com.github.flixelgdx.flixelgdx:flixelgdx-logging-plugin:' + requested.version.toString())
+          break
+        default:
+          break
+      }
+    }
+  }
+`;
+
+// JitPack repository for the root build.gradle, restricted to FlixelGDX artifacts.
+// The doubled backslashes are intentional: Groovy unescapes them to single
+// backslashes so includeGroupByRegex receives `com\.github\..*`.
+const JITPACK_PROJECT_REPO = `    maven {
+      url 'https://jitpack.io'
+      // Restrict JitPack to FlixelGDX artifacts. io.github.berstanio
+      // (gdx-svmhelper 2.0.1+) lives on Maven Central, not JitPack; without
+      // this filter Gradle tries JitPack first and gets a 401 for it.
+      content {
+        includeGroupByRegex 'com\\\\.github\\\\..*'
+        includeGroupByRegex 'io\\\\.github\\\\.flixelgdx.*'
+      }
+    }`;
+
+/** Repositories for the settings.gradle `pluginManagement` block. */
+function pluginRepositories(source: DependencySource): string {
+  const lines = ['    mavenLocal()', '    mavenCentral()'];
+  if (source === 'jitpack') lines.push("    maven { url 'https://jitpack.io' }");
+  lines.push('    gradlePluginPortal()');
+  return lines.join('\n');
+}
+
+/**
+ * resolutionStrategy block for the plugin IDs. Maven Central ships proper plugin
+ * markers and needs none, so this is empty there; JitPack needs the mapping.
+ */
+function pluginResolutionStrategy(source: DependencySource): string {
+  return source === 'jitpack' ? JITPACK_PLUGIN_RESOLUTION : '';
+}
+
+/** Repositories for the root build.gradle `allprojects` block. */
+function projectRepositories(source: DependencySource): string {
+  const lines = ['    mavenCentral()', '    google()'];
+  if (source === 'jitpack') lines.push(JITPACK_PROJECT_REPO);
+  return lines.join('\n');
+}
+
+/** Single `includeBuild '<path>'` line for a Gradle composite build, or empty. */
+function compositeIncludeBuild(path: string): string {
+  const clean = path.trim();
+  if (!clean) return '';
+  // Forward slashes work on every OS (Windows included); escape single quotes.
+  const normalized = clean.replace(/\\/g, '/').replace(/'/g, "\\'");
+  return `includeBuild '${normalized}'\n`;
+}
+
+/** README note explaining how the chosen source resolves the Gradle plugins. */
+function readmePluginNote(source: DependencySource): string {
+  if (source === 'jitpack') {
+    return [
+      'FlixelGDX publishes its Gradle plugins to JitPack under coordinates like',
+      '`com.github.flixelgdx.flixelgdx:flixelgdx-teavm-plugin:<version>`. JitPack does',
+      'not publish plugin marker artifacts, so the generated `settings.gradle` maps the',
+      '`org.flixelgdx.*` plugin IDs to their JitPack modules via `resolutionStrategy`.',
+    ].join('\n');
+  }
+  return [
+    'FlixelGDX publishes its Gradle plugins to Maven Central with proper plugin markers,',
+    'so `settings.gradle` applies them directly by ID and version. If a plugin fails to',
+    'resolve, confirm `mavenCentral()` is present in the `pluginManagement` repositories.',
+  ].join('\n');
 }
 
 function readmeLayoutLines(o: GeneratorOptions): string {
@@ -243,6 +336,17 @@ export async function buildSubstitutionMap(
       ? `\n/* ----------- expert mode: custom gradle config ----------- */\n${o.gradleConfig}\n`
       : '';
 
+  // Source-related knobs only apply in expert mode; otherwise everything
+  // defaults to the clean Maven Central setup.
+  const source: DependencySource = o.expert ? o.dependencySource : 'mavenCentral';
+  const jitpackRef = o.expert ? o.jitpackRef.trim() : '';
+  const compositePath = o.expert ? o.compositeBuildPath : '';
+  const sourceLabel = source === 'jitpack' ? 'JitPack' : 'Maven Central';
+  // A JitPack commit/branch overrides the selected release; otherwise use the
+  // selected version with any leading `v` stripped so coordinates resolve.
+  const resolvedVersion =
+    source === 'jitpack' && jitpackRef ? jitpackRef : stripVersionPrefix(o.flixelVersion);
+
   const readme = await buildReadmeSections(baseUrl, o, templateMeta.name);
 
   const map: Record<string, string> = {
@@ -256,7 +360,14 @@ export async function buildSubstitutionMap(
     ROOT_PROJECT_NAME: o.gameId,
     PACKAGE_NAME: pkg,
     JAVA_VERSION: String(o.javaVersion),
-    FLIXEL_VERSION: o.flixelVersion,
+    FLIXEL_VERSION: resolvedVersion,
+    FLIXEL_GROUP: flixelGroup(source),
+    FLIXEL_SOURCE_LABEL: sourceLabel,
+    PLUGIN_REPOSITORIES: pluginRepositories(source),
+    PLUGIN_RESOLUTION_STRATEGY: pluginResolutionStrategy(source),
+    PROJECT_REPOSITORIES: projectRepositories(source),
+    COMPOSITE_INCLUDE_BUILD: compositeIncludeBuild(compositePath),
+    README_PLUGIN_NOTE: readmePluginNote(source),
     JDK_VENDOR_SPEC: gradleVendorSpec(o.jdkVendor),
     HEAP_MB: String(o.heapMb),
     SETTINGS_SUBPROJECT_INCLUDES: settingsSubprojectIncludes(o.platforms),
@@ -270,8 +381,8 @@ export async function buildSubstitutionMap(
     JVM_ARG_STRING: jvmArgString(o),
     NATIVE_IMAGE_NAME: nativeImageName,
     CONSTRUO_IDENTIFIER: `${pkg}.desktop`,
-    LWJGL3_PLUGINS: lwjgl3PluginsBlock(o.language, o.flixelVersion),
-    TEAVM_PLUGINS: teavmPluginsBlock(o.language, o.flixelVersion),
+    LWJGL3_PLUGINS: lwjgl3PluginsBlock(o.language),
+    TEAVM_PLUGINS: teavmPluginsBlock(o.language),
     TEAVM_LANG_DEPS: teavmLangDeps(o.language),
     IDEA_MAIN_CLASS: ideaMain,
     ECLIPSE_CLASSPATH_ENTRIES: eclipseClasspathEntries(o),

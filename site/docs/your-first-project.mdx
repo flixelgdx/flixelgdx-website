@@ -179,10 +179,10 @@ Open `PlayState` and replace the body with:
 ```java
 package com.example.pong;
 
-import com.badlogic.gdx.graphics.Color;
 import org.flixelgdx.Flixel;
 import org.flixelgdx.FlixelSprite;
 import org.flixelgdx.FlixelState;
+import org.flixelgdx.util.FlixelColor;
 
 public class PlayState extends FlixelState {
 
@@ -197,12 +197,12 @@ public class PlayState extends FlixelState {
 
     // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, Color.WHITE);
+    player.makeGraphic(8, 64, FlixelColor.WHITE);
     add(player);
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, Color.WHITE);
+    enemy.makeGraphic(8, 64, FlixelColor.WHITE);
     add(enemy);
   }
 }
@@ -215,10 +215,10 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
-import com.badlogic.gdx.graphics.Color
 import org.flixelgdx.Flixel
 import org.flixelgdx.FlixelSprite
 import org.flixelgdx.FlixelState
+import org.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
 
@@ -232,13 +232,13 @@ class PlayState : FlixelState() {
 
     // Left paddle. This is the human player.
     player = FlixelSprite(20f, 200f).apply {
-      makeGraphic(8, 64, Color.WHITE)
+      makeGraphic(8, 64, FlixelColor.WHITE)
     }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = FlixelSprite(612f, 200f).apply {
-      makeGraphic(8, 64, Color.WHITE)
+      makeGraphic(8, 64, FlixelColor.WHITE)
     }
     add(enemy)
   }
@@ -301,12 +301,12 @@ private static final float PADDLE_SPEED = 220f;
 public void update(float elapsed) {
   super.update(elapsed);
 
-  if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
-  if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
+  if (Flixel.keys.pressed(FlixelKey.W)) player.changeY(PADDLE_SPEED * elapsed);
+  if (Flixel.keys.pressed(FlixelKey.S)) player.changeY(-PADDLE_SPEED * elapsed);
 
   // Don't let the paddle leave the screen.
-  if (player.getY() < 0)        player.setY(0);
-  if (player.getY() > 480 - 64) player.setY(480 - 64);
+  if (player.getY() < 0) player.setY(0);
+  if (player.getY() > 480 - player.getHeight()) player.setY(480 - player.getHeight());
 }
 ```
 
@@ -323,12 +323,12 @@ companion object { private const val PADDLE_SPEED = 220f }
 override fun update(elapsed: Float) {
   super.update(elapsed)
 
-  if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
-  if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
+  if (Flixel.keys.pressed(FlixelKey.W)) player.y += PADDLE_SPEED * elapsed
+  if (Flixel.keys.pressed(FlixelKey.S)) player.y -= PADDLE_SPEED * elapsed
 
   // Don't let the paddle leave the screen.
-  if (player.y < 0f)        player.y = 0f
-  if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
+  if (player.y < 0f) player.y = 0f
+  if (player.y > 480 - player.height) player.y = (480 - player.height).toFloat()
 }
 ```
 
@@ -350,13 +350,14 @@ key went down) which we will use in a moment.
 ```java
 package com.example.pong;
 
-import com.badlogic.gdx.graphics.Color;
 import org.flixelgdx.Flixel;
 import org.flixelgdx.FlixelSprite;
 import org.flixelgdx.FlixelState;
 import org.flixelgdx.input.keyboard.FlixelKey;
+import org.flixelgdx.util.FlixelColor;
 
 public class PlayState extends FlixelState {
+
   private static final float PADDLE_SPEED = 220f;
 
   private FlixelSprite player;
@@ -369,7 +370,7 @@ public class PlayState extends FlixelState {
 
     // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, Color.WHITE);
+    player.makeGraphic(8, 64, FlixelColor.WHITE);
     add(player);
 
     // Right paddle. This is the enemy AI we'll code later!
@@ -382,11 +383,12 @@ public class PlayState extends FlixelState {
   public void update(float elapsed) {
     super.update(elapsed);
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
-    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.W)) player.changeY(PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.changeY(-PADDLE_SPEED * elapsed);
 
-    if (player.getY() < 0)        player.setY(0);
-    if (player.getY() > 480 - 64) player.setY(480 - 64);
+    // Don't let the paddle leave the screen.
+    if (player.getY() < 0) player.setY(0);
+    if (player.getY() > 480 - player.getHeight() player.setY(480 - player.getHeight());
   }
 }
 ```
@@ -397,13 +399,14 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
-import com.badlogic.gdx.graphics.Color
 import org.flixelgdx.Flixel
 import org.flixelgdx.FlixelSprite
 import org.flixelgdx.FlixelState
 import org.flixelgdx.input.keyboard.FlixelKey
+import org.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
+
   companion object { private const val PADDLE_SPEED = 220f }
 
   private lateinit var player: FlixelSprite
@@ -414,11 +417,15 @@ class PlayState : FlixelState() {
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    player = FlixelSprite(20f, 200f).apply {
+      makeGraphic(8, 64, FlixelColor.WHITE)
+    }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    enemy = FlixelSprite(612f, 200f).apply {
+      makeGraphic(8, 64, FlixelColor.WHITE)
+    }
     add(enemy)
   }
 
@@ -428,8 +435,8 @@ class PlayState : FlixelState() {
     if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
     if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
 
-    if (player.y < 0f)        player.y = 0f
-    if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
+    if (player.y < 0f) player.y = 0f
+    if (player.y > 480 - player.height) player.y = (480 - player.height).toFloat()
   }
 }
 ```
@@ -469,7 +476,7 @@ Inside `create()`, after the paddles:
 
 ```java
 ball = new FlixelSprite(316, 236);
-ball.makeGraphic(8, 8, Color.valueOf("ff2a3c")); // FlixelGDX red
+ball.makeGraphic(8, 8, FlixelColor.RED);
 add(ball);
 ```
 

@@ -10,7 +10,7 @@ const MARKER_RE = /^<!-- docletmd:([\w:]+) -->$/;
 const MODIFIER_RE =
   /^(public|protected|private|static|final|abstract|default|synchronized|native|transient|volatile|strictfp) /;
 
-// Java primitive types and void -- colored as keywords, not as type references.
+// Java primitive types and void: colored as keywords, not as type references.
 const JAVA_PRIMITIVES = new Set([
   'void', 'int', 'long', 'double', 'float', 'boolean', 'char', 'byte', 'short',
 ]);
@@ -28,7 +28,7 @@ function slugify(text: string): string {
 }
 
 // Produce a concise TOC label by stripping modifiers, return type, and parameter
-// names -- leaving only the member name and parameter types.
+// names, leaving only the member name and parameter types.
 // Examples:
 //   "public static FlixelSprite loadGraphic(FileHandle path, int w)" -> "loadGraphic(FileHandle, int)"
 //   "public static final int MAX_FRAMES = 100"                       -> "MAX_FRAMES"
@@ -236,7 +236,7 @@ const remarkDocletmdColors: Plugin<[], Root> = () => (tree) => {
     parent.children.splice(index + 2, 0, {
       type: 'html',
       value: `<div class="dm-sig"><span class="dm-code">${colorize(sig, kind)}</span></div>`,
-    } as Node);
+    } as Html);
   });
 };
 

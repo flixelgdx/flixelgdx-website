@@ -2,12 +2,19 @@ import {createElement, useEffect, useRef, useState, type CSSProperties, type JSX
 
 type FadeInProps = {
   children: ReactNode;
+  /** Delay in milliseconds before the fade-in transition starts. */
   delay?: number;
   className?: string;
   style?: CSSProperties;
+  /** The host element tag to render. Defaults to `div`. */
   as?: keyof JSX.IntrinsicElements;
 };
 
+/**
+ * Wraps its children and fades them in once they scroll into view, using an
+ * IntersectionObserver. Environments without IntersectionObserver (such as
+ * server-side rendering) render the children immediately as visible.
+ */
 export default function FadeIn({
   children,
   delay = 0,

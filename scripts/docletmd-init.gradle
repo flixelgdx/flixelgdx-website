@@ -25,17 +25,31 @@
  *                   <framework-root>/build/docletmd-out.
  */
 initscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
+    // When -PdocletmdJarDir points at a local DocletMD build, load the plugin and all of
+    // its runtime dependencies straight from that directory. This avoids any repository
+    // lookup and means local plugin changes take effect immediately without publishing.
+    // CI passes no such property and falls through to the Maven Central coordinate instead.
+    def jarDir = gradle.startParameter.projectProperties.get('docletmdJarDir')
+    if (!jarDir) {
+        repositories {
+            mavenLocal()
+            mavenCentral()
+        }
     }
     dependencies {
-        classpath 'org.flixelgdx:docletmd:0.2.0'
+        if (jarDir) {
+            // listFiles() returns File[]; .findAll on a Java array returns a Groovy List<File>,
+            // which files() accepts as an Iterable and converts to a FileCollection.
+            def jars = new File(jarDir).listFiles()?.findAll { it.name.endsWith('.jar') } ?: []
+            classpath files(jars)
+        } else {
+            classpath 'org.flixelgdx:docletmd:0.2.1'
+        }
     }
 }
 
-import org.flixelgdx.DocletMDPlugin
-import org.flixelgdx.DocletMDTask
+import org.flixelgdx.docletmd.DocletMDPlugin
+import org.flixelgdx.docletmd.DocletMDTask
 
 def moduleSlugs = [
     'flixelgdx-core'  : 'core',

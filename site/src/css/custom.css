@@ -447,7 +447,7 @@ textarea:focus-visible {
 
 /* -------------------- API reference (Dokka-driven pages) ---------------- */
 
-/* Suppress Docusaurus's default breadcrumb on API pages — we render our
+/* Suppress Docusaurus's default breadcrumb on API pages; we render our
  * own Java-shaped one via the post-processor. Looks for the body class
  * Docusaurus puts on docs pages under the `api` plugin instance. */
 .plugin-docs[class*="docs-doc-id-"] .theme-doc-breadcrumbs,
@@ -503,7 +503,7 @@ nav[class*="docsBreadcrumbs"] {
   color: var(--ifm-color-primary);
 }
 
-/* "Inheritors" / "See also" lists Dokka leaves as 1-column tables — make
+/* "Inheritors" / "See also" lists Dokka leaves as 1-column tables: make
  * them look like a flat list rather than a giant misaligned table. */
 .markdown table:has(td:only-child) {
   border: 0;
@@ -521,7 +521,7 @@ nav[class*="docsBreadcrumbs"] {
 /* "View source" button rendered above every API class page.
  *
  * The post-processor emits this as a plain Markdown link pointing at
- * the framework's GitHub blob — we use an attribute selector to style
+ * the framework's GitHub blob, so we use an attribute selector to style
  * just those particular links as a pill button, so we don't need to
  * embed a JSX `<a>` element (which would put MDX in strict-JSX mode
  * and break parsing of the rest of the page). */
@@ -621,11 +621,11 @@ nav[class*="docsBreadcrumbs"] {
  * client-side re-render.
  *
  * Token classes:
- *   dm-kw    -- Java modifiers (public, static, final...) and primitive types
- *   dm-type  -- Class/interface type references (String, List, FlixelSprite...)
- *   dm-fn    -- Method or field name
- *   dm-param -- Parameter name
- *   dm-const -- Constant field value (the RHS of "= ...")
+ *   dm-kw    : Java modifiers (public, static, final...) and primitive types
+ *   dm-type  : Class/interface type references (String, List, FlixelSprite...)
+ *   dm-fn    : Method or field name
+ *   dm-param : Parameter name
+ *   dm-const : Constant field value (the RHS of "= ...")
  */
 
 :root {

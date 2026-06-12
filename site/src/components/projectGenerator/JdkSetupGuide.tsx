@@ -14,10 +14,10 @@ type InstallSteps = {
   };
 };
 
-/* ------------------------------------------------------------------------- *
- * Instructions per (vendor × OS). Where a vendor has no first-party channel
- * on an OS, we fall back to the vendor's downloads page.
- * ------------------------------------------------------------------------- */
+/*
+ * Install instructions for each vendor and OS combination. Where a vendor has
+ * no first-party channel on an OS, we fall back to the vendor's downloads page.
+ */
 const INSTRUCTIONS: Record<JdkVendor, Record<OS, InstallSteps>> = {
   graalvm: {
     windows: {

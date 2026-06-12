@@ -100,7 +100,7 @@ function listTemplates(siteDir) {
   }
   for (const ent of fs.readdirSync(root, {withFileTypes: true})) {
     if (!ent.isDirectory()) continue;
-    if (ent.name === 'common' || ent.name === '_partials') continue;
+    if (ent.name === 'common') continue;
     const tp = path.join(root, ent.name, 'template.json');
     if (!fs.existsSync(tp)) continue;
     let manifest = null;
@@ -387,7 +387,7 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                 const mDelTemplate = routePath.match(delTemplateRe);
                 if (req.method === 'DELETE' && mDelTemplate) {
                   const id = decodeURIComponent(mDelTemplate[1]);
-                  if (id === 'common' || id === '_partials') {
+                  if (id === 'common') {
                     res.statusCode = 400;
                     res.end('cannot delete reserved template');
                     return;

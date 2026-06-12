@@ -54,14 +54,17 @@ right at home with its null safety, type inference, and concise syntax.
    to auto-download the matching JDK on first run — so the very first
    build takes a minute, every build after that is instant.
 
-:::tip[JitPack vs Gradle plugin IDs]
+:::tip[Where the framework comes from]
 
-The framework JARs resolve as `com.github.flixelgdx.flixelgdx:…` from JitPack,
-but the published **Gradle plugins** keep their `me.stringdotjar.flixelgdx.*`
-IDs. Generated `settings.gradle` wires those IDs to the right JitPack
-artifacts automatically; if you hand-edit Gradle files, mirror the snippet in the
-framework’s [COMPILING.md](https://github.com/flixelgdx/flixelgdx/blob/master/COMPILING.md)
-so plugins keep resolving.
+By default the generated project pulls FlixelGDX from **Maven Central**
+(`org.flixelgdx:flixelgdx-*`), and the `org.flixelgdx.*` Gradle plugins resolve
+straight from their published markers. A single `flixelVersion` property in
+`gradle.properties` drives every module and plugin, so upgrading is a one-line
+change. Need a snapshot, or a specific commit or branch? Switch **Expert mode**
+to **JitPack** below; the generated `settings.gradle` then maps the plugin IDs to
+their JitPack modules for you. See the framework's
+[COMPILING.md](https://github.com/flixelgdx/flixelgdx/blob/master/COMPILING.md)
+for the full details.
 
 :::
 

@@ -4,12 +4,12 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
  * API reference sidebar. One root entry per framework module, each
  * auto-generated from its respective folder.
  *
- *   api/index.mdx          — welcome page (top of the sidebar)
- *   api/core/...           — Core module tree
- *   api/lwjgl3/...         — Desktop module tree
- *   api/teavm/...          — Web module tree
- *   api/android/...        — Android module tree (may be empty)
- *   api/ios/...            — iOS module tree (may be empty)
+ *   api/index.mdx          : welcome page (top of the sidebar)
+ *   api/core/...           : Core module tree
+ *   api/lwjgl3/...         : Desktop module tree
+ *   api/teavm/...          : Web module tree
+ *   api/android/...        : Android module tree (may be empty)
+ *   api/ios/...            : iOS module tree (may be empty)
  *
  * Field-level pages opt out of the sidebar via `sidebar_class_name:
  * flx-hidden-sidebar` in front-matter (see `src/css/custom.css`).

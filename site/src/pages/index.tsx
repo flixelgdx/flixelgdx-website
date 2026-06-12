@@ -50,10 +50,10 @@ const FEATURES = [
     body: 'No publishing dance — point Gradle at JitPack, pick a tag, you are done. The Getting Started page even generates the project for you.',
   },
   {
-    'icon': '🎁',
-    'title': '100% free and open source',
-    'body': 'The best part of all, FlixelGDX is completely free for you to use in any project, personal or commercial. Contributions are always welcome!',
-  }
+    icon: '🎁',
+    title: '100% free and open source',
+    body: 'The best part of all, FlixelGDX is completely free for you to use in any project, personal or commercial. Contributions are always welcome!',
+  },
 ];
 
 const HERO_CODE = `// Switch states.

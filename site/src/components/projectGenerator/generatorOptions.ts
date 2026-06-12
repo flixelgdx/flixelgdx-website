@@ -7,6 +7,31 @@ export type JdkVendor =
   | 'corretto'
   | 'zulu';
 
+/**
+ * Where the generated project resolves the FlixelGDX modules and Gradle plugins.
+ *
+ *   mavenCentral : the default. Stable releases from Maven Central
+ *                  (org.flixelgdx:flixelgdx-*); plugin markers resolve directly.
+ *   jitpack      : snapshots or a specific commit/branch from JitPack
+ *                  (com.github.flixelgdx.flixelgdx:flixelgdx-*); plugins need a
+ *                  resolutionStrategy mapping because JitPack omits plugin markers.
+ */
+export type DependencySource = 'mavenCentral' | 'jitpack';
+
+/** Maven group the framework artifacts live under for a given source. */
+export function flixelGroup(source: DependencySource): string {
+  return source === 'jitpack' ? 'com.github.flixelgdx.flixelgdx' : 'org.flixelgdx';
+}
+
+/**
+ * Strips a leading `v`/`V` from a release tag (e.g. `v0.4.0` -> `0.4.0`).
+ * Maven Central coordinates and Gradle plugin versions use the bare number;
+ * the leading `v` would otherwise break module and plugin resolution.
+ */
+export function stripVersionPrefix(version: string): string {
+  return version.trim().replace(/^v/i, '');
+}
+
 export type GeneratorOptions = {
   gameName: string;
   gameId: string;
@@ -23,6 +48,20 @@ export type GeneratorOptions = {
   heapMb: number;
   jvmFlags: string;
   gradleConfig: string;
+  /** Repository the framework resolves from. Defaults to Maven Central. */
+  dependencySource: DependencySource;
+  /**
+   * Optional JitPack commit hash or branch (e.g. `master-SNAPSHOT`) to resolve
+   * instead of the selected release. Only applied when `dependencySource` is
+   * `jitpack`; an empty string falls back to the selected version.
+   */
+  jitpackRef: string;
+  /**
+   * Optional absolute path to a local FlixelGDX clone for a Gradle composite
+   * build (for framework developers). Empty disables it. When set, the
+   * generated `settings.gradle` adds `includeBuild '<path>'`.
+   */
+  compositeBuildPath: string;
 };
 
 /**

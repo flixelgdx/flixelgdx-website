@@ -44,7 +44,7 @@ run {
 
 dependencies {
   implementation project(":core")
-  implementation "org.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
+  implementation "{{FLIXEL_GROUP}}:flixelgdx-lwjgl3:${flixelVersion}"
 
   if (enableGraalNative == 'true') {
     nativeImageOnly "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"

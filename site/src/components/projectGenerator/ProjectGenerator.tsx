@@ -9,11 +9,13 @@ import {
   type TemplateCatalog,
 } from './fileBasedGenerator';
 import {
+  type DependencySource,
   type GeneratorOptions,
   type IDE,
   type JdkVendor,
   type Language,
   type Platform,
+  stripVersionPrefix,
   validateOptions,
 } from './generatorOptions';
 import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
@@ -61,6 +63,12 @@ const HINTS = {
     'Extra JVM flags appended to the desktop launcher (e.g. -XX:+UseG1GC, -ea).',
   gradleConfig:
     'Free-form Groovy appended to the bottom of the root build.gradle. Use for repos, plugins, etc.',
+  dependencySource:
+    'Where Gradle resolves FlixelGDX. Maven Central (default) pulls stable releases; JitPack pulls snapshots or a specific commit/branch.',
+  jitpackRef:
+    'JitPack only. A commit hash or branch (e.g. master-SNAPSHOT) to resolve instead of the selected release. Leave empty to use the selected version.',
+  compositeBuildPath:
+    'For framework developers. Absolute path to a local FlixelGDX clone; adds an includeBuild so Gradle builds the framework from source instead of downloading it.',
   platforms: {
     desktop:
       'LWJGL3 desktop launcher (Windows / macOS / Linux). The default and most polished target.',
@@ -70,8 +78,31 @@ const HINTS = {
   },
 } as const;
 
-const FALLBACK_VERSIONS = ['master-SNAPSHOT', '0.3.0', '0.2.1', '0.2.0', '0.1.1-beta'];
+// Oldest release the generator offers. Everything before v0.4.0 (and the old
+// `master-SNAPSHOT`) is wire-incompatible with v0.4.0+ and is hidden.
+const MIN_SUPPORTED_VERSION = [0, 4, 0] as const;
+const FALLBACK_VERSIONS = ['v0.4.0'];
 
+/**
+ * True when a release tag is FlixelGDX v0.4.0 or newer. A leading `v` and any
+ * prerelease suffix are ignored; non-numeric tags (e.g. `master-SNAPSHOT`) are
+ * rejected.
+ */
+function isSupportedVersion(tag: string): boolean {
+  const m = stripVersionPrefix(tag).match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return false;
+  const parts = [Number(m[1]), Number(m[2]), Number(m[3])];
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] !== MIN_SUPPORTED_VERSION[i]) return parts[i] > MIN_SUPPORTED_VERSION[i];
+  }
+  return true; // exactly the minimum supported version
+}
+
+/**
+ * Fetches selectable framework versions from the GitHub releases API, keeping
+ * only v0.4.0+. Falls back to {@link FALLBACK_VERSIONS} when the request fails,
+ * is rate-limited, or returns no supported releases.
+ */
 async function fetchVersions(): Promise<string[]> {
   try {
     const res = await fetch(
@@ -79,8 +110,10 @@ async function fetchVersions(): Promise<string[]> {
     );
     if (!res.ok) throw new Error(`http ${res.status}`);
     const data: Array<{tag_name: string; prerelease: boolean}> = await res.json();
-    if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
-    return ['master-SNAPSHOT', ...data.map((r) => r.tag_name)];
+    if (!Array.isArray(data)) throw new Error('empty');
+    const supported = data.map((r) => r.tag_name).filter(isSupportedVersion);
+    if (supported.length === 0) throw new Error('no supported versions');
+    return supported;
   } catch {
     return FALLBACK_VERSIONS;
   }
@@ -93,6 +126,7 @@ const VENDOR_LABELS: Record<JdkVendor, string> = {
   zulu: 'Azul Zulu',
 };
 
+/** The hoverable circular `?` badge used next to most form labels. */
 function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   return (
     <Hint tip={tip}>
@@ -103,13 +137,23 @@ function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   );
 }
 
+/** A numbered settings section (e.g. "1. Identity"). `title` may include a HelpIcon. */
+function Panel({title, children}: {title: ReactNode; children: ReactNode}): JSX.Element {
+  return (
+    <div className={styles.panel}>
+      <h3 className={styles.panelTitle}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 const DEFAULT_OPTIONS: GeneratorOptions = {
   gameName: 'My Cool Game',
   gameId: 'my-cool-game',
   packageName: 'com.example.mycoolgame',
   language: 'java',
   javaVersion: 17,
-  flixelVersion: '0.3.0',
+  flixelVersion: 'v0.4.0',
   ide: 'idea',
   template: '',
   platforms: ['desktop'],
@@ -118,8 +162,12 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   heapMb: 16,
   jvmFlags: '',
   gradleConfig: '',
+  dependencySource: 'mavenCentral',
+  jitpackRef: '',
+  compositeBuildPath: '',
 };
 
+/** Decodes the base64-embedded Gradle wrapper JAR into raw bytes for the zip. */
 function decodeWrapperJar(): Uint8Array {
   const binary = atob(GRADLE_WRAPPER_JAR_BASE64);
   const bytes = new Uint8Array(binary.length);
@@ -145,6 +193,15 @@ function GeneratorBody(): JSX.Element {
       alive = false;
     };
   }, []);
+
+  // Keep the selected version valid: if the loaded list does not include it
+  // (e.g. the default fell off the supported range), snap to the newest.
+  useEffect(() => {
+    if (!versions.length) return;
+    setOpts((p) =>
+      versions.includes(p.flixelVersion) ? p : {...p, flixelVersion: versions[0]}
+    );
+  }, [versions]);
 
   useEffect(() => {
     let alive = true;
@@ -198,6 +255,9 @@ function GeneratorBody(): JSX.Element {
 
   const selectedTemplate = catalog?.templates.find((t) => t.id === opts.template);
 
+  // Builds the project zip from the selected templates, injects the Gradle
+  // wrapper (jar + scripts), triggers the browser download, and reports run
+  // hints (or any error) back through the status line.
   async function download() {
     if (error || !catalog) return;
     setStatus('Bundling your project…');
@@ -238,8 +298,7 @@ function GeneratorBody(): JSX.Element {
             Could not load project templates ({catalogError}). Try refreshing the page.
           </div>
         )}
-        <div className={styles.panel}>
-          <h3 className={styles.panelTitle}>1. Identity</h3>
+        <Panel title="1. Identity">
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="gameName">
@@ -277,10 +336,9 @@ function GeneratorBody(): JSX.Element {
               onChange={(e) => set('packageName', e.target.value.toLowerCase())}
             />
           </div>
-        </div>
+        </Panel>
 
-        <div className={styles.panel}>
-          <h3 className={styles.panelTitle}>2. Language &amp; runtime</h3>
+        <Panel title="2. Language & runtime">
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>
@@ -384,10 +442,9 @@ function GeneratorBody(): JSX.Element {
             Foojay Toolchains Resolver — you only need a Gradle-compatible
             bootstrap JDK on PATH (any modern JDK 8+ works).
           </div>
-        </div>
+        </Panel>
 
-        <div className={styles.panel}>
-          <h3 className={styles.panelTitle}>3. Template &amp; platforms</h3>
+        <Panel title="3. Template & platforms">
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>
@@ -416,9 +473,7 @@ function GeneratorBody(): JSX.Element {
           <div className={styles.field} style={{marginTop: '1rem'}}>
             <span className={styles.label}>
               Platforms{' '}
-              <Hint tip="Pick the launcher modules to scaffold. Android and iOS are coming soon and are currently disabled.">
-                <span className={styles.helpIcon}>?</span>
-              </Hint>
+              <HelpIcon tip="Pick the launcher modules to scaffold. Android and iOS are coming soon and are currently disabled." />
             </span>
             <div className={styles.checks}>
               {(
@@ -445,25 +500,18 @@ function GeneratorBody(): JSX.Element {
               ))}
             </div>
           </div>
-        </div>
+        </Panel>
 
-        <div className={styles.panel}>
-          <h3 className={styles.panelTitle}>4. JDK setup</h3>
+        <Panel title="4. JDK setup">
           <p style={{margin: '0 0 0.5rem', fontSize: '0.9rem', color: 'var(--flx-text-muted)'}}>
             Pick your operating system to see step-by-step instructions for
             installing the JDK you chose above. The generated project's Gradle
             wrapper can then auto-download the matching toolchain on first run.
           </p>
           <JdkSetupGuide vendor={opts.jdkVendor} vendorLabel={VENDOR_LABELS[opts.jdkVendor]} />
-        </div>
+        </Panel>
 
-        <div className={styles.panel}>
-          <h3 className={styles.panelTitle}>
-            5. Expert mode{' '}
-            <Hint tip={HINTS.expert}>
-              <span className={styles.helpIcon}>?</span>
-            </Hint>
-          </h3>
+        <Panel title={<>5. Expert mode <HelpIcon tip={HINTS.expert} /></>}>
           <label className={styles.toggle}>
             <input
               type="checkbox"
@@ -477,6 +525,43 @@ function GeneratorBody(): JSX.Element {
               <div className={styles.expertNote}>
                 Power-user knobs. Anything you put here lands verbatim in the
                 generated build files.
+              </div>
+              <div className={styles.field} style={{marginTop: '1rem'}}>
+                <label className={styles.label}>
+                  Dependency source <HelpIcon tip={HINTS.dependencySource} />
+                </label>
+                <select
+                  className={styles.select}
+                  value={opts.dependencySource}
+                  onChange={(e) => set('dependencySource', e.target.value as DependencySource)}
+                >
+                  <option value="mavenCentral">Maven Central — stable releases (default)</option>
+                  <option value="jitpack">JitPack — snapshots / specific commit or branch</option>
+                </select>
+              </div>
+              {opts.dependencySource === 'jitpack' && (
+                <div className={styles.field} style={{marginTop: '1rem'}}>
+                  <label className={styles.label}>
+                    JitPack commit or branch <HelpIcon tip={HINTS.jitpackRef} />
+                  </label>
+                  <input
+                    className={styles.input}
+                    placeholder="e.g. master-SNAPSHOT or a commit hash"
+                    value={opts.jitpackRef}
+                    onChange={(e) => set('jitpackRef', e.target.value)}
+                  />
+                </div>
+              )}
+              <div className={styles.field} style={{marginTop: '1rem'}}>
+                <label className={styles.label}>
+                  Composite build path <HelpIcon tip={HINTS.compositeBuildPath} />
+                </label>
+                <input
+                  className={styles.input}
+                  placeholder="/path/to/flixelgdx (leave empty for none)"
+                  value={opts.compositeBuildPath}
+                  onChange={(e) => set('compositeBuildPath', e.target.value)}
+                />
               </div>
               <div className={styles.row} style={{marginTop: '1rem'}}>
                 <div className={styles.field}>
@@ -521,7 +606,7 @@ function GeneratorBody(): JSX.Element {
               </div>
             </>
           )}
-        </div>
+        </Panel>
       </div>
 
       <aside className={styles.summary}>
@@ -541,6 +626,8 @@ function GeneratorBody(): JSX.Element {
           <dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
           <dt>Flixel</dt>
           <dd>{opts.flixelVersion}</dd>
+          <dt>Source</dt>
+          <dd>{opts.expert && opts.dependencySource === 'jitpack' ? 'JitPack' : 'Maven Central'}</dd>
           <dt>Template</dt>
           <dd>{selectedTemplate?.name || opts.template || '—'}</dd>
           <dt>IDE</dt>

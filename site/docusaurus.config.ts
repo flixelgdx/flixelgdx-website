@@ -67,6 +67,10 @@ const config: Config = {
         language: ['en'],
         searchResultLimits: 10,
         docsRouteBasePath: ['docs', 'api'],
+        // This site has no blog (see `blog: false` above). Without this, the
+        // search plugin defaults to indexBlog: true and warns at build time
+        // that the non-existent `blog/` directory cannot be found.
+        indexBlog: false,
       },
     ],
   ],

@@ -2,17 +2,23 @@
  * Root Gradle settings for the flixelgdx-website repository.
  *
  * The website itself is a Docusaurus (Node) project. API docs are generated
- * by running scripts/build-api.sh (CI) or by running:
+ * by the :docletmd:generateDocletMDAll task (surfaced as generateAPI at the root),
+ * which delegates to scripts/docletmd-init.gradle applied to the framework's own
+ * Gradle build so all source sets and compile classpaths are resolved correctly.
  *
- *   ./gradlew :docletmd:generateDocletMDAll -PflixelgdxSrc=/path/to/flixelgdx
+ * Local development (framework checked out at ../flixelgdx):
+ *   ./gradlew generateAPI
  *
- * Both paths delegate to scripts/docletmd-init.gradle, which applies DocletMD
- * to the framework's own Gradle build so all source sets and classpaths are
- * resolved correctly.
+ * Framework source elsewhere:
+ *   ./gradlew generateAPI -PflixelgdxSrc=/absolute/path/to/flixelgdx
  *
- * If ../DocletMD exists alongside this repo, the generateDocletMDAll task
- * auto-publishes it to mavenLocal so local changes to the plugin take effect
- * without a manual publish step.
+ * If ../DocletMD is also checked out, the plugin is built from source automatically
+ * (no mavenLocal publish needed). Otherwise the version pinned in the init script
+ * is resolved from Maven Central (used by CI).
+ *
+ * scripts/build-api.sh is the CI entry point: it clones the framework, runs the
+ * same init script, and copies output to site/api/. For local work the Gradle
+ * task above does all of that in one command.
  */
 
 rootProject.name = "flixelgdx-website"

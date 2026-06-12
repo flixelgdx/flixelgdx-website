@@ -3,6 +3,11 @@ import {createPortal} from 'react-dom';
 
 type TooltipPos = {top: number; left: number};
 
+/**
+ * Wraps `children` so that hovering or focusing them shows `tip` as a tooltip.
+ * The tooltip is rendered in a portal on `document.body` and positioned over
+ * the wrapped element so it is never clipped by an overflow-hidden ancestor.
+ */
 export default function Hint({tip, children}: {tip: ReactNode; children: ReactNode}): JSX.Element {
   const ref = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState<TooltipPos | null>(null);

@@ -134,7 +134,7 @@ export function NewTemplateWizard({open, onClose, templates, onCreate}: NewTempl
             </label>
             <fieldset className={styles.fieldset}>
               <legend>languages</legend>
-              {(['java', 'kotlin', 'groovy'] as const).map((lang) => (
+              {(['java', 'kotlin'] as const).map((lang) => (
                 <label key={lang} className={styles.check}>
                   <input
                     type="checkbox"

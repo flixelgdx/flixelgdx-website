@@ -33,7 +33,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0;
-  /* Pure white in dark mode — the red gradient was visually competing with
+  /* Pure white in dark mode; the red gradient was visually competing with
    * the red CTA button and the pixel rule. */
   color: #ffffff;
 }
@@ -79,7 +79,7 @@
   background: var(--flx-surface);
 }
 
-/* Pixel stars / glow background — true HaxeFlixel-logo palette (salmon
+/* Pixel stars / glow background, true HaxeFlixel-logo palette (salmon
  * red, golden yellow, lime green, sky blue) dialled to medium opacity so
  * the dark background stays dominant and the hero text stays readable. */
 .heroBackdrop {
