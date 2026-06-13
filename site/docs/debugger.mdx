@@ -132,7 +132,8 @@ labeled with its latest value:
 - **FPS** — frames per second over time.
 - **Frame (ms)** — how many milliseconds each frame took. Spikes here are the stutters your players feel.
 - **Heap (MB)** — Java heap usage. A repeating sawtooth (climb, then sudden drop) is the garbage collector at work.
-- **Native (MB)** — native memory, shown only when the platform reports a non-zero value.
+- **Native (MB)** — native memory, shown only when the platform reports a non-zero value. Note that this value might be the
+  same as the heap on desktop, as neither libGDX nor FlixelGDX provide a reliable way to determine native memory.
 - **Render calls** — draw batches per frame.
 
 The buffers are sampled continuously while the game runs in debug mode, **even while this window is closed**, so

@@ -22,6 +22,7 @@ import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
 import {GRADLEW_SH, GRADLEW_BAT} from './gradleWrapperScripts';
 import JdkSetupGuide from './JdkSetupGuide';
 
+
 const HINTS = {
   expert:
     "For advanced developers who want more controls over their game's configs and setup.",
@@ -42,7 +43,7 @@ const HINTS = {
   packageName:
     'The Java/Kotlin package your code lives in. Convention: reversed domain, e.g. com.you.game.',
   language: {
-    java: 'The classic and standard option. Easiest to learn, easiest to debug.',
+    java: 'The classic and standard option.',
     kotlin:
       'Modern, concise JVM language with null safety and great IDE support. Mixes seamlessly with Java.',
   },
@@ -57,6 +58,12 @@ const HINTS = {
   },
   java:
     'The Java source/target version. FlixelGDX requires Java 17 as a minimum — older versions are blocked.',
+  flixelVersion:
+    'The framework version Gradle will resolve through Maven Central.',
+  languageDisabled: 'Pick a template first.',
+  templateFallback: 'Starter layouts are loaded from the templates folder on the site.',
+  platformsLabel:
+    'Pick the launcher modules to scaffold. Android and iOS are coming soon and are currently disabled.',
   heap:
     'Default max heap in megabytes. FlixelGDX games can comfortably run in 16 MB on most hardware.',
   jvmFlags:
@@ -106,7 +113,7 @@ function isSupportedVersion(tag: string): boolean {
 async function fetchVersions(): Promise<string[]> {
   try {
     const res = await fetch(
-      'https://api.github.com/repos/flixelgdx/flixelgdx/releases?per_page=30'
+      'https://api.github.com/repos/flixelgdx/flixelgdx/releases'
     );
     if (!res.ok) throw new Error(`http ${res.status}`);
     const data: Array<{tag_name: string; prerelease: boolean}> = await res.json();
@@ -347,7 +354,7 @@ function GeneratorBody(): JSX.Element {
                   tip={
                     selectedTemplate
                       ? HINTS.language[opts.language]
-                      : 'Pick a template first.'
+                      : HINTS.languageDisabled
                   }
                 />
               </label>
@@ -383,9 +390,7 @@ function GeneratorBody(): JSX.Element {
             <div className={styles.field}>
               <label className={styles.label}>
                 FlixelGDX version{' '}
-                <HelpIcon
-                  tip="The framework version JitPack will resolve. `master-SNAPSHOT` always tracks the latest commit on master."
-                />
+                <HelpIcon tip={HINTS.flixelVersion} />
               </label>
               <select
                 className={styles.select}
@@ -450,10 +455,7 @@ function GeneratorBody(): JSX.Element {
               <label className={styles.label}>
                 Template{' '}
                 <HelpIcon
-                  tip={
-                    selectedTemplate?.description ??
-                    'Starter layouts are loaded from the templates folder on the site.'
-                  }
+                  tip={selectedTemplate?.description ?? HINTS.templateFallback}
                 />
               </label>
               <select
@@ -473,7 +475,7 @@ function GeneratorBody(): JSX.Element {
           <div className={styles.field} style={{marginTop: '1rem'}}>
             <span className={styles.label}>
               Platforms{' '}
-              <HelpIcon tip="Pick the launcher modules to scaffold. Android and iOS are coming soon and are currently disabled." />
+              <HelpIcon tip={HINTS.platformsLabel} />
             </span>
             <div className={styles.checks}>
               {(
@@ -642,7 +644,7 @@ function GeneratorBody(): JSX.Element {
           disabled={!!error || !catalog || !!catalogError}
           onClick={download}
         >
-          ↓ Download project
+          Download project
         </button>
         {error ? (
           <div className={styles.error}>{error}</div>

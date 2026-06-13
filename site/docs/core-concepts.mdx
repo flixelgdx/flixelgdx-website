@@ -764,7 +764,7 @@ running `FlixelTween`:
 new FlixelTweenSettings()
   .setOnStart(t -> Flixel.info("Tween started"))
   .setOnUpdate(t -> updateUI())
-  .setOnComplete(t -> nextAnimation())
+  .setOnComplete(t -> nextAnimation());
 ```
 
 </TabItem>
@@ -774,7 +774,7 @@ new FlixelTweenSettings()
 FlixelTweenSettings()
   .setOnStart { Flixel.info("Tween started") }
   .setOnUpdate { updateUI()) }
-  .setOnComplete { nextAnimation()) })
+  .setOnComplete { nextAnimation() }
 ```
 
 </TabItem>

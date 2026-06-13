@@ -7,7 +7,7 @@ description: Build the classic Pong game in FlixelGDX. A friendly, step-by-step 
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import JdkSetupGuide from '@site/src/components/projectGenerator/JdkSetupGuide';
+import JdkSetupGuide from '@site/src/components/ProjectGenerator/JdkSetupGuide';
 
 # Your First Project: Pong! 🏓
 
@@ -29,11 +29,11 @@ class with a field, a constructor, and a method.
 
 While both work flawlessly, don't use Java if you:
 
-1. Are transitioning from **HaxeFlixel** (Kotlin's modern feature set closely mirrors Haxe).
+1. Are transitioning from **HaxeFlixel**.
 2. Want a cleaner, more concise language that is easier for game development beginners.
 
 Because of this, **Kotlin** is an obvious choice, <i>especially</i> if you're coming from the Haxe ecosystem.
-When you combine FlixelGDX's simple, modular and backend-agnostic API with a simple, easy to use language, you
+When you combine FlixelGDX's simple, modular and backend-agnostic API with a simple, easy-to-use language, you
 will immediately fall in love with the ecosystem and have a lot of fun making games!
 
 :::
@@ -257,11 +257,11 @@ class PlayState : FlixelState() {
   are the **`x` / `y` of the sprite's bottom-left (not top-left like HaxeFlixel!) corner in world
   space** (as documented on
   [`FlixelObject`](/api/core/FlixelObject) in the API reference).
-- `makeGraphic(8, 64, Color.WHITE)` paints a tall thin **white**
-  rectangle. `Color` comes from libGDX
-  (`com.badlogic.gdx.graphics.Color`); it ships handy constants like
-  `Color.WHITE`, and you can build any color from a hex string with
-  `Color.valueOf("ff2a3c")`.
+- `makeGraphic(8, 64, FlixelColor.WHITE)` paints a tall thin white
+  rectangle. `FlixelColor` is FlixelGDX's color utility
+  (`org.flixelgdx.util.FlixelColor`). It ships named constants such as
+  `FlixelColor.WHITE`, `FlixelColor.RED`, and many more. You can also
+  pass a libGDX `Color` directly if you need a custom hex value.
 - `add(player)` tells the state *"please include this actor when you
   update and draw the scene each frame"*.
 
@@ -306,7 +306,7 @@ public void update(float elapsed) {
 
   // Don't let the paddle leave the screen.
   if (player.getY() < 0) player.setY(0);
-  if (player.getY() > 480 - player.getHeight()) player.setY(480 - player.getHeight());
+  if (player.getY() > Flixel.getViewHeight() - player.getHeight()) player.setY(Flixel.getViewHeight() - player.getHeight());
 }
 ```
 
@@ -328,7 +328,7 @@ override fun update(elapsed: Float) {
 
   // Don't let the paddle leave the screen.
   if (player.y < 0f) player.y = 0f
-  if (player.y > 480 - player.height) player.y = (480 - player.height).toFloat()
+  if (player.y > Flixel.getViewHeight().toFloat() - player.height) player.y = Flixel.getViewHeight().toFloat() - player.height
 }
 ```
 
@@ -375,7 +375,7 @@ public class PlayState extends FlixelState {
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, Color.WHITE);
+    enemy.makeGraphic(8, 64, FlixelColor.WHITE);
     add(enemy);
   }
 
@@ -388,7 +388,7 @@ public class PlayState extends FlixelState {
 
     // Don't let the paddle leave the screen.
     if (player.getY() < 0) player.setY(0);
-    if (player.getY() > 480 - player.getHeight() player.setY(480 - player.getHeight());
+    if (player.getY() > Flixel.getViewHeight() - player.getHeight()) player.setY(Flixel.getViewHeight() - player.getHeight());
   }
 }
 ```
@@ -432,11 +432,11 @@ class PlayState : FlixelState() {
   override fun update(elapsed: Float) {
     super.update(elapsed)
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y -= PADDLE_SPEED * elapsed
 
     if (player.y < 0f) player.y = 0f
-    if (player.y > 480 - player.height) player.y = (480 - player.height).toFloat()
+    if (player.y > Flixel.getViewHeight().toFloat() - player.height) player.y = Flixel.getViewHeight().toFloat() - player.height
   }
 }
 ```
@@ -450,26 +450,25 @@ class PlayState : FlixelState() {
 
 ## 4. Add the ball, with collision
 
-Now the fun part — a bouncing ball. We will give it a tiny `vx` / `vy`
-velocity and bounce it off the top, bottom, and any paddle it touches.
+Now the fun part — a bouncing ball. `FlixelObject` already has built-in velocity fields
+(`velocityX`, `velocityY`) that the framework applies to position automatically every frame,
+so we do not need to move the ball manually.
 
 :::tip
 
-Velocity is just *"how many pixels per second the ball
-wants to move"*. To move the ball, we add `velocity * elapsed` to its
-position. Same delta-time trick as the paddle.
+`FlixelObject.velocityX/Y` store *"how many pixels per second to move"*. FlixelGDX
+multiplies by delta time and updates the position for you — the same delta-time math
+as the paddle, but handled by the framework instead of by hand.
 
 :::
 
-Add a ball and two velocity fields, then use the built-in overlap check:
+Add the ball, set its starting velocity, and add the bounce and collision checks:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 private FlixelSprite ball;
-private float ballVx = 200f;
-private float ballVy = 140f;
 ```
 
 Inside `create()`, after the paddles:
@@ -477,22 +476,26 @@ Inside `create()`, after the paddles:
 ```java
 ball = new FlixelSprite(316, 236);
 ball.makeGraphic(8, 8, FlixelColor.RED);
+ball.setVelocity(200f, 140f);
 add(ball);
 ```
 
 Inside `update(elapsed)`, after the paddle clamps:
 
 ```java
-ball.setX(ball.getX() + ballVx * elapsed);
-ball.setY(ball.getY() + ballVy * elapsed);
-
 // Bounce off top/bottom.
-if (ball.getY() < 0)       { ball.setY(0);       ballVy = -ballVy; }
-if (ball.getY() > 480 - 8) { ball.setY(480 - 8); ballVy = -ballVy; }
+if (ball.getY() < 0) {
+  ball.setY(0);
+  ball.setVelocityY(-ball.getVelocityY());
+}
+if (ball.getY() > Flixel.getViewHeight() - ball.getHeight()) {
+  ball.setY(Flixel.getViewHeight() - ball.getHeight());
+  ball.setVelocityY(-ball.getVelocityY());
+}
 
 // Bounce off paddles using the framework's AABB overlap check.
-if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
-if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
+if (Flixel.overlap(ball, player) && ball.getVelocityX() < 0) ball.setVelocityX(-ball.getVelocityX());
+if (Flixel.overlap(ball, enemy)  && ball.getVelocityX() > 0) ball.setVelocityX(-ball.getVelocityX());
 ```
 
 </TabItem>
@@ -500,28 +503,34 @@ if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
 
 ```kotlin
 private lateinit var ball: FlixelSprite
-private var ballVx = 200f
-private var ballVy = 140f
 ```
 
+Inside `create()`, after the paddles:
+
 ```kotlin
-// Inside create(), after the paddles:
-ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) } // FlixelGDX red
+ball = FlixelSprite(316f, 236f).apply {
+  makeGraphic(8, 8, FlixelColor.RED)
+  setVelocity(200f, 140f)
+}
 add(ball)
 ```
 
-```kotlin
-// Inside update(elapsed), after the paddle clamps:
-ball.x += ballVx * elapsed
-ball.y += ballVy * elapsed
+Inside `update(elapsed)`, after the paddle clamps:
 
+```kotlin
 // Bounce off top/bottom.
-if (ball.y < 0f)        { ball.y = 0f;          ballVy = -ballVy }
-if (ball.y > 480f - 8f) { ball.y = 480f - 8f;   ballVy = -ballVy }
+if (ball.y < 0f) {
+  ball.y = 0f
+  ball.velocityY = -ball.velocityY
+}
+if (ball.y > Flixel.getViewHeight().toFloat() - ball.height) {
+  ball.y = Flixel.getViewHeight().toFloat() - ball.height
+  ball.velocityY = -ball.velocityY
+}
 
 // Bounce off paddles using the framework's AABB overlap check.
-if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx
-if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
+if (Flixel.overlap(ball, player) && ball.velocityX < 0) ball.velocityX = -ball.velocityX
+if (Flixel.overlap(ball, enemy)  && ball.velocityX > 0) ball.velocityX = -ball.velocityX
 ```
 
 </TabItem>
@@ -552,10 +561,10 @@ private static final float ENEMY_SPEED = 160f;
 
 // inside update(elapsed):
 float targetY = ball.getY() - 28; // 28 = half-paddle minus half-ball
-if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
-if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
-if (enemy.getY() < 0)        enemy.setY(0);
-if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
+if (enemy.getY() < targetY) enemy.changeY(Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+if (enemy.getY() > targetY) enemy.changeY(-Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+if (enemy.getY() < 0) enemy.setY(0);
+if (enemy.getY() > Flixel.getViewHeight() - enemy.getHeight()) enemy.setY(Flixel.getViewHeight() - enemy.getHeight());
 ```
 
 </TabItem>
@@ -568,8 +577,8 @@ companion object { private const val ENEMY_SPEED = 160f }
 val targetY = ball.y - 28f // 28 = half-paddle minus half-ball
 if (enemy.y < targetY) enemy.y += minOf(ENEMY_SPEED * elapsed, targetY - enemy.y)
 if (enemy.y > targetY) enemy.y -= minOf(ENEMY_SPEED * elapsed, enemy.y - targetY)
-if (enemy.y < 0f)        enemy.y = 0f
-if (enemy.y > 480f - 64f) enemy.y = 480f - 64f
+if (enemy.y < 0f) enemy.y = 0f
+if (enemy.y > Flixel.getViewHeight().toFloat() - enemy.height) enemy.y = Flixel.getViewHeight().toFloat() - enemy.height
 ```
 
 </TabItem>
@@ -589,11 +598,11 @@ nicer than a wobbly tracker.
 ```java
 package com.example.pong;
 
-import com.badlogic.gdx.graphics.Color;
 import org.flixelgdx.Flixel;
 import org.flixelgdx.FlixelSprite;
 import org.flixelgdx.FlixelState;
 import org.flixelgdx.input.keyboard.FlixelKey;
+import org.flixelgdx.util.FlixelColor;
 
 public class PlayState extends FlixelState {
   private static final float PADDLE_SPEED = 220f;
@@ -602,8 +611,6 @@ public class PlayState extends FlixelState {
   private FlixelSprite player;
   private FlixelSprite enemy;
   private FlixelSprite ball;
-  private float ballVx = 200f;
-  private float ballVy = 140f;
 
   @Override
   public void create() {
@@ -612,16 +619,17 @@ public class PlayState extends FlixelState {
 
     // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, Color.WHITE);
+    player.makeGraphic(8, 64, FlixelColor.WHITE);
     add(player);
 
     // Right paddle. This is the enemy AI we'll code later!
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, Color.WHITE);
+    enemy.makeGraphic(8, 64, FlixelColor.WHITE);
     add(enemy);
 
     ball = new FlixelSprite(316, 236);
-    ball.makeGraphic(8, 8, Color.valueOf("ff2a3c")); // FlixelGDX red
+    ball.makeGraphic(8, 8, FlixelColor.RED);
+    ball.setVelocity(200f, 140f);
     add(ball);
   }
 
@@ -629,27 +637,30 @@ public class PlayState extends FlixelState {
   public void update(float elapsed) {
     super.update(elapsed);
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
-    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
-    if (player.getY() < 0)        player.setY(0);
-    if (player.getY() > 480 - 64) player.setY(480 - 64);
-
-    ball.setX(ball.getX() + ballVx * elapsed);
-    ball.setY(ball.getY() + ballVy * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.W)) player.changeY(PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.changeY(-PADDLE_SPEED * elapsed);
+    if (player.getY() < 0) player.setY(0);
+    if (player.getY() > Flixel.getViewHeight() - player.getHeight()) player.setY(Flixel.getViewHeight() - player.getHeight());
 
     // Bounce off top/bottom.
-    if (ball.getY() < 0)       { ball.setY(0);       ballVy = -ballVy; }
-    if (ball.getY() > 480 - 8) { ball.setY(480 - 8); ballVy = -ballVy; }
+    if (ball.getY() < 0) {
+      ball.setY(0);
+      ball.setVelocityY(-ball.getVelocityY());
+    }
+    if (ball.getY() > Flixel.getViewHeight() - ball.getHeight()) {
+      ball.setY(Flixel.getViewHeight() - ball.getHeight());
+      ball.setVelocityY(-ball.getVelocityY());
+    }
 
     // Bounce off paddles using the framework's AABB overlap check.
-    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
-    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, player) && ball.getVelocityX() < 0) ball.setVelocityX(-ball.getVelocityX());
+    if (Flixel.overlap(ball, enemy)  && ball.getVelocityX() > 0) ball.setVelocityX(-ball.getVelocityX());
 
     float targetY = ball.getY() - 28;
-    if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
-    if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
-    if (enemy.getY() < 0)        enemy.setY(0);
-    if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
+    if (enemy.getY() < targetY) enemy.changeY(Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+    if (enemy.getY() > targetY) enemy.changeY(-Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+    if (enemy.getY() < 0) enemy.setY(0);
+    if (enemy.getY() > Flixel.getViewHeight() - enemy.getHeight()) enemy.setY(Flixel.getViewHeight() - enemy.getHeight());
   }
 }
 ```
@@ -660,11 +671,11 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
-import com.badlogic.gdx.graphics.Color
 import org.flixelgdx.Flixel
 import org.flixelgdx.FlixelSprite
 import org.flixelgdx.FlixelState
 import org.flixelgdx.input.keyboard.FlixelKey
+import org.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
   companion object {
@@ -675,49 +686,53 @@ class PlayState : FlixelState() {
   private lateinit var player: FlixelSprite
   private lateinit var enemy: FlixelSprite
   private lateinit var ball: FlixelSprite
-  private var ballVx = 200f
-  private var ballVy = 140f
 
   override fun create() {
     super.create()
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
     add(player)
 
     // Right paddle. This is the enemy AI we'll code later!
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
     add(enemy)
 
-    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) } // FlixelGDX red
+    ball = FlixelSprite(316f, 236f).apply {
+      makeGraphic(8, 8, FlixelColor.RED)
+      setVelocity(200f, 140f)
+    }
     add(ball)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
-    if (player.y < 0f)        player.y = 0f
-    if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
-
-    ball.x += ballVx * elapsed
-    ball.y += ballVy * elapsed
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y -= PADDLE_SPEED * elapsed
+    if (player.y < 0f) player.y = 0f
+    if (player.y > Flixel.getViewHeight().toFloat() - player.height) player.y = Flixel.getViewHeight().toFloat() - player.height
 
     // Bounce off top/bottom.
-    if (ball.y < 0f)        { ball.y = 0f;          ballVy = -ballVy }
-    if (ball.y > 480f - 8f) { ball.y = 480f - 8f;   ballVy = -ballVy }
+    if (ball.y < 0f) {
+      ball.y = 0f
+      ball.velocityY = -ball.velocityY
+    }
+    if (ball.y > Flixel.getViewHeight().toFloat() - ball.height) {
+      ball.y = Flixel.getViewHeight().toFloat() - ball.height
+      ball.velocityY = -ball.velocityY
+    }
 
     // Bounce off paddles using the framework's AABB overlap check.
-    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx
-    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
+    if (Flixel.overlap(ball, player) && ball.velocityX < 0) ball.velocityX = -ball.velocityX
+    if (Flixel.overlap(ball, enemy)  && ball.velocityX > 0) ball.velocityX = -ball.velocityX
 
     val targetY = ball.y - 28f
     if (enemy.y < targetY) enemy.y += minOf(ENEMY_SPEED * elapsed, targetY - enemy.y)
     if (enemy.y > targetY) enemy.y -= minOf(ENEMY_SPEED * elapsed, enemy.y - targetY)
-    if (enemy.y < 0f)         enemy.y = 0f
-    if (enemy.y > 480f - 64f) enemy.y = 480f - 64f
+    if (enemy.y < 0f) enemy.y = 0f
+    if (enemy.y > Flixel.getViewHeight().toFloat() - enemy.height) enemy.y = Flixel.getViewHeight().toFloat() - enemy.height
   }
 }
 ```
@@ -741,6 +756,80 @@ It behaves like any other sprite — you `add()` it, you move it, you
 tweak its text whenever the score changes.
 
 :::
+
+### Loading a custom font
+
+The default font works fine for quick tests. For a proper retro Pong look let's
+load a real TrueType font using **`FlixelFontRegistry`** — FlixelGDX's global font
+manager. Registering a font once lets every `FlixelText` in your game reuse the same
+loaded file instead of each object opening it independently.
+
+#### 1. Download the font
+
+Click the button below to download **VCR OSD Mono**, a chunky retro monospace
+typeface that fits right at home on an arcade score display.
+
+<a
+  className="flx-btn flx-btn--primary"
+  href="/fonts/vcr.ttf"
+  download="vcr.ttf"
+>
+  Download vcr.ttf
+</a>
+
+#### 2. Place it in your project
+
+Inside your project folder open the `assets/` directory and create a `fonts/`
+subfolder inside it. Drag the downloaded file there:
+
+```
+my-pong-game/
+  assets/
+    fonts/
+      vcr.ttf   <-- goes here
+```
+
+#### 3. Register the font at startup
+
+Open `PlayState.create()` and add these two lines **at the very top**, before any
+`FlixelText` objects are created. The first line registers the `.ttf` file under
+the short ID `"vcr"`. The second makes it the game-wide default so any `FlixelText`
+you forget to configure still uses it instead of the plain built-in font.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+import com.badlogic.gdx.Gdx;
+import org.flixelgdx.text.FlixelFontRegistry;
+
+// At the top of create(), before any FlixelText:
+FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"));
+FlixelFontRegistry.setDefault("vcr");
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+import com.badlogic.gdx.Gdx
+import org.flixelgdx.text.FlixelFontRegistry
+
+// At the top of create(), before any FlixelText:
+FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"))
+FlixelFontRegistry.setDefault("vcr")
+```
+
+</TabItem>
+</Tabs>
+
+`Gdx.files.internal(path)` resolves any path relative to the `assets/` folder, which
+is where libGDX (and by extension FlixelGDX) looks for game assets.
+
+Now every `FlixelText` in the game will automatically use the VCR font unless you call
+`setFont(...)` on a specific object to override it.
+
+---
 
 Add fields + setup:
 
@@ -778,7 +867,7 @@ if (ball.getX() < 0) {
   enemyLabel.setText(String.valueOf(enemyScore));
   resetBall(+1);
 }
-if (ball.getX() > 640 - 8) {
+if (ball.getX() > Flixel.getViewWidth() - ball.getWidth()) {
   playerScore++;
   playerLabel.setText(String.valueOf(playerScore));
   resetBall(-1);
@@ -790,8 +879,7 @@ And a helper:
 ```java
 private void resetBall(int towardSign) {
   ball.setPosition(316, 236);
-  ballVx = 200f * towardSign;
-  ballVy = 140f;
+  ball.setVelocity(200f * towardSign, 140f);
   Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
 }
 ```
@@ -808,8 +896,9 @@ private lateinit var playerLabel: FlixelText
 private lateinit var enemyLabel: FlixelText
 ```
 
+Inside `create()`:
+
 ```kotlin
-// inside create():
 playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
 add(playerLabel)
 
@@ -817,24 +906,29 @@ enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setTextSize(48) }
 add(enemyLabel)
 ```
 
+When the ball leaves either side, update the score, refresh the label
+text, and reset the ball to the center. Add this **goal check** at the
+end of `update(elapsed)`:
+
 ```kotlin
 if (ball.x < 0f) {
   enemyScore++
   enemyLabel.setText(enemyScore.toString())
   resetBall(+1)
 }
-if (ball.x > 640f - 8f) {
+if (ball.x > Flixel.getViewWidth().toFloat() - ball.width) {
   playerScore++
   playerLabel.setText(playerScore.toString())
   resetBall(-1)
 }
 ```
 
+And a helper:
+
 ```kotlin
 private fun resetBall(towardSign: Int) {
   ball.setPosition(316f, 236f)
-  ballVx = 200f * towardSign
-  ballVy = 140f
+  ball.setVelocity(200f * towardSign, 140f)
   Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
 }
 ```
@@ -1029,7 +1123,7 @@ if (playerScore >= 5 || enemyScore >= 5) {
 </TabItem>
 </Tabs>
 
-### Congratulations dawg, you just made your first game! 🔥
+**Congratulations, you just made your first game with FlixelGDX!**
 
 :::note[How your finished `PlayState` should look]
 
@@ -1042,22 +1136,23 @@ if (playerScore >= 5 || enemyScore >= 5) {
 ```java
 package com.example.pong;
 
-import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.Gdx;
 import org.flixelgdx.Flixel;
 import org.flixelgdx.FlixelSprite;
 import org.flixelgdx.FlixelState;
 import org.flixelgdx.input.keyboard.FlixelKey;
+import org.flixelgdx.text.FlixelFontRegistry;
 import org.flixelgdx.text.FlixelText;
+import org.flixelgdx.util.FlixelColor;
 
 public class PlayState extends FlixelState {
+
   private static final float PADDLE_SPEED = 220f;
   private static final float ENEMY_SPEED  = 160f;
 
   private FlixelSprite player;
   private FlixelSprite enemy;
   private FlixelSprite ball;
-  private float ballVx = 200f;
-  private float ballVy = 140f;
   private int playerScore = 0;
   private int enemyScore  = 0;
   private FlixelText playerLabel;
@@ -1066,20 +1161,23 @@ public class PlayState extends FlixelState {
   @Override
   public void create() {
     super.create();
+    FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"));
+    FlixelFontRegistry.setDefault("vcr");
     Flixel.info("Pong is starting!");
 
     // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
-    player.makeGraphic(8, 64, Color.WHITE);
+    player.makeGraphic(8, 64, FlixelColor.WHITE);
     add(player);
 
     // Right paddle. This is the enemy AI.
     enemy = new FlixelSprite(612, 200);
-    enemy.makeGraphic(8, 64, Color.WHITE);
+    enemy.makeGraphic(8, 64, FlixelColor.WHITE);
     add(enemy);
 
     ball = new FlixelSprite(316, 236);
-    ball.makeGraphic(8, 8, Color.valueOf("ff2a3c"));
+    ball.makeGraphic(8, 8, FlixelColor.RED);
+    ball.setVelocity(200f, 140f);
     add(ball);
 
     playerLabel = new FlixelText(150, 20, 200, "0");
@@ -1100,37 +1198,35 @@ public class PlayState extends FlixelState {
       return;
     }
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.setY(player.getY() - PADDLE_SPEED * elapsed);
-    if (Flixel.keys.pressed(FlixelKey.S)) player.setY(player.getY() + PADDLE_SPEED * elapsed);
-    if (player.getY() < 0)        player.setY(0);
-    if (player.getY() > 480 - 64) player.setY(480 - 64);
+    if (Flixel.keys.pressed(FlixelKey.W)) player.changeY(PADDLE_SPEED * elapsed);
+    if (Flixel.keys.pressed(FlixelKey.S)) player.changeY(-PADDLE_SPEED * elapsed);
+    if (player.getY() < 0) player.setY(0);
+    if (player.getY() > Flixel.getViewHeight() - player.getHeight()) player.setY(Flixel.getViewHeight() - player.getHeight());
 
-    ball.setX(ball.getX() + ballVx * elapsed);
-    ball.setY(ball.getY() + ballVy * elapsed);
     if (ball.getY() < 0) {
       ball.setY(0);
-      ballVy = -ballVy;
+      ball.setVelocityY(-ball.getVelocityY());
     }
-    if (ball.getY() > 480 - 8) {
-      ball.setY(480 - 8);
-      ballVy = -ballVy;
+    if (ball.getY() > Flixel.getViewHeight() - ball.getHeight()) {
+      ball.setY(Flixel.getViewHeight() - ball.getHeight());
+      ball.setVelocityY(-ball.getVelocityY());
     }
 
-    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx;
-    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx;
+    if (Flixel.overlap(ball, player) && ball.getVelocityX() < 0) ball.setVelocityX(-ball.getVelocityX());
+    if (Flixel.overlap(ball, enemy)  && ball.getVelocityX() > 0) ball.setVelocityX(-ball.getVelocityX());
 
     float targetY = ball.getY() - 28;
-    if (enemy.getY() < targetY) enemy.setY(enemy.getY() + Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
-    if (enemy.getY() > targetY) enemy.setY(enemy.getY() - Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
-    if (enemy.getY() < 0)        enemy.setY(0);
-    if (enemy.getY() > 480 - 64) enemy.setY(480 - 64);
+    if (enemy.getY() < targetY) enemy.changeY(Math.min(ENEMY_SPEED * elapsed, targetY - enemy.getY()));
+    if (enemy.getY() > targetY) enemy.changeY(-Math.min(ENEMY_SPEED * elapsed, enemy.getY() - targetY));
+    if (enemy.getY() < 0) enemy.setY(0);
+    if (enemy.getY() > Flixel.getViewHeight() - enemy.getHeight()) enemy.setY(Flixel.getViewHeight() - enemy.getHeight());
 
     if (ball.getX() < 0) {
       enemyScore++;
       enemyLabel.setText(String.valueOf(enemyScore));
       resetBall(+1);
     }
-    if (ball.getX() > 640 - 8) {
+    if (ball.getX() > Flixel.getViewWidth() - ball.getWidth()) {
       playerScore++;
       playerLabel.setText(String.valueOf(playerScore));
       resetBall(-1);
@@ -1139,8 +1235,7 @@ public class PlayState extends FlixelState {
 
   private void resetBall(int towardSign) {
     ball.setPosition(316, 236);
-    ballVx = 200f * towardSign;
-    ballVy = 140f;
+    ball.setVelocity(200f * towardSign, 140f);
     Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
     if (playerScore >= 5 || enemyScore >= 5) {
       Flixel.info("Match over. Switching to GameOverState.");
@@ -1156,14 +1251,17 @@ public class PlayState extends FlixelState {
 ```kotlin
 package com.example.pong
 
-import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.Gdx
 import org.flixelgdx.Flixel
 import org.flixelgdx.FlixelSprite
 import org.flixelgdx.FlixelState
 import org.flixelgdx.input.keyboard.FlixelKey
+import org.flixelgdx.text.FlixelFontRegistry
 import org.flixelgdx.text.FlixelText
+import org.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
+
   companion object {
     private const val PADDLE_SPEED = 220f
     private const val ENEMY_SPEED  = 160f
@@ -1172,8 +1270,6 @@ class PlayState : FlixelState() {
   private lateinit var player: FlixelSprite
   private lateinit var enemy: FlixelSprite
   private lateinit var ball: FlixelSprite
-  private var ballVx = 200f
-  private var ballVy = 140f
   private var playerScore = 0
   private var enemyScore  = 0
   private lateinit var playerLabel: FlixelText
@@ -1181,17 +1277,22 @@ class PlayState : FlixelState() {
 
   override fun create() {
     super.create()
+    FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"))
+    FlixelFontRegistry.setDefault("vcr")
     Flixel.info("Pong is starting!")
 
     // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
     add(player)
 
     // Right paddle. This is the enemy AI.
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, Color.WHITE) }
+    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
     add(enemy)
 
-    ball = FlixelSprite(316f, 236f).apply { makeGraphic(8, 8, Color.valueOf("ff2a3c")) }
+    ball = FlixelSprite(316f, 236f).apply {
+      makeGraphic(8, 8, FlixelColor.RED)
+      setVelocity(200f, 140f)
+    }
     add(ball)
 
     playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
@@ -1209,37 +1310,35 @@ class PlayState : FlixelState() {
       return
     }
 
-    if (Flixel.keys.pressed(FlixelKey.W)) player.y -= PADDLE_SPEED * elapsed
-    if (Flixel.keys.pressed(FlixelKey.S)) player.y += PADDLE_SPEED * elapsed
-    if (player.y < 0f)        player.y = 0f
-    if (player.y > 480 - 64) player.y = (480 - 64).toFloat()
+    if (Flixel.keys.pressed(FlixelKey.W)) player.y += PADDLE_SPEED * elapsed
+    if (Flixel.keys.pressed(FlixelKey.S)) player.y -= PADDLE_SPEED * elapsed
+    if (player.y < 0f) player.y = 0f
+    if (player.y > Flixel.getViewHeight().toFloat() - player.height) player.y = Flixel.getViewHeight().toFloat() - player.height
 
-    ball.x += ballVx * elapsed
-    ball.y += ballVy * elapsed
     if (ball.y < 0f) {
       ball.y = 0f
-      ballVy = -ballVy
+      ball.velocityY = -ball.velocityY
     }
-    if (ball.y > 480f - 8f) {
-      ball.y = 480f - 8f
-      ballVy = -ballVy
+    if (ball.y > Flixel.getViewHeight().toFloat() - ball.height) {
+      ball.y = Flixel.getViewHeight().toFloat() - ball.height
+      ball.velocityY = -ball.velocityY
     }
 
-    if (Flixel.overlap(ball, player) && ballVx < 0) ballVx = -ballVx
-    if (Flixel.overlap(ball, enemy)  && ballVx > 0) ballVx = -ballVx
+    if (Flixel.overlap(ball, player) && ball.velocityX < 0) ball.velocityX = -ball.velocityX
+    if (Flixel.overlap(ball, enemy)  && ball.velocityX > 0) ball.velocityX = -ball.velocityX
 
     val targetY = ball.y - 28f
     if (enemy.y < targetY) enemy.y += minOf(ENEMY_SPEED * elapsed, targetY - enemy.y)
     if (enemy.y > targetY) enemy.y -= minOf(ENEMY_SPEED * elapsed, enemy.y - targetY)
-    if (enemy.y < 0f)         enemy.y = 0f
-    if (enemy.y > 480f - 64f) enemy.y = 480f - 64f
+    if (enemy.y < 0f) enemy.y = 0f
+    if (enemy.y > Flixel.getViewHeight().toFloat() - enemy.height) enemy.y = Flixel.getViewHeight().toFloat() - enemy.height
 
     if (ball.x < 0f) {
       enemyScore++
       enemyLabel.setText(enemyScore.toString())
       resetBall(+1)
     }
-    if (ball.x > 640f - 8f) {
+    if (ball.x > Flixel.getViewWidth().toFloat() - ball.width) {
       playerScore++
       playerLabel.setText(playerScore.toString())
       resetBall(-1)
@@ -1248,8 +1347,7 @@ class PlayState : FlixelState() {
 
   private fun resetBall(towardSign: Int) {
     ball.setPosition(316f, 236f)
-    ballVx = 200f * towardSign
-    ballVy = 140f
+    ball.setVelocity(200f * towardSign, 140f)
     Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
     if (playerScore >= 5 || enemyScore >= 5) {
       Flixel.info("Match over. Switching to GameOverState.")
@@ -1278,12 +1376,13 @@ Take a breath. In one afternoon you used:
 - `Flixel.keys` (`pressed`, `justPressed`) and `FlixelKey` for input.
 - The **delta time** pattern (`speed * elapsed`) so the game runs the
   same on every machine.
-- `FlixelText` for HUD text.
+- `FlixelText` for HUD text, with `FlixelFontRegistry` to load and share a custom `.ttf` font.
+- `FlixelColor` for framework-native color constants like `FlixelColor.WHITE` and `FlixelColor.RED`.
 - Logging for friendly debug output.
 - `Flixel.switchState` to swap scenes.
 
 Those are the **same building blocks** every FlixelGDX game uses, from
-30-second jam entries to full-fat indie titles.
+3-day jam entries to full-fat indie titles.
 
 ## Where next?
 
@@ -1291,9 +1390,7 @@ Those are the **same building blocks** every FlixelGDX game uses, from
   just touched — `FlixelSprite`, `FlixelText`, `Flixel`, `FlixelKey`,
   `FlixelObject`.
 - Try replacing your `makeGraphic` rectangles with images you load
-  through `Flixel.assets`.
+  through `loadGraphic`.
 - Add a sound effect on every paddle bounce using `Flixel.sound.play`.
-- Generate a fresh project with the **Platformer** template and apply
-  the same ideas to a side-scroller.
 
 Welcome to FlixelGDX. Now go make something fun. ❤️
