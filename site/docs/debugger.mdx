@@ -42,7 +42,7 @@ public static void main(String[] args) {
 
 ```kotlin
 fun main() {
-    FlixelLwjgl3Launcher.launch(MyGame(), FlixelRuntimeMode.DEBUG)
+  FlixelLwjgl3Launcher.launch(MyGame(), FlixelRuntimeMode.DEBUG)
 }
 ```
 
@@ -51,6 +51,8 @@ fun main() {
 
 When `DEBUG` mode is active, the ImGui overlay is created and can be toggled at any time. In `RELEASE` mode the
 overlay is never created, so there is zero per-frame cost in shipped builds.
+
+<img src="/img/debugger/general.png" alt="The main view of what the debugger looks like" width="" />
 
 :::note[Flixel.debug and Flixel.watch are always available]
 
@@ -85,6 +87,8 @@ Pressing the overlay toggle key (**F2** by default) hides or shows the entire ov
 
 ### Stats window
 
+<img src="/img/debugger/stats.png" alt="Stats window" width="" />
+
 The **Stats** window is your game's dashboard — the speedometer and fuel gauge you glance at to confirm
 everything is healthy. It shows these rows:
 
@@ -110,8 +114,8 @@ If you are coming from raw libGDX, you are used to `SpriteBatch` flushing the mo
 controlling draw order. **FlixelGDX does not work that way.**
 
 `FlixelBatch` and `FlixelSpriteBatch` are texture-bind-aware: they assign each unique texture to an OpenGL texture
-unit and record the slot index per vertex, so a single draw call can render sprites from up to **16 different
-textures at once** on desktop (fewer on mobile hardware, determined at runtime from `GL_MAX_TEXTURE_IMAGE_UNITS`).
+unit and record the slot index per vertex, so a single draw call can render sprites from up to **32 different
+textures at once** on desktop (fewer on mobile or weaker hardware, determined at runtime from `GL_MAX_TEXTURE_IMAGE_UNITS`).
 With raw `SpriteBatch` every texture switch is a flush; here, the batch only flushes when all slots are occupied by
 a new unseen texture, the vertex buffer fills up, blend state changes, or `end()` is called. For most scenes this
 is a **significant** reduction in render calls.
@@ -124,6 +128,8 @@ something is forcing more flushes than expected.
 :::
 
 ### Performance window
+
+<img src="/img/debugger/performance.png" alt="Performance window" width="" />
 
 Where the Stats window shows you *this instant*, the **Performance** window shows you *history* — like a heart-rate
 monitor instead of a single pulse reading. It draws several rolling line graphs, one stacked above the next, each
@@ -149,11 +155,13 @@ graph, you are allocating too much memory in your update loop (see [Best Practic
 
 ### Log window
 
+<img src="/img/debugger/log.png" alt="Logs window" width="" />
+
 The **Log** window is your game's running diary. It streams everything that passes through `FlixelLogger` — the
 same logger behind `Flixel.info`, `Flixel.warn`, and `Flixel.error` — so you never need a `System.out.println`
 again. Messages are color-coded by severity:
 
-- **Grey** — INFO (normal messages)
+- **White** — INFO (normal messages)
 - **Yellow** — WARN (something looks off, but the game keeps going)
 - **Red** — ERROR (something actually went wrong)
 
@@ -161,7 +169,11 @@ A menu bar across the top lets you toggle each level on or off (handy for hiding
 an error) and flip **Auto-scroll**, which keeps the newest line in view at the bottom. The logger keeps a capped
 number of recent lines and trims the oldest, so the window never grows without bound.
 
+<img src="/img/debugger/toggling-logs.gif" alt="Demonstration of filtering log types" width="" />
+
 ### Watch window
+
+<img src="/img/debugger/watch.png" alt="Watch window" width="" />
 
 The **Watch** window shows live `name → value` pairs that you register from your game code, laid out as a
 two-column table. It is perfect for tracking moving values — a sprite's position, a velocity, an AI state — without
@@ -177,9 +189,7 @@ debugger keeps the needle updated for you.
 // Register any supplier. It is re-evaluated several times a second while the overlay is visible.
 Flixel.watch.add("Player X", () -> player.getX());
 Flixel.watch.add("Player Y", () -> player.getY());
-// Float-valued suppliers bind to a primitive overload (no boxing).
-Flixel.watch.add("Speed", () ->
-    (float) Math.hypot(player.getVelocityX(), player.getVelocityY()));
+Flixel.watch.add("Speed", () -> Math.hypot(player.getVelocityX(), player.getVelocityY()));
 
 // Convenience helper: adds a "Mouse" entry with the cursor's position.
 Flixel.watch.addMouse();
@@ -190,10 +200,9 @@ Flixel.watch.addMouse();
 
 ```kotlin
 // Register any supplier. It is re-evaluated several times a second while the overlay is visible.
-Flixel.watch.add("Player X") { player.x }
-Flixel.watch.add("Player Y") { player.y }
-// Float-valued suppliers bind to a primitive overload (no boxing).
-Flixel.watch.add("Speed") { Math.hypot(player.velocityX.toDouble(), player.velocityY.toDouble()).toFloat() }
+Flixel.watch.add("Player X", FloatSupplier { player.x })
+Flixel.watch.add("Player Y", FloatSupplier { player.y })
+Flixel.watch.add("Speed", DoubleSupplier { Math.hypot(player.velocityX.toDouble(), player.velocityY.toDouble()) })
 
 // Convenience helper: adds a "Mouse" entry with the cursor's position.
 Flixel.watch.addMouse()
@@ -210,6 +219,8 @@ Call `Flixel.watch.remove("Player X")` to remove a single entry, or `Flixel.watc
 `watch.clear` command) to clear all of them.
 
 ### Controls window
+
+<img src="/img/debugger/controls.png" alt="Controls window" width="" />
 
 The **Controls** window is a cheat-sheet and a remote control in one. At the top are two checkboxes:
 

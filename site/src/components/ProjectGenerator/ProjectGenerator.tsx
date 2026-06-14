@@ -160,7 +160,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   packageName: 'com.example.mycoolgame',
   language: 'java',
   javaVersion: 17,
-  flixelVersion: 'v0.4.0',
+  flixelVersion: '',
   ide: 'idea',
   template: '',
   platforms: ['desktop'],
@@ -187,6 +187,7 @@ function GeneratorBody(): JSX.Element {
   const baseUrl = siteConfig.baseUrl;
   const [opts, setOpts] = useState<GeneratorOptions>(DEFAULT_OPTIONS);
   const [versions, setVersions] = useState<string[]>(FALLBACK_VERSIONS);
+  const [versionPickedByUser, setVersionPickedByUser] = useState(false);
   const [status, setStatus] = useState<string>('');
   const [catalog, setCatalog] = useState<TemplateCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -201,14 +202,15 @@ function GeneratorBody(): JSX.Element {
     };
   }, []);
 
-  // Keep the selected version valid: if the loaded list does not include it
-  // (e.g. the default fell off the supported range), snap to the newest.
+  // When the version list changes, always snap to the newest unless the user
+  // has already made a manual selection that still exists in the new list.
   useEffect(() => {
     if (!versions.length) return;
-    setOpts((p) =>
-      versions.includes(p.flixelVersion) ? p : {...p, flixelVersion: versions[0]}
-    );
-  }, [versions]);
+    setOpts((p) => {
+      if (versionPickedByUser && versions.includes(p.flixelVersion)) return p;
+      return {...p, flixelVersion: versions[0]};
+    });
+  }, [versions, versionPickedByUser]);
 
   useEffect(() => {
     let alive = true;
@@ -286,9 +288,9 @@ function GeneratorBody(): JSX.Element {
       saveAs(outBlob, `${opts.gameId}.zip`);
       const runHints: string[] = [];
       if (opts.platforms.includes('desktop'))
-        runHints.push('`./gradlew :lwjgl3:run` for desktop');
+        runHints.push('./gradlew :lwjgl3:run for desktop');
       if (opts.platforms.includes('web'))
-        runHints.push('`./gradlew :teavm:run` for web');
+        runHints.push('./gradlew :teavm:run for web');
       setStatus(
         `Downloaded! Unzip then run ${runHints.join('; ')} — Gradle installs the toolchain on first build.`
       );
@@ -395,7 +397,7 @@ function GeneratorBody(): JSX.Element {
               <select
                 className={styles.select}
                 value={opts.flixelVersion}
-                onChange={(e) => set('flixelVersion', e.target.value)}
+                onChange={(e) => { set('flixelVersion', e.target.value); setVersionPickedByUser(true); }}
               >
                 {versions.map((v) => (
                   <option key={v} value={v}>

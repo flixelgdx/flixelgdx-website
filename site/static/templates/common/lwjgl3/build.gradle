@@ -58,6 +58,9 @@ jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   dependsOn configurations.runtimeClasspath
   from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  // Gdx.files.internal() resolves from the classpath root when running inside a JAR,
+  // so the assets directory must be embedded at the JAR root.
+  from(rootProject.file('assets'))
   // These "exclude" lines remove unnecessary or harmful duplicate files from the output JAR.
   // module-info.class files must be excluded because the fat JAR merges named modules
   // (FlixelGDX core, libGDX) with automatic modules. Leaving module-info.class in causes
@@ -108,7 +111,9 @@ construo {
     // creates. Temurin has no Graal compiler to satisfy it, which crashes the launcher
     // with "Cannot use JVMCI compiler: No JVMCI compiler found". Disabling JVMCI
     // entirely at launch prevents the crash.
-    vmArgs.add("-XX:-EnableJVMCI")
+    // UnlockExperimentalVMOptions must precede EnableJVMCI because Temurin 21
+    // treats it as an experimental flag even when disabling it.
+    vmArgs.addAll(["-XX:+UnlockExperimentalVMOptions", "-XX:-EnableJVMCI"])
   }
   targets.configure {
     create("linuxX64", Target.Linux) {

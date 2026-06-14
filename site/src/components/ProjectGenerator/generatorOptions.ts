@@ -106,6 +106,7 @@ export function validateOptions(o: GeneratorOptions): string | null {
     return 'Game id must be lowercase letters, numbers, dashes or underscores.';
   if (!/^[a-z_][\w]*(\.[a-z_][\w]*)+$/.test(o.packageName))
     return 'Package name must look like a Java package, e.g. com.example.game.';
+  if (!o.flixelVersion) return 'Select a FlixelGDX version.';
   if (o.javaVersion < 17) return 'Java version cannot be lower than 17 (FlixelGDX requirement).';
   if (o.heapMb < 8) return 'Heap must be at least 8 MB.';
   if (o.platforms.length === 0) return 'Pick at least one platform.';

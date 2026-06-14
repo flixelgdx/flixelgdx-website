@@ -1,9 +1,12 @@
 /**
- * Walks site/static/templates and writes site/static/templates/catalog.json
- * for the browser project generator. Merges layers per template + language:
- *   1. templates/common/
- *   2. templates/<id>/common/
- *   3. templates/<id>/<language>/
+ * Walks site/static/templates and writes:
+ *   1. site/static/templates/index.json   -- list of template IDs for browser discovery
+ *   2. site/static/templates/<id>/template.json -- enriched with a computed `files` section
+ *
+ * File discovery per template + language merges three layers in order:
+ *   1. templates/common/          (global shared files; language-discriminator segments stripped)
+ *   2. templates/<id>/common/     (template-local overrides; language-discriminator segments stripped)
+ *   3. templates/<id>/<language>/ (language-specific source files)
  * Later layers override earlier paths. Missing language folders are skipped.
  *
  * Run via: npm run build-templates (from site/)
@@ -52,9 +55,9 @@ function langDiscriminatorIndex(segments) {
  * @param {string} layerRoot absolute path to layer root on disk
  * @param {string} fetchPrefix URL path segment after static/, e.g. "templates/common"
  * @param {string} targetLang the language being built for, e.g. "java" or "kotlin"
+ * @returns {Map<string, string>}
  */
 function layerMap(layerRoot, fetchPrefix, targetLang) {
-  /** @type {Map<string, string>} */
   const m = new Map();
   if (!fs.existsSync(layerRoot)) return m;
   for (const rel of walkFiles(layerRoot)) {
@@ -62,9 +65,7 @@ function layerMap(layerRoot, fetchPrefix, targetLang) {
     const segments = posixRel.split('/');
     const discIdx = langDiscriminatorIndex(segments);
     if (discIdx !== -1) {
-      // Language-specific file: skip if it doesn't match the target language.
       if (segments[discIdx] !== targetLang) continue;
-      // Strip the language-discriminator segment from the output path.
       const stripped = [...segments.slice(0, discIdx), ...segments.slice(discIdx + 1)].join('/');
       const fetch = `${fetchPrefix}/${posixRel}`.replace(/\/+/g, '/');
       m.set(stripped, fetch);
@@ -77,7 +78,6 @@ function layerMap(layerRoot, fetchPrefix, targetLang) {
 }
 
 function mergeLayers(layers) {
-  /** @type {Map<string, string>} */
   const merged = new Map();
   for (const layer of layers) {
     for (const [k, v] of layer) merged.set(k, v);
@@ -87,35 +87,28 @@ function mergeLayers(layers) {
 
 function listTemplateDirs() {
   if (!fs.existsSync(STATIC_TEMPLATES)) {
-    console.warn('No static/templates yet; writing empty catalog.');
+    console.warn('No static/templates yet; writing empty index.');
     return [];
   }
   return fs
     .readdirSync(STATIC_TEMPLATES, {withFileTypes: true})
     .filter((d) => d.isDirectory() && d.name !== 'common')
     .map((d) => d.name)
-    .filter((name) => {
-      const tp = path.join(STATIC_TEMPLATES, name, 'template.json');
-      return fs.existsSync(tp);
-    });
+    .filter((name) => fs.existsSync(path.join(STATIC_TEMPLATES, name, 'template.json')));
 }
 
 function main() {
   const templateDirs = listTemplateDirs();
-  /** @type {unknown[]} */
-  const templates = [];
-
   const globalCommonRoot = path.join(STATIC_TEMPLATES, 'common');
   const globalCommonPrefix = 'templates/common';
+  const ids = [];
 
   for (const id of templateDirs) {
     const manifestPath = path.join(STATIC_TEMPLATES, id, 'template.json');
     const raw = fs.readFileSync(manifestPath, 'utf8');
     const meta = JSON.parse(raw);
     if (meta.id !== id) {
-      throw new Error(
-        `template.json folder "${id}" must match "id" field (got ${meta.id})`
-      );
+      throw new Error(`template.json folder "${id}" must match "id" field (got ${meta.id})`);
     }
 
     const langs = Array.isArray(meta.languages) ? meta.languages : [];
@@ -124,39 +117,36 @@ function main() {
 
     for (const lang of langs) {
       const langRoot = path.join(STATIC_TEMPLATES, id, lang);
-      if (!fs.existsSync(langRoot)) {
-        continue;
-      }
-      const l1 = layerMap(globalCommonRoot, globalCommonPrefix, lang);
-      const l2 = layerMap(
-        path.join(STATIC_TEMPLATES, id, 'common'),
-        `templates/${id}/common`,
-        lang
-      );
-      const l3 = layerMap(langRoot, `templates/${id}/${lang}`, lang);
-      const merged = mergeLayers([l1, l2, l3]);
+      if (!fs.existsSync(langRoot)) continue;
+
+      const merged = mergeLayers([
+        layerMap(globalCommonRoot, globalCommonPrefix, lang),
+        layerMap(path.join(STATIC_TEMPLATES, id, 'common'), `templates/${id}/common`, lang),
+        layerMap(langRoot, `templates/${id}/${lang}`, lang),
+      ]);
+
       files[lang] = [...merged.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([pathRel, fetch]) => ({path: pathRel, fetch}));
     }
 
-    templates.push({
+    const enriched = {
       id: meta.id,
       name: meta.name,
       description: meta.description,
       languages: langs.filter((lang) => files[lang]?.length),
       variables: meta.variables ?? [],
       files,
-    });
+    };
+
+    fs.writeFileSync(manifestPath, JSON.stringify(enriched, null, 2) + '\n', 'utf8');
+    console.log(`  Wrote ${id}/template.json (${Object.keys(files).join(', ')})`);
+    ids.push(id);
   }
 
-  const catalog = {version: 1, templates};
-  const outPath = path.join(STATIC_TEMPLATES, 'catalog.json');
-  fs.mkdirSync(STATIC_TEMPLATES, {recursive: true});
-  fs.writeFileSync(outPath, JSON.stringify(catalog, null, 2) + '\n', 'utf8');
-  console.log(
-    `Wrote ${outPath} (${templates.length} template(s), ${templateDirs.length} scanned).`
-  );
+  const indexPath = path.join(STATIC_TEMPLATES, 'index.json');
+  fs.writeFileSync(indexPath, JSON.stringify({templates: ids}, null, 2) + '\n', 'utf8');
+  console.log(`Wrote index.json (${ids.length} template(s)).`);
 }
 
 main();

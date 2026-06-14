@@ -124,7 +124,7 @@ const config: Config = {
       },
       items: [
         {to: '/getting-started', label: 'Getting Started', position: 'left'},
-        {to: '/docs/your-first-project', label: 'Docs', position: 'left'},
+        {to: '/docs/', label: 'Docs', position: 'left'},
         {
           type: 'dropdown',
           label: 'API',

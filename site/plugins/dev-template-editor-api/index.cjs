@@ -133,7 +133,7 @@ function readBody(req) {
   });
 }
 
-function rebuildCatalog(siteDir) {
+function rebuildTemplates(siteDir) {
   const script = path.join(siteDir, 'scripts', 'build-template-catalog.mjs');
   if (!fs.existsSync(script)) return {ok: false, error: 'script missing'};
   const r = spawnSync(process.execPath, [script], {
@@ -220,9 +220,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                     const body = await readBody(req);
                     fs.mkdirSync(path.dirname(full), {recursive: true});
                     fs.writeFileSync(full, body, 'utf8');
-                    const cat = rebuildCatalog(siteDir);
+                    const rebuild = rebuildTemplates(siteDir);
                     res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ok: true, catalog: cat}));
+                    res.end(JSON.stringify({ok: true, rebuild}));
                   })().catch((e) => {
                     res.statusCode = e.statusCode || 500;
                     res.end(e.message || String(e));
@@ -242,9 +242,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                   const full = path.join(base, ...safe.split('/'));
                   assertUnderRoot(full, base);
                   fs.mkdirSync(full, {recursive: true});
-                  const cat = rebuildCatalog(siteDir);
+                  const rebuild = rebuildTemplates(siteDir);
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ok: true, catalog: cat}));
+                  res.end(JSON.stringify({ok: true, rebuild}));
                   return;
                 }
 
@@ -270,9 +270,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                   } else {
                     fs.unlinkSync(full);
                   }
-                  const cat = rebuildCatalog(siteDir);
+                  const rebuild = rebuildTemplates(siteDir);
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ok: true, catalog: cat}));
+                  res.end(JSON.stringify({ok: true, rebuild}));
                   return;
                 }
 
@@ -294,9 +294,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                     assertUnderRoot(fullTo, base);
                     fs.mkdirSync(path.dirname(fullTo), {recursive: true});
                     fs.renameSync(fullFrom, fullTo);
-                    const cat = rebuildCatalog(siteDir);
+                    const rebuild = rebuildTemplates(siteDir);
                     res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ok: true, catalog: cat}));
+                    res.end(JSON.stringify({ok: true, rebuild}));
                   })().catch((e) => {
                     res.statusCode = e.statusCode || 500;
                     res.end(e.message || String(e));
@@ -364,9 +364,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                       JSON.stringify(manifest, null, 2) + '\n',
                       'utf8'
                     );
-                    const cat = rebuildCatalog(siteDir);
+                    const rebuild = rebuildTemplates(siteDir);
                     res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ok: true, id, catalog: cat}));
+                    res.end(JSON.stringify({ok: true, id, rebuild}));
                   })().catch((e) => {
                     res.statusCode = 500;
                     res.end(e.message || String(e));
@@ -374,10 +374,10 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                   return;
                 }
 
-                if (req.method === 'POST' && routePath === `${apiPrefix}/templates/rebuild-catalog`) {
-                  const cat = rebuildCatalog(siteDir);
+                if (req.method === 'POST' && routePath === `${apiPrefix}/templates/rebuild`) {
+                  const rebuild = rebuildTemplates(siteDir);
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify(cat));
+                  res.end(JSON.stringify(rebuild));
                   return;
                 }
 
@@ -401,9 +401,9 @@ module.exports = function devTemplateEditorApiPlugin(context) {
                     return;
                   }
                   fs.rmSync(tp, {recursive: true});
-                  const cat = rebuildCatalog(siteDir);
+                  const rebuild = rebuildTemplates(siteDir);
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ok: true, catalog: cat}));
+                  res.end(JSON.stringify({ok: true, rebuild}));
                   return;
                 }
 

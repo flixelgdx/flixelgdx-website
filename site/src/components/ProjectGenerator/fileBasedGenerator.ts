@@ -45,7 +45,11 @@ async function fetchJson<T>(baseUrl: string, rel: string): Promise<T> {
 }
 
 export async function loadTemplateCatalog(baseUrl: string): Promise<TemplateCatalog> {
-  return fetchJson<TemplateCatalog>(baseUrl, 'templates/catalog.json');
+  const {templates: ids} = await fetchJson<{templates: string[]}>(baseUrl, 'templates/index.json');
+  const templates = await Promise.all(
+    ids.map((id) => fetchJson<CatalogTemplate>(baseUrl, `templates/${id}/template.json`))
+  );
+  return {version: 1, templates};
 }
 
 function substitute(text: string, map: Record<string, string>): string {

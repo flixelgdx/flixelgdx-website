@@ -179,6 +179,21 @@ body {
   border-color: var(--ifm-color-primary);
 }
 
+/* .flx-btn used as an <a> inside MDX docs: keep it sized to content and
+ * ensure white text wins over .markdown a { color: var(--ifm-link-color) }. */
+.markdown .flx-btn {
+  display: inline-flex;
+  width: auto;
+}
+
+.markdown a.flx-btn--primary,
+.markdown a.flx-btn--primary:link,
+.markdown a.flx-btn--primary:visited,
+.markdown a.flx-btn--primary:hover,
+.markdown a.flx-btn--primary:active {
+  color: #fff;
+}
+
 /* ----------------------- Article / Markdown content ---------------------- */
 /* GitHub-flavoured javadoc look.                                          */
 

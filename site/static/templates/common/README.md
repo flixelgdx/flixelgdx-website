@@ -4,7 +4,7 @@ Welcome! This folder is a tiny, runnable FlixelGDX starter. The big idea is simp
 your gameplay code lives in the `core` module, and the `lwjgl3` (or `teavm`) module is only the launcher.
 
 This zip was created by the project generator at
-https://flixelgdx.github.io/flixelgdx-website/docs/getting-started.
+https://flixelgdx.org/getting-started.
 
 ## 1. Install a JDK
 
@@ -78,6 +78,6 @@ every screen and feature that touches the library during step 2.
 
 ## Learn more
 
-  - Pong tutorial : https://flixelgdx.github.io/flixelgdx-website/docs/your-first-project
-  - API reference : https://flixelgdx.github.io/flixelgdx-website/api/
+  - Pong tutorial : https://flixelgdx.org/docs/your-first-project
+  - API reference : https://flixelgdx.org/api/
   - GitHub        : https://github.com/flixelgdx/flixelgdx

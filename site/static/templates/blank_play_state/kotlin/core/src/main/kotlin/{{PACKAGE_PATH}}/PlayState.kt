@@ -1,6 +1,5 @@
 package {{PACKAGE}}
 
-import org.flixelgdx.Flixel
 import org.flixelgdx.FlixelState
 
 /**

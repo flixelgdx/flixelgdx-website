@@ -31,7 +31,7 @@ export async function writeTemplateFile(
   templateId: string,
   relPath: string,
   body: string
-): Promise<{ok: boolean; catalog?: {ok: boolean; error?: string}}> {
+): Promise<{ok: boolean; rebuild?: {ok: boolean; error?: string}}> {
   const q = new URLSearchParams({path: relPath});
   const res = await fetch(
     `${devApiRoot(baseUrl)}/templates/${encodeURIComponent(templateId)}/file?${q}`,
@@ -105,8 +105,8 @@ export async function deleteTemplate(baseUrl: string, templateId: string): Promi
   if (!res.ok) throw new Error(await res.text());
 }
 
-export async function rebuildCatalog(baseUrl: string): Promise<unknown> {
-  const res = await fetch(`${devApiRoot(baseUrl)}/templates/rebuild-catalog`, {
+export async function rebuildTemplates(baseUrl: string): Promise<{ok: boolean; error?: string}> {
+  const res = await fetch(`${devApiRoot(baseUrl)}/templates/rebuild`, {
     method: 'POST',
   });
   if (!res.ok) throw new Error(await res.text());

@@ -131,6 +131,8 @@ manually! On the **right side** (shown in the image below), all of the Gradle ta
 You can do this by opening the Gradle panel shown below, opening the `lwjgl3/application` group, and execute
 the `run` task.
 
+<img src="/img/tutorial/gradle-panel.png" alt="Gradle Panel Example" width="500" />
+
 :::
 
 That is it — no `gradle wrapper`, no installer prompts. The zip already
@@ -268,6 +270,8 @@ class PlayState : FlixelState() {
 Run the game (`./gradlew :lwjgl3:run`), and you should see two white paddles on either side of the screen.
 Pong is starting to take shape!
 
+<img src="/img/tutorial/paddles.png" alt="Two white paddles being created" width="550" />
+
 ## 3. Move the player paddle with the keyboard
 
 Right now both paddles are statues. Let's teach the left one to listen
@@ -318,7 +322,9 @@ import org.flixelgdx.input.keyboard.FlixelKey
 
 // ...inside PlayState
 
-companion object { private const val PADDLE_SPEED = 220f }
+companion object {
+  private const val PADDLE_SPEED = 220f
+}
 
 override fun update(elapsed: Float) {
   super.update(elapsed)
@@ -407,7 +413,9 @@ import org.flixelgdx.util.FlixelColor
 
 class PlayState : FlixelState() {
 
-  companion object { private const val PADDLE_SPEED = 220f }
+  companion object {
+    private const val PADDLE_SPEED = 220f
+  }
 
   private lateinit var player: FlixelSprite
   private lateinit var enemy: FlixelSprite
@@ -546,7 +554,9 @@ have `exists == false`, so your collision code stays one line.
 > [`Flixel.collide`](/api/) helpers. Those let you pass groups, get
 > callbacks per pair, and even auto-separate the colliders.
 
-Run the game. A red ball bounces between the paddles. 🟥
+Run the game. A red ball appears on the screen. 🟥
+
+<img src="/img/tutorial/red-ball.png" alt="A red ball appearing near the middle" width="550" />
 
 ## 5. Give the enemy a brain
 
@@ -571,7 +581,9 @@ if (enemy.getY() > Flixel.getViewHeight() - enemy.getHeight()) enemy.setY(Flixel
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-companion object { private const val ENEMY_SPEED = 160f }
+companion object {
+  private const val ENEMY_SPEED = 160f
+}
 
 // inside update(elapsed):
 val targetY = ball.y - 28f // 28 = half-paddle minus half-ball
@@ -586,6 +598,8 @@ if (enemy.y > Flixel.getViewHeight().toFloat() - enemy.height) enemy.y = Flixel.
 
 `Math.min(a, b)` keeps us from overshooting the ball when it is close —
 nicer than a wobbly tracker.
+
+<img src="/img/tutorial/ball-collision.gif" alt="A red ball bouncing between the two paddles" width="550" />
 
 :::note[How your file should look right now]
 
@@ -829,9 +843,16 @@ is where libGDX (and by extension FlixelGDX) looks for game assets.
 Now every `FlixelText` in the game will automatically use the VCR font unless you call
 `setFont(...)` on a specific object to override it.
 
+You should now see two white zeros placed on the bottom!
+
+<img src="/img/tutorial/white-zeros.png" alt="Two white zeros appearing on the bottom" width="550" />
+
 ---
 
-Add fields + setup:
+We have the text objects added to the state, but right now they're static: they don't
+actually do anything. Let's change that.
+
+Add the fields fields below, next to everything else above `create()`:
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
@@ -848,11 +869,13 @@ private FlixelText enemyLabel;
 Inside `create()`:
 
 ```java
-playerLabel = new FlixelText(150, 20, 200, "0");
+playerLabel = new FlixelText(150, 20);
+playerLabel.setText("0");
 playerLabel.setTextSize(48);
 add(playerLabel);
 
-enemyLabel = new FlixelText(450, 20, 200, "0");
+enemyLabel = new FlixelText(450, 20);
+enemyLabel.setText("0");
 enemyLabel.setTextSize(48);
 add(enemyLabel);
 ```
@@ -899,10 +922,16 @@ private lateinit var enemyLabel: FlixelText
 Inside `create()`:
 
 ```kotlin
-playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
+playerLabel = FlixelText(150f, 20f).apply {
+  text = "0"
+  textSize = 48
+}
 add(playerLabel)
 
-enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setTextSize(48) }
+enemyLabel = FlixelText(450f, 20f).apply {
+  text = "0"
+  textSize = 48
+}
 add(enemyLabel)
 ```
 
@@ -913,12 +942,12 @@ end of `update(elapsed)`:
 ```kotlin
 if (ball.x < 0f) {
   enemyScore++
-  enemyLabel.setText(enemyScore.toString())
+  enemyLabel.text = enemyScore.toString()
   resetBall(+1)
 }
 if (ball.x > Flixel.getViewWidth().toFloat() - ball.width) {
   playerScore++
-  playerLabel.setText(playerScore.toString())
+  playerLabel.text = playerScore.toString()
   resetBall(-1)
 }
 ```
@@ -966,11 +995,14 @@ import org.flixelgdx.input.keyboard.FlixelKey;
 import org.flixelgdx.text.FlixelText;
 
 public class PauseSubState extends FlixelSubState {
+
   @Override
   public void create() {
     super.create();
-    FlixelText label = new FlixelText(220, 200, 200, "PAUSED");
+    FlixelText label = new FlixelText(220, 200);
+    label.setText("PAUSED");
     label.setTextSize(48);
+    label.screenCenter();
     add(label);
   }
 
@@ -994,9 +1026,14 @@ import org.flixelgdx.input.keyboard.FlixelKey
 import org.flixelgdx.text.FlixelText
 
 class PauseSubState : FlixelSubState() {
+
   override fun create() {
     super.create()
-    val label = FlixelText(220f, 200f, 200f, "PAUSED").apply { setTextSize(48) }
+    val label = FlixelText(220f, 200f).apply {
+      text = "PAUSED"
+      textSize = 48
+      screenCenter()
+    }
     add(label)
   }
 
@@ -1018,7 +1055,7 @@ Then, in `PlayState.update`, add this at the top:
 ```java
 if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
   openSubState(new PauseSubState());
-  return; // skip the rest of this frame
+  return; // Skip the rest of this frame.
 }
 ```
 
@@ -1028,7 +1065,7 @@ if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
 ```kotlin
 if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
   openSubState(PauseSubState())
-  return // skip the rest of this frame
+  return // Skip the rest of this frame.
 }
 ```
 
@@ -1037,6 +1074,8 @@ if (Flixel.keys.justPressed(FlixelKey.SPACE)) {
 
 Run the game and tap **SPACE**. PAUSED freezes the field; tap **SPACE**
 again, the ball picks up exactly where it left off.
+
+<img src="/img/tutorial/pause.gif" alt="The pause substate in action" width="550" />
 
 That right there — `justPressed` vs `pressed`, `openSubState` /
 `close()` — is the whole input + state-stack story.
@@ -1059,11 +1098,15 @@ import org.flixelgdx.input.keyboard.FlixelKey;
 import org.flixelgdx.text.FlixelText;
 
 public class GameOverState extends FlixelState {
+
   @Override
   public void create() {
     super.create();
-    FlixelText label = new FlixelText(180, 200, 320, "GAME OVER\nPress ENTER");
+    FlixelText label = new FlixelText(180, 200);
+    label.setText("GAME OVER\nPress ENTER");
     label.setTextSize(36);
+    label.setAlignment(FlixelText.Alignment.CENTER);
+    label.screenCenter();
     add(label);
   }
 
@@ -1077,7 +1120,7 @@ public class GameOverState extends FlixelState {
 }
 ```
 
-And in `PlayState.resetBall`:
+And in `PlayState.resetBall()`:
 
 ```java
 if (playerScore >= 5 || enemyScore >= 5) {
@@ -1098,9 +1141,15 @@ import org.flixelgdx.input.keyboard.FlixelKey
 import org.flixelgdx.text.FlixelText
 
 class GameOverState : FlixelState() {
+
   override fun create() {
     super.create()
-    val label = FlixelText(180f, 200f, 320f, "GAME OVER\nPress ENTER").apply { setTextSize(36) }
+    val label = FlixelText(180f, 200f).apply {
+      text = "GAME OVER\nPress ENTER"
+      textSize = 36
+      alignment = FlixelText.Alignment.CENTER
+      screenCenter()
+    }
     add(label)
   }
 
@@ -1113,6 +1162,8 @@ class GameOverState : FlixelState() {
 }
 ```
 
+And in `PlayState.resetBall()`:
+
 ```kotlin
 if (playerScore >= 5 || enemyScore >= 5) {
   Flixel.info("Match over. Switching to GameOverState.")
@@ -1123,7 +1174,9 @@ if (playerScore >= 5 || enemyScore >= 5) {
 </TabItem>
 </Tabs>
 
-**Congratulations, you just made your first game with FlixelGDX!**
+<img src="/img/tutorial/game-over.gif" alt="The game over screen appearing" width="550" />
+
+<p style={{ fontSize: '40px' }}><b>Congratulations, you just made your first game with FlixelGDX! 🎉</b></p>
 
 :::note[How your finished `PlayState` should look]
 
@@ -1165,12 +1218,10 @@ public class PlayState extends FlixelState {
     FlixelFontRegistry.setDefault("vcr");
     Flixel.info("Pong is starting!");
 
-    // Left paddle. This is the human player.
     player = new FlixelSprite(20, 200);
     player.makeGraphic(8, 64, FlixelColor.WHITE);
     add(player);
 
-    // Right paddle. This is the enemy AI.
     enemy = new FlixelSprite(612, 200);
     enemy.makeGraphic(8, 64, FlixelColor.WHITE);
     add(enemy);
@@ -1237,6 +1288,7 @@ public class PlayState extends FlixelState {
     ball.setPosition(316, 236);
     ball.setVelocity(200f * towardSign, 140f);
     Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
+
     if (playerScore >= 5 || enemyScore >= 5) {
       Flixel.info("Match over. Switching to GameOverState.");
       Flixel.switchState(new GameOverState());
@@ -1277,16 +1329,19 @@ class PlayState : FlixelState() {
 
   override fun create() {
     super.create()
-    FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"))
-    FlixelFontRegistry.setDefault("vcr")
     Flixel.info("Pong is starting!")
 
-    // Left paddle. This is the human player.
-    player = FlixelSprite(20f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
+    FlixelFontRegistry.register("vcr", Gdx.files.internal("fonts/vcr.ttf"))
+    FlixelFontRegistry.setDefault("vcr")
+
+    player = FlixelSprite(20f, 200f).apply {
+      makeGraphic(8, 64, FlixelColor.WHITE)
+    }
     add(player)
 
-    // Right paddle. This is the enemy AI.
-    enemy = FlixelSprite(612f, 200f).apply { makeGraphic(8, 64, FlixelColor.WHITE) }
+    enemy = FlixelSprite(612f, 200f).apply {
+      makeGraphic(8, 64, FlixelColor.WHITE)
+    }
     add(enemy)
 
     ball = FlixelSprite(316f, 236f).apply {
@@ -1295,10 +1350,16 @@ class PlayState : FlixelState() {
     }
     add(ball)
 
-    playerLabel = FlixelText(150f, 20f, 200f, "0").apply { setTextSize(48) }
+    playerLabel = FlixelText(150f, 20f).apply {
+      text = "0"
+      textSize = 48
+    }
     add(playerLabel)
 
-    enemyLabel = FlixelText(450f, 20f, 200f, "0").apply { setTextSize(48) }
+    enemyLabel = FlixelText(450f, 20f).apply {
+      text = "0"
+      textSize = 48
+    }
     add(enemyLabel)
   }
 
@@ -1349,6 +1410,7 @@ class PlayState : FlixelState() {
     ball.setPosition(316f, 236f)
     ball.setVelocity(200f * towardSign, 140f)
     Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
+
     if (playerScore >= 5 || enemyScore >= 5) {
       Flixel.info("Match over. Switching to GameOverState.")
       Flixel.switchState(GameOverState())
@@ -1393,4 +1455,4 @@ Those are the **same building blocks** every FlixelGDX game uses, from
   through `loadGraphic`.
 - Add a sound effect on every paddle bounce using `Flixel.sound.play`.
 
-Welcome to FlixelGDX. Now go make something fun. ❤️
+Welcome to FlixelGDX. Now go make something amazing. ❤️

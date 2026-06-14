@@ -22,6 +22,10 @@ teavm {
   }
 }
 
+flixelgdx {
+  title = '{{GAME_NAME_ESC_JAVA}}'
+}
+
 dependencies {
   implementation project(":core")
   implementation "{{FLIXEL_GROUP}}:flixelgdx-teavm:${flixelVersion}"{{TEAVM_LANG_DEPS}}

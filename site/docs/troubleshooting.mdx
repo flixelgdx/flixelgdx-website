@@ -215,12 +215,6 @@ by your code, the build fails. Common causes:
 - Calling `Class.forName(...)` with a string literal. Replace it with a direct class reference or
   annotate the class with `@TeaVMInclude`.
 
-### Canvas size is wrong in the browser
-
-The TeaVM launcher sets the canvas size from the `width` and `height` you pass to the launcher
-config. If the game renders in a tiny box, you may have forgotten to apply CSS to let the canvas
-fill its container, or the launcher config does not match your HTML container.
-
 ---
 
 ## GraalVM native image

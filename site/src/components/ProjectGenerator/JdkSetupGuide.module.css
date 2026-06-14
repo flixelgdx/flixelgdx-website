@@ -91,7 +91,6 @@
   margin: 0.25rem 0 0.6rem;
   padding: 0.5rem 0.85rem;
   background: linear-gradient(180deg, #ff3a4d 0%, #d50a1c 100%);
-  color: #fff;
   border-radius: 9px;
   font-weight: 600;
   font-size: 0.85rem;
@@ -99,9 +98,17 @@
   box-shadow: 0 6px 18px -10px rgba(255, 42, 60, 0.55);
 }
 
-.dlBtn:hover {
-  text-decoration: none;
+/* element + class beats .markdown a (class + element) specificity */
+a.dlBtn,
+a.dlBtn:link,
+a.dlBtn:visited,
+a.dlBtn:hover,
+a.dlBtn:active {
   color: #fff;
+}
+
+a.dlBtn:hover {
+  text-decoration: none;
   background: linear-gradient(180deg, #ff5061 0%, #e51124 100%);
 }
 

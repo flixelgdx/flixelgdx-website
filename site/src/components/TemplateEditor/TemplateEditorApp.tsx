@@ -9,7 +9,7 @@ import {
   mkdirTemplate,
   mvTemplatePath,
   readTemplateFile,
-  rebuildCatalog,
+  rebuildTemplates,
   writeTemplateFile,
 } from './devApi';
 import {ManifestForm} from './ManifestForm';
@@ -149,7 +149,7 @@ export default function TemplateEditorApp(): JSX.Element {
       if (isManifestFile && manifestDraft && !rawManifest) {
         setManifestDraft(JSON.parse(body) as TemplateManifest);
       }
-      setStatus('Saved (catalog rebuilt by server).');
+      setStatus('Saved.');
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -249,12 +249,12 @@ export default function TemplateEditorApp(): JSX.Element {
             type="button"
             className={styles.btn}
             onClick={() =>
-              void rebuildCatalog(baseUrl)
-                .then(() => setStatus('catalog.json rebuilt'))
+              void rebuildTemplates(baseUrl)
+                .then((r) => setStatus(r.ok ? 'Templates rebuilt.' : `Rebuild failed: ${r.error}`))
                 .catch((e) => setError(String(e)))
             }
           >
-            Rebuild catalog only
+            Rebuild templates
           </button>
         </div>
         {error && <div className={styles.error}>{error}</div>}
