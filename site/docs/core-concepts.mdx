@@ -223,13 +223,13 @@ label.setText("Score: " + score);
 
 ```kotlin
 val label = FlixelText(10f, 10f, 200f, "Hello, world!").apply {
-  setTextSize(24)
+  textSize = 24
   setColor(FlixelColor.WHITE)
 }
 add(label)
 
 // Update the text any time.
-label.setText("Score: $score")
+label.text = "Score: $score"
 ```
 
 </TabItem>
@@ -313,8 +313,8 @@ val MY_FONT = "my_font_id"
 FlixelFontRegistry.register(MY_FONT, Gdx.files.internal("path/to/my/font.ttf")) // Assumes it's from the assets folder!
 
 val label = FlixelText(10f, 10f, 200f).apply {
-  setFont(MY_FONT) // Applies it from your ID!
-  setTextSize(16)
+  font = MY_FONT // Applies it from your ID!
+  textSize = 16
 }
 ```
 
@@ -605,12 +605,12 @@ Flixel.cameras.add(cam2);
 
 ```kotlin
 val cam1 = FlixelCamera(640, 720).apply {
-  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT)
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT
   setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f)  // left half
   follow(player1)
 }
 val cam2 = FlixelCamera(640, 720).apply {
-  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT)
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT
   setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f)  // right half
   follow(player2)
 }

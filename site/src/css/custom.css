@@ -134,7 +134,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.45rem 1.25rem;
   border-radius: 10px;
   font-weight: 600;
   border: 1px solid transparent;
@@ -184,6 +184,7 @@ body {
 .markdown .flx-btn {
   display: inline-flex;
   width: auto;
+  text-decoration: none;
 }
 
 .markdown a.flx-btn--primary,
@@ -367,9 +368,9 @@ body {
   transform: translateX(-50%) translateY(calc(-100% - 8px));
   pointer-events: none;
   animation: flx-tip-in 120ms ease forwards;
-  background: #18181c;
-  color: #fff;
-  border: 1px solid #2a2a32;
+  background: var(--flx-surface);
+  color: var(--ifm-color-content);
+  border: 1px solid var(--flx-border);
   border-radius: 8px;
   padding: 0.5rem 0.65rem;
   font-size: 0.8rem;

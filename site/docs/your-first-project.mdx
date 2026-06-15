@@ -484,7 +484,7 @@ Inside `create()`, after the paddles:
 ```java
 ball = new FlixelSprite(316, 236);
 ball.makeGraphic(8, 8, FlixelColor.RED);
-ball.setVelocity(200f, 140f);
+ball.setVelocity(300f, 180f);
 add(ball);
 ```
 
@@ -518,7 +518,7 @@ Inside `create()`, after the paddles:
 ```kotlin
 ball = FlixelSprite(316f, 236f).apply {
   makeGraphic(8, 8, FlixelColor.RED)
-  setVelocity(200f, 140f)
+  setVelocity(300f, 180f)
 }
 add(ball)
 ```
@@ -643,7 +643,7 @@ public class PlayState extends FlixelState {
 
     ball = new FlixelSprite(316, 236);
     ball.makeGraphic(8, 8, FlixelColor.RED);
-    ball.setVelocity(200f, 140f);
+    ball.setVelocity(300f, 180f);
     add(ball);
   }
 
@@ -715,7 +715,7 @@ class PlayState : FlixelState() {
 
     ball = FlixelSprite(316f, 236f).apply {
       makeGraphic(8, 8, FlixelColor.RED)
-      setVelocity(200f, 140f)
+      setVelocity(300f, 180f)
     }
     add(ball)
   }
@@ -780,16 +780,8 @@ loaded file instead of each object opening it independently.
 
 #### 1. Download the font
 
-Click the button below to download **VCR OSD Mono**, a chunky retro monospace
+Download the <a href="/fonts/vcr.ttf" download="vcr.ttf"><u>**VCR OSD Mono** font</u></a>, a chunky retro monospace
 typeface that fits right at home on an arcade score display.
-
-<a
-  className="flx-btn flx-btn--primary"
-  href="/fonts/vcr.ttf"
-  download="vcr.ttf"
->
-  Download vcr.ttf
-</a>
 
 #### 2. Place it in your project
 
@@ -902,7 +894,7 @@ And a helper:
 ```java
 private void resetBall(int towardSign) {
   ball.setPosition(316, 236);
-  ball.setVelocity(200f * towardSign, 140f);
+  ball.setVelocity(300f * towardSign, 180f);
   Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
 }
 ```
@@ -957,7 +949,7 @@ And a helper:
 ```kotlin
 private fun resetBall(towardSign: Int) {
   ball.setPosition(316f, 236f)
-  ball.setVelocity(200f * towardSign, 140f)
+  ball.setVelocity(300f * towardSign, 180f)
   Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
 }
 ```
@@ -1178,6 +1170,7 @@ if (playerScore >= 5 || enemyScore >= 5) {
 
 <p style={{ fontSize: '40px' }}><b>Congratulations, you just made your first game with FlixelGDX! 🎉</b></p>
 
+
 :::note[How your finished `PlayState` should look]
 
 <details>
@@ -1228,7 +1221,7 @@ public class PlayState extends FlixelState {
 
     ball = new FlixelSprite(316, 236);
     ball.makeGraphic(8, 8, FlixelColor.RED);
-    ball.setVelocity(200f, 140f);
+    ball.setVelocity(300f, 180f);
     add(ball);
 
     playerLabel = new FlixelText(150, 20, 200, "0");
@@ -1286,7 +1279,7 @@ public class PlayState extends FlixelState {
 
   private void resetBall(int towardSign) {
     ball.setPosition(316, 236);
-    ball.setVelocity(200f * towardSign, 140f);
+    ball.setVelocity(300f * towardSign, 180f);
     Flixel.info("Score! Player " + playerScore + " - " + enemyScore + " Enemy");
 
     if (playerScore >= 5 || enemyScore >= 5) {
@@ -1346,7 +1339,7 @@ class PlayState : FlixelState() {
 
     ball = FlixelSprite(316f, 236f).apply {
       makeGraphic(8, 8, FlixelColor.RED)
-      setVelocity(200f, 140f)
+      setVelocity(300f, 180f)
     }
     add(ball)
 
@@ -1408,7 +1401,7 @@ class PlayState : FlixelState() {
 
   private fun resetBall(towardSign: Int) {
     ball.setPosition(316f, 236f)
-    ball.setVelocity(200f * towardSign, 140f)
+    ball.setVelocity(300f * towardSign, 180f)
     Flixel.info("Score! Player $playerScore - $enemyScore Enemy")
 
     if (playerScore >= 5 || enemyScore >= 5) {

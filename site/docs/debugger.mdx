@@ -7,6 +7,7 @@ description: A complete guide to the FlixelGDX in-game debugger — stats, graph
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import DocImage from '@site/src/components/DocPages/DocImage';
 
 # The Debugger
 
@@ -52,9 +53,9 @@ fun main() {
 When `DEBUG` mode is active, the ImGui overlay is created and can be toggled at any time. In `RELEASE` mode the
 overlay is never created, so there is zero per-frame cost in shipped builds.
 
-<img src="/img/debugger/general.png" alt="The main view of what the debugger looks like" width="" />
+<DocImage src="/img/debugger/general.png" alt="The main view of what the debugger looks like" />
 
-:::note[Flixel.debug and Flixel.watch are always available]
+:::note[`Flixel.debug` and `Flixel.watch` are always available]
 
 The manager objects (`Flixel.debug` and `Flixel.watch`) exist in **every** build, debug or release — they are
 never `null`. What changes is whether a *visual overlay* is attached. Outside of `DEBUG` mode their methods become
@@ -65,13 +66,10 @@ register are never evaluated. This means you can call them unconditionally witho
 
 ---
 
-## Showing and hiding windows
+## Showing and hiding panels
 
 The overlay is split into several **floating panels**, each documented below. You arrange them however you like:
 drag a panel by its title bar, resize it from any edge, and the layout sticks until you reset it.
-
-Think of the panels like the tool windows in an IDE — you do not need all of them open at once, so turn off the
-ones you are not using to reduce clutter.
 
 There is a menu bar pinned to the top of the screen with two menus:
 
@@ -81,16 +79,18 @@ There is a menu bar pinned to the top of the screen with two menus:
 
 Pressing the overlay toggle key (**F2** by default) hides or shows the entire overlay at once.
 
+<DocImage src="/img/debugger/moving-panels.gif" alt="Demonstration of moving around panels" width="50%" />
+
 ---
 
 ## The overlay windows
 
 ### Stats window
 
-<img src="/img/debugger/stats.png" alt="Stats window" width="" />
-
 The **Stats** window is your game's dashboard — the speedometer and fuel gauge you glance at to confirm
 everything is healthy. It shows these rows:
+
+<DocImage src="/img/debugger/stats.png" alt="Stats window" width="40%" />
 
 | Row | What it means |
 |------|--------------|
@@ -129,8 +129,6 @@ something is forcing more flushes than expected.
 
 ### Performance window
 
-<img src="/img/debugger/performance.png" alt="Performance window" width="" />
-
 Where the Stats window shows you *this instant*, the **Performance** window shows you *history* — like a heart-rate
 monitor instead of a single pulse reading. It draws several rolling line graphs, one stacked above the next, each
 labeled with its latest value:
@@ -141,6 +139,8 @@ labeled with its latest value:
 - **Native (MB)** — native memory, shown only when the platform reports a non-zero value. Note that this value might be the
   same as the heap on desktop, as neither libGDX nor FlixelGDX provide a reliable way to determine native memory.
 - **Render calls** — draw batches per frame.
+
+<DocImage src="/img/debugger/performance.png" alt="Performance window" width="40%" />
 
 The buffers are sampled continuously while the game runs in debug mode, **even while this window is closed**, so
 opening it mid-session shows real history instead of an empty graph.
@@ -155,8 +155,6 @@ graph, you are allocating too much memory in your update loop (see [Best Practic
 
 ### Log window
 
-<img src="/img/debugger/log.png" alt="Logs window" width="" />
-
 The **Log** window is your game's running diary. It streams everything that passes through `FlixelLogger` — the
 same logger behind `Flixel.info`, `Flixel.warn`, and `Flixel.error` — so you never need a `System.out.println`
 again. Messages are color-coded by severity:
@@ -165,19 +163,21 @@ again. Messages are color-coded by severity:
 - **Yellow** — WARN (something looks off, but the game keeps going)
 - **Red** — ERROR (something actually went wrong)
 
+<DocImage src="/img/debugger/log.png" alt="Logs window" width="65%" />
+
 A menu bar across the top lets you toggle each level on or off (handy for hiding chatty INFO lines while you hunt
 an error) and flip **Auto-scroll**, which keeps the newest line in view at the bottom. The logger keeps a capped
 number of recent lines and trims the oldest, so the window never grows without bound.
 
-<img src="/img/debugger/toggling-logs.gif" alt="Demonstration of filtering log types" width="" />
+<DocImage src="/img/debugger/toggling-logs.gif" alt="Demonstration of filtering log types" width="60%" />
 
 ### Watch window
-
-<img src="/img/debugger/watch.png" alt="Watch window" width="" />
 
 The **Watch** window shows live `name → value` pairs that you register from your game code, laid out as a
 two-column table. It is perfect for tracking moving values — a sprite's position, a velocity, an AI state — without
 spamming the Log.
+
+<DocImage src="/img/debugger/watch.png" alt="Watch window" width="65%" />
 
 Think of it as a row of labeled gauges you bolt onto your game: you decide what each gauge measures, and the
 debugger keeps the needle updated for you.
@@ -220,8 +220,6 @@ Call `Flixel.watch.remove("Player X")` to remove a single entry, or `Flixel.watc
 
 ### Controls window
 
-<img src="/img/debugger/controls.png" alt="Controls window" width="" />
-
 The **Controls** window is a cheat-sheet and a remote control in one. At the top are two checkboxes:
 
 - **Show hitboxes** — draws each object's bounding box (same as the F3 key).
@@ -232,12 +230,16 @@ hitboxes, pause, cycle cameras, pan/zoom/move with the mouse), so you never have
 are two buttons: **Reset zoom on inspected camera** (snaps the inspected camera back to 1x) and **Toggle Texture
 Inspector**.
 
+<DocImage src="/img/debugger/controls.png" alt="Controls window" width="55%" />
+
 ### Tracker window
 
 The **Tracker** window shows **custom, named groups of live values** that you register from your game code. Each
 group has a header you can click to collapse or expand, like the foldable sections of a settings menu, and inside
 it lists a `name -> value` table just like the Watch panel. The difference from the Watch panel is grouping: a
 Watch entry is a single loose value, while a Tracker entry bundles several related values under one heading.
+
+<DocImage src="/img/debugger/tracker.png" alt="Tracker window" width="50%" />
 
 Register a group by subclassing `FlixelDebugTrackerEntry` (from `org.flixelgdx.debug`) and adding it to
 `Flixel.debug`. Its `getTrackedValues()` returns an `ObjectMap` of `label -> value` pairs (libGDX's allocation-light
@@ -251,18 +253,21 @@ Hold one `ObjectMap` as a field and only update its values each frame (as below)
 Keep the same keys between frames so the row order stays stable. Because `getTrackedValues()` only runs while the
 overlay is visible (and only a few times a second), this never touches your real game loop.
 
-:::
-
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
 public class PlayerStatusEntry extends FlixelDebugTrackerEntry {
+
+  // Object reference we want to track.
+  private Player player;
+
   // Reuse one map; we only update its values each frame, never reallocate it.
   private final ObjectMap<String, String> values = new ObjectMap<>();
 
-  public PlayerStatusEntry() {
+  public PlayerStatusEntry(Player player) {
     super("Player status"); // The collapsible header shown in the Tracker panel.
+    this.player = player;
   }
 
   @Override
@@ -282,7 +287,8 @@ Flixel.debug.addTrackerEntry(new PlayerStatusEntry());
 
 ```kotlin
 // "Player status" is the collapsible header shown in the Tracker panel.
-class PlayerStatusEntry : FlixelDebugTrackerEntry("Player status") {
+class PlayerStatusEntry(val player: Player) : FlixelDebugTrackerEntry("Player status") {
+
   // Reuse one map; we only update its values each frame, never reallocate it.
   private val values = ObjectMap<String, String>()
 
@@ -299,6 +305,8 @@ Flixel.debug.addTrackerEntry(PlayerStatusEntry())
 
 </TabItem>
 </Tabs>
+
+:::
 
 The Tracker is **shown by default**, docked under the Controls panel. When no entries are registered it stays
 visible with a hint (just like the Watch panel), so you always know where to find it.
@@ -319,6 +327,8 @@ The panel shows the sprite's **Type**, **Position**, **Size**, and **Texture** d
 itself. Drag the **Zoom** slider (0.25x to 8x) to scale the preview, and use the scrollbars to pan around a large
 sheet.
 
+<DocImage src="/img/debugger/texture-inspector.gif" alt="Texture inspector demonstration" width="75%" />
+
 While a sprite is selected and the game is paused, you can also **drag it** with the mouse to reposition it in the
 world — handy for eyeballing hitbox alignment or nudging something into place without editing code. Positions you
 change this way are real, so undo them before unpausing if you did not mean to keep them.
@@ -328,6 +338,8 @@ change this way are real, so undo them before unpausing if you did not mean to k
 The **Command Line** window is an in-game terminal. Type a command, press **Enter** (or click **Run**), and it is
 dispatched through the exact same parser as `Flixel.debug.executeCommand(...)`, so anything you can type here you
 can also trigger from code. Press the **Up / Down** arrows to walk back through your recent commands.
+
+<DocImage src="/img/debugger/command-line.gif" alt="Command line" width="65%" />
 
 Built-in commands:
 
@@ -373,6 +385,8 @@ When the game loop is paused (F4), several additional mouse interactions become 
 - **Left click on a sprite** — selects it for the Texture Inspector and enables dragging.
 - **Left mouse button drag** (after clicking a sprite) — moves the sprite in world space.
 - **Alt + Left / Right arrow** — cycles between cameras when your game has more than one.
+
+<DocImage src="/img/debugger/picker.gif" alt="Picker demonstration" width="65%" />
 
 Camera positions and zoom levels are **automatically restored** when you unpause, so your inspection
 session never changes the real game state.
@@ -448,7 +462,9 @@ Flixel.debug.unregisterCommand("spawn");
 Flixel.debug.registerCommand("spawn") { args ->
   val type = args.getString(0, "enemy")  // first arg, default "enemy"
   val count = args.getInt(1, 1)          // second arg, default 1
-  repeat(count) { spawnEnemy(type) }
+  repeat(count) {
+    spawnEnemy(type)
+  }
   Flixel.info("Spawner", "Spawned $count $type")
 }
 

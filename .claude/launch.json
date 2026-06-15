@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "site",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start", "--prefix", "site"],
+      "runtimeExecutable": "/home/stringfromjava/Documents/GitHub/flixelgdx-website/.claude/start-site.sh",
+      "runtimeArgs": [],
       "port": 3000,
       "autoPort": false
     }
