@@ -641,13 +641,15 @@ function GeneratorBody(): JSX.Element {
           <dt>Platforms</dt>
           <dd>{opts.platforms.join(', ') || '—'}</dd>
         </dl>
-        <button
-          className="flx-btn flx-btn--primary"
-          disabled={!!error || !catalog || !!catalogError}
-          onClick={download}
-        >
-          Download project
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="flx-btn flx-btn--primary flx-btn--tall margin-top--lg"
+            disabled={!!error || !catalog || !!catalogError}
+            onClick={download}
+          >
+            Download project
+          </button>
+        </div>
         {error ? (
           <div className={styles.error}>{error}</div>
         ) : (

@@ -99,6 +99,8 @@ body {
     radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.10), transparent 60%),
     radial-gradient(900px 500px at -10% 30%, rgba(107, 15, 21, 0.18), transparent 60%),
     var(--ifm-background-color);
+  background-attachment: fixed, fixed, scroll;
+  background-repeat: no-repeat, no-repeat, repeat;
 }
 
 [data-theme='light'] body {
@@ -106,6 +108,8 @@ body {
     radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.06), transparent 60%),
     radial-gradient(900px 500px at -10% 30%, rgba(255, 42, 60, 0.04), transparent 60%),
     #ffffff;
+  background-attachment: fixed, fixed, scroll;
+  background-repeat: no-repeat, no-repeat, repeat;
 }
 
 .navbar {
@@ -165,6 +169,11 @@ body {
   color: #fff;
   box-shadow: 0 14px 32px -10px rgba(255, 42, 60, 0.7),
     inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.flx-btn--tall {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
 }
 
 .flx-btn--ghost {

@@ -1,5 +1,3 @@
-You can also run `./gradlew lwjgl3Run` from the project root. That is the same Gradle work as `:lwjgl3:run`, just with a shorter name some LibGDX and FlixelGDX docs use.
-
 ### GraalVM Native Image
 
 The `lwjgl3` module applies the GraalVM Native Build Tools plugin. With a GraalVM-capable JDK available to Gradle, you can build a standalone executable:

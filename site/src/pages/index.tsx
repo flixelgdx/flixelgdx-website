@@ -88,7 +88,7 @@ function Hero(): JSX.Element {
           <img className={styles.heroLogo} src={logo} alt="FlixelGDX logo" />
           <h1 className={styles.heroTitle}>FlixelGDX</h1>
           <p className={styles.heroTag}>
-            The most powerful Java game development framework, designed for
+            The most powerful game development framework for Java, designed for
             beginners and experts alike.
           </p>
           <div className={styles.heroButtons}>
