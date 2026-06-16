@@ -13,6 +13,6 @@ import org.flixelgdx.FlixelGame;
 public class {{GAME}}Game extends FlixelGame {
 
   public {{GAME}}Game() {
-    super("{{GAME_NAME_ESC_JAVA}}", 640, 480, new PlayState());
+    super("{{GAME_NAME_ESC}}", 640, 480, new PlayState());
   }
 }

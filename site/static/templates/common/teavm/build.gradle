@@ -23,7 +23,7 @@ teavm {
 }
 
 flixelgdx {
-  title = '{{GAME_NAME_ESC_JAVA}}'
+  title = "{{GAME_NAME_ESC}}"
 }
 
 dependencies {

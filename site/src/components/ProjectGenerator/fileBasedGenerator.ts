@@ -1,7 +1,6 @@
 import type {DependencySource, GeneratorOptions, IDE, Language, Platform} from './generatorOptions';
 import {
-  escDoubleQuotedJvm,
-  escDoubleQuotedKotlin,
+  escGameName,
   flixelGroup,
   gradleVendorSpec,
   stripVersionPrefix,
@@ -328,7 +327,11 @@ export async function buildSubstitutionMap(
 ): Promise<Record<string, string>> {
   const pkg = sanitizePackage(o.packageName);
   const pkgPath = pkg.replace(/\./g, '/');
-  const game = o.gameName.replace(/\s+/g, '');
+  const game = (() => {
+    const stripped = o.gameName.replace(/\s+/g, '').replace(/[^A-Za-z0-9_$]/g, '');
+    // Java/Kotlin class names cannot start with a digit.
+    return /^[0-9]/.test(stripped) ? `Game${stripped}` : stripped;
+  })();
   const mainLm = `${pkg}.lwjgl3.${game}Lwjgl3Launcher`;
   const ideaMain = o.language === 'kotlin' ? `${mainLm}Kt` : mainLm;
   const teavmMain =
@@ -359,8 +362,7 @@ export async function buildSubstitutionMap(
     PACKAGE_PATH: pkgPath,
     GAME_ID: o.gameId,
     GAME_NAME: o.gameName,
-    GAME_NAME_ESC_JAVA: escDoubleQuotedJvm(o.gameName),
-    GAME_NAME_ESC_KOTLIN: escDoubleQuotedKotlin(o.gameName),
+    GAME_NAME_ESC: escGameName(o.gameName),
     ROOT_PROJECT_NAME: o.gameId,
     PACKAGE_NAME: pkg,
     JAVA_VERSION: String(o.javaVersion),

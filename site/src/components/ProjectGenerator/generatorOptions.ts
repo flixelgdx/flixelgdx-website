@@ -81,27 +81,18 @@ export function gradleVendorSpec(v: JdkVendor): string {
   }
 }
 
-/** Safe inside Java / Groovy double-quoted string literals. */
-export function escDoubleQuotedJvm(name: string): string {
+/** Safe inside double-quoted string literals (Java, Kotlin, Groovy GStrings). */
+export function escGameName(name: string): string {
   return name
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
-    .replace(/\r/g, '\\r')
-    .replace(/\n/g, '\\n');
-}
-
-/** Safe inside Kotlin double-quoted strings (escapes `$`). */
-export function escDoubleQuotedKotlin(name: string): string {
-  return name
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
     .replace(/\r/g, '\\r')
     .replace(/\n/g, '\\n');
 }
 
 export function validateOptions(o: GeneratorOptions): string | null {
   if (!o.gameName.trim()) return 'Game name cannot be empty.';
+  if (o.gameName.includes('$')) return 'Game name cannot contain $.';
   if (!/^[a-z0-9][a-z0-9-_]*$/.test(o.gameId))
     return 'Game id must be lowercase letters, numbers, dashes or underscores.';
   if (!/^[a-z_][\w]*(\.[a-z_][\w]*)+$/.test(o.packageName))
