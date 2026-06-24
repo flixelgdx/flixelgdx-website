@@ -237,7 +237,7 @@ label.text = "Score: $score"
 
 :::tip[Use FlixelString for optimization!]
 
-In the JVM, there's a very subtle and sneaky thing that can make the garbage collector stutter and ruin your
+In the JVM, there's a very subtle and sneaky thing that can add pressure to the garbage collector and ruin your
 consistent framerate: <u>**string concatenation**</u>. When you use the example above, `"Score: " + score` / `"Score: $score"`
 seem pretty harmless on the surface, but it secretly creates new `String` objects. When inside an update loop, this can be fatal for
 a game's framerate.

@@ -46,8 +46,8 @@ const FEATURES = [
   },
   {
     icon: '📦',
-    title: 'Drop-in with JitPack',
-    body: 'No publishing dance — point Gradle at JitPack, pick a tag, you are done. The Getting Started page even generates the project for you.',
+    title: 'Drop-in with Maven Central and JitPack',
+    body: 'Clean, compatible integration with Maven Central and JitPack. Pick a version or tag and you\'re done.',
   },
   {
     icon: '🎁',
