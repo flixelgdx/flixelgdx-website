@@ -14,28 +14,12 @@
   "files": {
     "java": [
       {
-        "path": ".classpath",
-        "fetch": "templates/common/.classpath"
-      },
-      {
         "path": ".editorconfig",
         "fetch": "templates/common/.editorconfig"
       },
       {
         "path": ".gitignore",
         "fetch": "templates/common/.gitignore"
-      },
-      {
-        "path": ".project",
-        "fetch": "templates/common/.project"
-      },
-      {
-        "path": ".vscode/launch.json",
-        "fetch": "templates/common/.vscode/launch.json"
-      },
-      {
-        "path": ".vscode/settings.json",
-        "fetch": "templates/common/.vscode/settings.json"
       },
       {
         "path": "assets/.gitkeep",
@@ -79,7 +63,7 @@
       },
       {
         "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java",
-        "fetch": "templates/common/lwjgl3/java/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java"
+        "fetch": "templates/common/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java"
       },
       {
         "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",
@@ -104,28 +88,12 @@
     ],
     "kotlin": [
       {
-        "path": ".classpath",
-        "fetch": "templates/common/.classpath"
-      },
-      {
         "path": ".editorconfig",
         "fetch": "templates/common/.editorconfig"
       },
       {
         "path": ".gitignore",
         "fetch": "templates/common/.gitignore"
-      },
-      {
-        "path": ".project",
-        "fetch": "templates/common/.project"
-      },
-      {
-        "path": ".vscode/launch.json",
-        "fetch": "templates/common/.vscode/launch.json"
-      },
-      {
-        "path": ".vscode/settings.json",
-        "fetch": "templates/common/.vscode/settings.json"
       },
       {
         "path": "assets/.gitkeep",
@@ -164,12 +132,12 @@
         "fetch": "templates/common/lwjgl3/nativeimage.gradle"
       },
       {
-        "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt",
-        "fetch": "templates/blank_play_state/kotlin/lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt"
+        "path": "lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java",
+        "fetch": "templates/common/lwjgl3/src/main/java/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.java"
       },
       {
-        "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt",
-        "fetch": "templates/common/lwjgl3/kotlin/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/StartupHelper.kt"
+        "path": "lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt",
+        "fetch": "templates/blank_play_state/kotlin/lwjgl3/src/main/kotlin/{{PACKAGE_PATH}}/lwjgl3/{{GAME}}Lwjgl3Launcher.kt"
       },
       {
         "path": "lwjgl3/src/main/resources/META-INF/native-image/flixelgdx/jni-config.json",

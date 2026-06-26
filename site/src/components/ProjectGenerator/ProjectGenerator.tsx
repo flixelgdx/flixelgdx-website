@@ -11,7 +11,6 @@ import {
 import {
   type DependencySource,
   type GeneratorOptions,
-  type IDE,
   type JdkVendor,
   type Language,
   type Platform,
@@ -47,15 +46,8 @@ const HINTS = {
     kotlin:
       'Modern, concise JVM language with null safety and great IDE support. Mixes seamlessly with Java.',
   },
-  ide: {
-    idea:
-      'JetBrains IntelliJ IDEA. Generates a run configuration that points at the desktop launcher.',
-    eclipse:
-      'Eclipse with the Buildship Gradle plugin. Drops a matching `.classpath` and `.project`.',
-    vscode:
-      'Visual Studio Code with the Java Extension Pack. Adds `launch.json` and `settings.json`.',
-    none: 'Skip IDE-specific files. You can always import the Gradle project later.',
-  },
+  projectVersion:
+    'The initial version of your game project (stored in gradle.properties). Uses standard semantic versioning, e.g. 1.0.0.',
   java:
     'The Java source/target version. FlixelGDX requires Java 17 as a minimum — older versions are blocked.',
   flixelVersion:
@@ -161,7 +153,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   language: 'java',
   javaVersion: 17,
   flixelVersion: '',
-  ide: 'idea',
+  projectVersion: '1.0.0',
   template: '',
   platforms: ['desktop'],
   jdkVendor: 'temurin',
@@ -407,20 +399,15 @@ function GeneratorBody(): JSX.Element {
               </select>
             </div>
             <div className={styles.field}>
-              <label className={styles.label}>
-                IDE{' '}
-                <HelpIcon tip={HINTS.ide[opts.ide]} />
+              <label className={styles.label} htmlFor="projectVersion">
+                Project version <HelpIcon tip={HINTS.projectVersion} />
               </label>
-              <select
-                className={styles.select}
-                value={opts.ide}
-                onChange={(e) => set('ide', e.target.value as IDE)}
-              >
-                <option value="idea">IntelliJ IDEA</option>
-                <option value="eclipse">Eclipse</option>
-                <option value="vscode">VS Code</option>
-                <option value="none">Skip IDE files</option>
-              </select>
+              <input
+                id="projectVersion"
+                className={styles.input}
+                value={opts.projectVersion}
+                onChange={(e) => set('projectVersion', e.target.value)}
+              />
             </div>
           </div>
           <div className={styles.field} style={{marginTop: '1rem'}}>
@@ -630,12 +617,12 @@ function GeneratorBody(): JSX.Element {
           <dd>{VENDOR_LABELS[opts.jdkVendor]}</dd>
           <dt>Flixel</dt>
           <dd>{opts.flixelVersion}</dd>
+          <dt>Version</dt>
+          <dd>{opts.projectVersion}</dd>
           <dt>Source</dt>
           <dd>{opts.expert && opts.dependencySource === 'jitpack' ? 'JitPack' : 'Maven Central'}</dd>
           <dt>Template</dt>
           <dd>{selectedTemplate?.name || opts.template || '—'}</dd>
-          <dt>IDE</dt>
-          <dd>{opts.ide}</dd>
           <dt>Heap</dt>
           <dd>{opts.heapMb} MB</dd>
           <dt>Platforms</dt>

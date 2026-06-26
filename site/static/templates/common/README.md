@@ -16,9 +16,7 @@ Confirm the install: `java -version` in a fresh terminal.
 > auto-downloads the **{{JDK_VENDOR_LABEL}}** toolchain via Gradle's
 > Foojay Toolchains Resolver on first run.
 
-{{IDE_README_BODY}}
-
-## 3. Run your game
+## 2. Run your game
 
 {{RUN_README_BODY}}
 This project ships the Gradle 9.5.1 wrapper (see `gradle/wrapper/gradle-wrapper.properties`).
@@ -41,7 +39,7 @@ in the framework repo.
   - Default heap    : {{HEAP_MB}} MB
   - Platforms       : {{PLATFORMS_CSV}}
   - Template        : {{TEMPLATE_LABEL}}
-  - IDE             : {{IDE_LABEL}}
+  - Version         : {{PROJECT_VERSION}}
 
 ## Project layout
 

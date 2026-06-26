@@ -1,6 +1,6 @@
 /**
  * Placeholder keys the file-based generator may substitute in README / Gradle /
- * IDE files under templates/common (merged into every zip).
+ * files under templates/common (merged into every zip).
  */
 export const BUILTIN_TEMPLATE_PLACEHOLDERS: readonly string[] = [
   'GAME',
@@ -37,15 +37,12 @@ export const BUILTIN_TEMPLATE_PLACEHOLDERS: readonly string[] = [
   'TEAVM_PLUGINS',
   'TEAVM_LANG_DEPS',
   'IDEA_MAIN_CLASS',
-  'ECLIPSE_CLASSPATH_ENTRIES',
-  'VSCODE_LAUNCH_CONFIGS',
+  'PROJECT_VERSION',
   'LANGUAGE',
   'PLATFORMS_CSV',
   'JDK_README_BODY',
-  'IDE_README_BODY',
   'RUN_README_BODY',
   'JDK_VENDOR_LABEL',
-  'IDE_LABEL',
   'TEMPLATE_LABEL',
   'README_LAYOUT_MODULE_LINES',
 ];

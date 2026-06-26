@@ -1,5 +1,4 @@
 export type Language = 'java' | 'kotlin';
-export type IDE = 'idea' | 'eclipse' | 'vscode' | 'none';
 export type Platform = 'desktop' | 'web' | 'android' | 'ios';
 export type JdkVendor =
   | 'graalvm'
@@ -39,7 +38,7 @@ export type GeneratorOptions = {
   language: Language;
   javaVersion: number;
   flixelVersion: string;
-  ide: IDE;
+  projectVersion: string;
   /** Matches `template.json` `id` under `static/templates/<id>/`. */
   template: string;
   platforms: Platform[];

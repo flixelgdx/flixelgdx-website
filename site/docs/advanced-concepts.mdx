@@ -2,7 +2,7 @@
 id: advanced-concepts
 title: Advanced Concepts
 sidebar_position: 5
-description: Action sets, Adobe Animate integration, asset management, and the logging API — for developers who want to write cleaner, more maintainable FlixelGDX games.
+description: Action sets, Adobe Animate integration, asset management, and the logging API for developers who want to write cleaner, more maintainable FlixelGDX games.
 ---
 
 import Tabs from '@theme/Tabs';
@@ -222,9 +222,20 @@ flipping, scaling, and color tint — so you can treat it identically to any oth
 
 ## Advanced asset management
 
-`Flixel.assets` is a `FlixelAssetManager` that wraps libGDX's `AssetManager` with reference counting
-and a cleaner API. It is the right tool for large games that need to control when assets are loaded and
-released rather than holding everything in memory for the lifetime of the game.
+`Flixel.assets` is a `FlixelAssetManager` that wraps libGDX's `AssetManager` as a loading engine and
+keeps a single unified cache of `FlixelAsset<T>` handles at runtime. Every asset type - images, audio,
+text - is retrieved through the same interface. It is the right tool for games that need to control when
+assets are loaded and released rather than keeping everything in memory for the lifetime of the game.
+
+### The FlixelAsset handle
+
+Every asset the manager returns is a `FlixelAsset<T>`, where `T` is the wrapper type game code actually
+uses. Images return `FlixelAsset<FlixelGraphic>`; audio sources return `FlixelAsset<FlixelSoundSource>`;
+text files return `FlixelAsset<String>`. Call `handle.get()` to access the content.
+
+`FlixelGraphic` implements `FlixelAsset<FlixelGraphic>` directly, so `handle.get()` returns the graphic
+itself and there is no extra unwrapping step. Use `graphic.getTexture()` only when you need the raw
+libGDX `Texture` (for example, to split a spritesheet by hand).
 
 ### Loading assets
 
@@ -232,17 +243,16 @@ released rather than holding everything in memory for the lifetime of the game.
 <TabItem value="java" label="Java" default>
 
 ```java
-// Queue an asset for async loading using the file extension to pick the type.
+// Queue assets for async loading. The file extension selects the loader automatically.
 Flixel.assets.load("textures/tileset.png");
 Flixel.assets.load("audio/music/stage1.ogg");
 
-// Explicit type variant (useful when extension is ambiguous).
-Flixel.assets.load("data/map.bin", TiledMap.class);
+// Mark an asset as persistent so it survives state switches even at zero references.
+Flixel.assets.load("textures/ui/hud.png", true);
 
-// Block until all queued loads complete (use only in loading states).
+// Block until all queued loads complete (use only inside a loading state).
 while (!Flixel.assets.update()) {
-  float progress = Flixel.assets.getProgress();
-  progressBar.setValue(progress);
+  progressBar.setValue(Flixel.assets.getProgress());
 }
 ```
 
@@ -250,14 +260,14 @@ while (!Flixel.assets.update()) {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-// Queue an asset for async loading using the file extension to pick the type.
+// Queue assets for async loading. The file extension selects the loader automatically.
 Flixel.assets.load("textures/tileset.png")
 Flixel.assets.load("audio/music/stage1.ogg")
 
-// Explicit type variant (useful when extension is ambiguous).
-Flixel.assets.load("data/map.bin", TiledMap::class.java)
+// Mark an asset as persistent so it survives state switches even at zero references.
+Flixel.assets.load("textures/ui/hud.png", true)
 
-// Block until all queued loads complete (use only in loading states).
+// Block until all queued loads complete (use only inside a loading state).
 while (!Flixel.assets.update()) {
   progressBar.setValue(Flixel.assets.getProgress())
 }
@@ -268,18 +278,24 @@ while (!Flixel.assets.update()) {
 
 ### Retrieving and releasing assets
 
+`get(path)` returns a `FlixelAsset<T>` handle and loads synchronously if the asset was not queued
+ahead of time. Call `retain()` when you take ownership and `release()` when you are done - the manager
+uses the reference count to decide when it is safe to unload the underlying data.
+
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-// Get an already-loaded asset (throws if not loaded).
-Texture tileset = Flixel.assets.get("textures/tileset.png", Texture.class);
+// Retrieve a handle and take ownership. If not already loaded, this blocks.
+// Prefer loading in a loading state first to avoid mid-frame stalls.
+FlixelAsset<FlixelGraphic> handle = Flixel.assets.get("textures/tileset.png");
+handle.retain();
+FlixelGraphic graphic = handle.get();
 
-// Obtain a reference-counted handle (this also retains it).
-FlixelAsset<Texture> handle = Flixel.assets.obtainTypedAsset("textures/tileset.png", Texture.class);
-Texture tex = handle.require();
+// Access the raw texture if you need it (for manual splitting, etc.).
+Texture tex = graphic.getTexture();
 
-// Release when done (asset is disposed when the ref count reaches zero).
+// Release in destroy() to let the manager unload it at the next state switch.
 handle.release();
 ```
 
@@ -287,19 +303,24 @@ handle.release();
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-// Get an already-loaded asset (throws if not loaded).
-val tileset = Flixel.assets.get("textures/tileset.png", Texture::class.java)
+// Retrieve a handle and take ownership. If not already loaded, this blocks.
+// Prefer loading in a loading state first to avoid mid-frame stalls.
+val handle = Flixel.assets.get<FlixelGraphic>("textures/tileset.png")
+handle.retain()
+val graphic: FlixelGraphic = handle.get()
 
-// Obtain a reference-counted handle (this also retains it).
-val handle = Flixel.assets.obtainTypedAsset("textures/tileset.png", Texture::class.java)
-val tex = handle.require()
+// Access the raw texture if you need it (for manual splitting, etc.).
+val tex: Texture = graphic.getTexture()
 
-// Release when done (asset is disposed when the ref count reaches zero).
+// Release in destroy() to let the manager unload it at the next state switch.
 handle.release()
 ```
 
 </TabItem>
 </Tabs>
+
+Use `peek(path)` for a non-owning read that does not change the reference count - useful for checking
+whether a shared resource is already registered before creating it.
 
 ### Loading state pattern
 
@@ -310,22 +331,34 @@ For large games, use a dedicated loading state that shows a progress bar:
 
 ```java
 public class LoadingState extends FlixelState {
+
+  private FlixelBar progressBar;
+
   @Override
   public void create() {
     super.create();
+
     Flixel.assets.load("textures/level1.png");
     Flixel.assets.load("audio/music/level1.ogg");
     // ... more queued loads
+
+    float barW = Flixel.getViewWidth() * 0.6f;
+    float barH = 20f;
+    progressBar = new FlixelBar(
+        (Flixel.getViewWidth() - barW) / 2f,
+        (Flixel.getViewHeight() - barH) / 2f,
+        barW,
+        barH);
+    progressBar.setTrack(Flixel.assets::getProgress);
+    add(progressBar);
   }
 
   @Override
   public void update(float elapsed) {
     super.update(elapsed);
     if (Flixel.assets.update()) {
-      // All assets are loaded, switch to the game.
       Flixel.switchState(new PlayState());
     }
-    progressBar.setValue(Flixel.assets.getProgress());
   }
 }
 ```
@@ -335,26 +368,108 @@ public class LoadingState extends FlixelState {
 
 ```kotlin
 class LoadingState : FlixelState() {
+
+  private lateinit var progressBar: FlixelBar
+
   override fun create() {
     super.create()
+
     Flixel.assets.load("textures/level1.png")
     Flixel.assets.load("audio/music/level1.ogg")
     // ... more queued loads
+
+    val barW = Flixel.getViewWidth() * 0.6f
+    val barH = 20f
+    progressBar = FlixelBar(
+        (Flixel.getViewWidth() - barW) / 2f,
+        (Flixel.getViewHeight() - barH) / 2f,
+        barW,
+        barH)
+    progressBar.setTrack(Flixel.assets::getProgress)
+    add(progressBar)
   }
 
   override fun update(elapsed: Float) {
     super.update(elapsed)
     if (Flixel.assets.update()) {
-      // All assets are loaded, switch to the game.
       Flixel.switchState(PlayState())
     }
-    progressBar.setValue(Flixel.assets.getProgress())
   }
 }
 ```
 
 </TabItem>
 </Tabs>
+
+### Custom asset types
+
+Register a loader for any file extension you need. The `FlixelAssetLoader` functional interface takes
+the manager and the path and returns a fully constructed `FlixelAsset<T>` handle.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Load .cfg files as plain text strings.
+Flixel.assets.registerLoader(".cfg", String.class,
+    (assets, path) -> new FlixelDefaultAsset<>(assets, path, String.class));
+
+// Now load and retrieve exactly like any built-in type.
+Flixel.assets.load("data/settings.cfg");
+Flixel.assets.finishLoading();
+FlixelAsset<String> cfg = Flixel.assets.get("data/settings.cfg");
+String text = cfg.get();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Load .cfg files as plain text strings.
+Flixel.assets.registerLoader(".cfg", String::class.java) { assets, path ->
+  FlixelDefaultAsset(assets, path, String::class.java)
+}
+
+// Now load and retrieve exactly like any built-in type.
+Flixel.assets.load("data/settings.cfg")
+Flixel.assets.finishLoading()
+val cfg = Flixel.assets.get<String>("data/settings.cfg")
+val text: String = cfg.get()
+```
+
+</TabItem>
+</Tabs>
+
+### Asset modes
+
+`FlixelAssetMode` controls when unreferenced, non-persistent assets are reclaimed. Set it once in your
+game's setup:
+
+| Mode | When assets are freed |
+|------|----------------------|
+| `LAZY` | Never automatically - you call `clearNonPersist()` or `clear()` yourself. |
+| `STANDARD` | On every `Flixel.switchState(...)` call (the default). |
+| `AGGRESSIVE` | Immediately when an asset's reference count drops to zero. |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.assets.setAssetMode(FlixelAssetMode.AGGRESSIVE);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.assets.assetMode = FlixelAssetMode.AGGRESSIVE
+```
+
+</TabItem>
+</Tabs>
+
+`AGGRESSIVE` is best for games with many short-lived assets where you want immediate GPU memory
+reclaim. `STANDARD` is the safe default for most games. `LAZY` gives you full manual control.
 
 ---
 

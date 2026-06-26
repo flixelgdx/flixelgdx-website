@@ -1,4 +1,4 @@
-import type {DependencySource, GeneratorOptions, IDE, Language, Platform} from './generatorOptions';
+import type {DependencySource, GeneratorOptions, Language, Platform} from './generatorOptions';
 import {
   escGameName,
   flixelGroup,
@@ -65,11 +65,6 @@ function shouldIncludePath(relPath: string, o: GeneratorOptions): boolean {
   const norm = relPath.replace(/\\/g, '/');
   if (norm.startsWith('lwjgl3/') && !o.platforms.includes('desktop')) return false;
   if (norm.startsWith('teavm/') && !o.platforms.includes('web')) return false;
-  if (norm.startsWith('.idea/') && o.ide !== 'idea') return false;
-  if (norm === '.idea/runConfigurations/Run_Desktop.xml' && !o.platforms.includes('desktop'))
-    return false;
-  if (norm.startsWith('.vscode/') && o.ide !== 'vscode') return false;
-  if ((norm === '.classpath' || norm === '.project') && o.ide !== 'eclipse') return false;
   return true;
 }
 
@@ -113,36 +108,6 @@ function webGradleProperties(platforms: Platform[]): string {
     'flixelReflectionProfile=STANDARD',
     '',
   ].join('\n');
-}
-
-function eclipseClasspathEntries(o: GeneratorOptions): string {
-  const sub = o.language === 'kotlin' ? 'kotlin' : 'java';
-  let lines = `  <classpathentry kind="src" path="core/src/main/${sub}"/>\n`;
-  if (o.platforms.includes('desktop')) {
-    lines += `  <classpathentry kind="src" path="lwjgl3/src/main/${sub}"/>\n`;
-  }
-  if (o.platforms.includes('web')) {
-    lines += `  <classpathentry kind="src" path="teavm/src/main/${sub}"/>\n`;
-  }
-  return lines;
-}
-
-function vscodeLaunchConfigsJson(o: GeneratorOptions, mainClass: string): string {
-  if (!o.platforms.includes('desktop')) return '[]';
-  return JSON.stringify(
-    [
-      {
-        type: 'java',
-        name: 'Run Desktop',
-        request: 'launch',
-        mainClass,
-        projectName: 'lwjgl3',
-        vmArgs: `-Xmx${o.heapMb}m`,
-      },
-    ],
-    null,
-    2
-  );
 }
 
 // The FlixelGDX plugin version is always the literal Gradle property reference
@@ -289,11 +254,9 @@ async function buildReadmeSections(
   o: GeneratorOptions,
   templateLabel: string
 ): Promise<Record<string, string>> {
-  const [jdkBody, ideBody, jdkLabels, ideLabels] = await Promise.all([
+  const [jdkBody, jdkLabels] = await Promise.all([
     fetchText(baseUrl, `template-fragments/readme/jdk/${o.jdkVendor}.md`),
-    fetchText(baseUrl, `template-fragments/readme/ide/${o.ide}.md`),
     fetchJson<Record<string, string>>(baseUrl, 'template-fragments/readme/jdk-labels.json'),
-    fetchJson<Record<string, string>>(baseUrl, 'template-fragments/readme/ide-labels.json'),
   ]);
 
   const runParts: string[] = [];
@@ -311,10 +274,8 @@ async function buildReadmeSections(
 
   return {
     JDK_README_BODY: jdkBody.trimEnd(),
-    IDE_README_BODY: ideBody.trimEnd() + '\n',
     RUN_README_BODY: runParts.join('\n'),
     JDK_VENDOR_LABEL: jdkLabels[o.jdkVendor] ?? o.jdkVendor,
-    IDE_LABEL: ideLabels[o.ide] ?? o.ide,
     TEMPLATE_LABEL: templateLabel,
     README_LAYOUT_MODULE_LINES: readmeLayoutLines(o),
   };
@@ -328,9 +289,13 @@ export async function buildSubstitutionMap(
   const pkg = sanitizePackage(o.packageName);
   const pkgPath = pkg.replace(/\./g, '/');
   const game = (() => {
-    const stripped = o.gameName.replace(/\s+/g, '').replace(/[^A-Za-z0-9_$]/g, '');
+    // Derive a PascalCase Java/Kotlin class name from the game ID.
+    const pascal = o.gameId
+      .split(/[-_]+/)
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('');
     // Java/Kotlin class names cannot start with a digit.
-    return /^[0-9]/.test(stripped) ? `Game${stripped}` : stripped;
+    return /^[0-9]/.test(pascal) ? `Game${pascal}` : pascal;
   })();
   const mainLm = `${pkg}.lwjgl3.${game}Lwjgl3Launcher`;
   const ideaMain = o.language === 'kotlin' ? `${mainLm}Kt` : mainLm;
@@ -391,8 +356,7 @@ export async function buildSubstitutionMap(
     TEAVM_PLUGINS: teavmPluginsBlock(o.language),
     TEAVM_LANG_DEPS: teavmLangDeps(o.language),
     IDEA_MAIN_CLASS: ideaMain,
-    ECLIPSE_CLASSPATH_ENTRIES: eclipseClasspathEntries(o),
-    VSCODE_LAUNCH_CONFIGS: vscodeLaunchConfigsJson(o, ideaMain),
+    PROJECT_VERSION: o.projectVersion,
     LANGUAGE: o.language,
     PLATFORMS_CSV: o.platforms.join(', '),
     ...readme,
