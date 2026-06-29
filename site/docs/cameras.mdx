@@ -1,0 +1,410 @@
+---
+id: cameras
+title: Cameras
+sidebar_position: 8
+description: Camera follow modes, zoom, scroll bounds, dead zones, flash/fade/shake effects, custom viewports, split-screen, per-sprite assignment, and post-processing shaders.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Cameras
+
+Every FlixelGDX game has at least one `FlixelCamera`. It maps the virtual world to the physical screen
+and can follow sprites, zoom, scroll, shake, and flash. Adding more cameras enables split-screen,
+picture-in-picture, and separate UI layers.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// The main camera is always Flixel.cameras.first().
+FlixelCamera cam = Flixel.cameras.first();
+cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN);
+cam.setZoom(1.5f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// The main camera is always Flixel.cameras.first().
+val cam = Flixel.cameras.first()
+cam.follow(player, FlixelCamera.FollowStyle.TOPDOWN)
+cam.zoom = 1.5f
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Follow behavior
+
+`follow()` continuously moves the camera to keep a target sprite (or any `FlixelPositional`) in frame.
+The `FollowStyle` preset controls what shape of dead zone is used — the region the target can move
+inside without the camera shifting.
+
+| Style | Dead zone shape | Best for |
+|---|---|---|
+| `LOCKON` | None (instant tracking) | Fixed chase cameras |
+| `PLATFORMER` | Wide horizontal, narrow vertical | Side-scrolling platformers |
+| `TOPDOWN` | Centered square | Top-down games with moderate speed |
+| `TOPDOWN_TIGHT` | Small centered square | Fast top-down games |
+| `SCREEN_BY_SCREEN` | Whole screen | Zelda-style room transitions |
+| `NO_DEAD_ZONE` | No automatic tracking | Manual scroll control |
+
+### Smooth follow
+
+Pass a `lerp` value (0 = frozen, 1 = instant) to the three-argument overload for a drifting camera.
+`followLeadX` and `followLeadY` shift the camera ahead of the target in the direction of movement:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelCamera cam = Flixel.cameras.first();
+
+// 0.08 lerp gives a smooth, slightly lagging camera.
+cam.follow(player, FlixelCamera.FollowStyle.PLATFORMER, 0.08f);
+
+// Peek 20 pixels ahead of the player horizontally.
+cam.followLeadX = 20f;
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val cam = Flixel.cameras.first()
+
+// 0.08 lerp gives a smooth, slightly lagging camera.
+cam.follow(player, FlixelCamera.FollowStyle.PLATFORMER, 0.08f)
+
+// Peek 20 pixels ahead of the player horizontally.
+cam.followLeadX = 20f
+```
+
+</TabItem>
+</Tabs>
+
+### Snapping and focus
+
+`focusOn(worldX, worldY)` instantly centers the camera on a world coordinate without changing the
+follow target. `snapToTarget()` cancels the current lerp and jumps directly to the follow target,
+useful for resetting the camera after a teleport:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Center the camera on a boss spawn point immediately.
+cam.focusOn(bossX, bossY);
+
+// After a teleport, skip the lerp slide-in.
+cam.snapToTarget();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Center the camera on a boss spawn point immediately.
+cam.focusOn(bossX, bossY)
+
+// After a teleport, skip the lerp slide-in.
+cam.snapToTarget()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Scroll bounds
+
+Use `setScrollBoundsRect` to constrain the camera so it never scrolls past the edges of your level.
+Pass the level's top-left origin and its full width and height:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Constrain to a 3200x1800 level starting at (0, 0).
+// The camera will not show anything outside this rectangle.
+cam.setScrollBoundsRect(0f, 0f, 3200f, 1800f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Constrain to a 3200x1800 level starting at (0, 0).
+// The camera will not show anything outside this rectangle.
+cam.setScrollBoundsRect(0f, 0f, 3200f, 1800f)
+```
+
+</TabItem>
+</Tabs>
+
+If you need separate per-axis control you can set `cam.minScrollX`, `cam.maxScrollX`,
+`cam.minScrollY`, and `cam.maxScrollY` directly, or use the four-argument
+`setScrollBounds(minX, maxX, minY, maxY)`.
+
+---
+
+## Screen effects
+
+`flash`, `fade`, and `shake` are the three built-in camera effects. Every overload accepts an optional
+completion `Runnable` and a `force` flag — `force = true` interrupts an already-running effect of
+the same type; `force = false` (the default) lets the current one finish first.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelCamera cam = Flixel.cameras.first();
+
+// Flash white for 0.3 seconds, then log a message.
+cam.flash(FlixelColor.WHITE, 0.3f, () -> Flixel.info("Flash done"), false);
+
+// Fade in from black over 0.8 seconds (fadeIn = true).
+cam.fade(FlixelColor.BLACK, 0.8f, true, null, false);
+
+// Fade out to black over 1.0 seconds.
+cam.fade(FlixelColor.BLACK, 1.0f, false, () -> Flixel.switchState(new MenuState()), false);
+
+// Shake intensity 2%, both axes, 0.5 seconds.
+cam.shake(0.02f, 0.5f);
+
+// Stop all effects immediately.
+cam.stopFX();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val cam = Flixel.cameras.first()
+
+// Flash white for 0.3 seconds, then log a message.
+cam.flash(FlixelColor.WHITE, 0.3f, { Flixel.info("Flash done") }, false)
+
+// Fade in from black over 0.8 seconds (fadeIn = true).
+cam.fade(FlixelColor.BLACK, 0.8f, true, null, false)
+
+// Fade out to black over 1.0 seconds.
+cam.fade(FlixelColor.BLACK, 1.0f, false, { Flixel.switchState(MenuState()) }, false)
+
+// Shake intensity 2%, both axes, 0.5 seconds.
+cam.shake(0.02f, 0.5f)
+
+// Stop all effects immediately.
+cam.stopFX()
+```
+
+</TabItem>
+</Tabs>
+
+You can also stop effects individually with `stopFlash()`, `stopFade()`, and `stopShake()`, and query
+whether each is still running with `isFlashActive()`, `isFadeActive()`, and `isShakeActive()`.
+
+:::tip[Fade in on level start]
+Call `cam.fade(FlixelColor.BLACK, 0.5f, true, null, false)` at the top of your state's `create()` to
+fade in from black every time the level loads. `fadeIn = true` reverses the overlay direction so it
+starts opaque and clears to transparent.
+:::
+
+---
+
+## Background color
+
+Each camera clears to a background color before drawing. Setting it per-camera is useful when you have
+a separate UI camera that should be transparent:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Change the main camera's background to a deep blue sky.
+Flixel.cameras.first().setBgColor(new FlixelColor(30, 30, 80, 1.0f));
+
+// Make a UI camera background fully transparent.
+uiCamera.useBgAlphaBlending = true;
+uiCamera.setBgColor(new FlixelColor(0f, 0f, 0f, 0f));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Change the main camera's background to a deep blue sky.
+Flixel.cameras.first().setBgColor(FlixelColor(30, 30, 80, 1.0f));
+
+// Make a UI camera background fully transparent.
+uiCamera.useBgAlphaBlending = true
+uiCamera.setBgColor(FlixelColor(0f, 0f, 0f, 0f))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Custom viewport
+
+Pass a custom libGDX `Camera` or `Viewport` to the `FlixelCamera` constructor to control how the
+virtual world is mapped to the screen. For example, a `ScreenViewport` uses actual pixel dimensions:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Viewport vp = new ScreenViewport();
+FlixelCamera uiCamera = new FlixelCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), vp);
+Flixel.cameras.add(uiCamera);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val uiCamera = FlixelCamera(
+  Gdx.graphics.width, Gdx.graphics.height,
+  ScreenViewport()
+)
+Flixel.cameras.add(uiCamera)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Split-screen
+
+Add multiple cameras, switch each to normalized region mode, and set their screen rectangles with
+`setScreenRegionNormalized`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelCamera cam1 = new FlixelCamera(640, 720);
+FlixelCamera cam2 = new FlixelCamera(640, 720);
+cam1.setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT);
+cam2.setRegionMode(FlixelCamera.RegionMode.NORMALIZED_RECT);
+cam1.setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f);   // left half
+cam2.setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f); // right half
+cam1.follow(player1);
+cam2.follow(player2);
+Flixel.cameras.clear(); // Clear the list so you can use only your explicit cameras!
+Flixel.cameras.add(cam1);
+Flixel.cameras.add(cam2);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val cam1 = FlixelCamera(640, 720).apply {
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT
+  setScreenRegionNormalized(0f, 0f, 0.5f, 1.0f)  // left half
+  follow(player1)
+}
+val cam2 = FlixelCamera(640, 720).apply {
+  regionMode = FlixelCamera.RegionMode.NORMALIZED_RECT
+  setScreenRegionNormalized(0.5f, 0f, 0.5f, 1.0f)  // right half
+  follow(player2)
+}
+Flixel.cameras.clear() // Clear the list so you can use only your explicit cameras!
+Flixel.cameras.add(cam1)
+Flixel.cameras.add(cam2)
+```
+
+</TabItem>
+</Tabs>
+
+The `RegionMode` enum controls how region coordinates are interpreted:
+
+| Mode | Coordinate space |
+|------|-----------------|
+| `NORMALIZED_RECT` | 0.0 to 1.0, top-left origin |
+| `PIXEL_TOP_LEFT` | Pixels, top-left origin (HaxeFlixel-style) |
+| `PIXEL_BOTTOM_LEFT` | Pixels, bottom-left origin (libGDX-style) |
+| `PIXEL_CENTERED` | Pixels, center-anchored |
+
+---
+
+## Per-sprite camera assignment
+
+By default every sprite renders on all cameras. Assign a sprite to specific cameras through its
+public `cameras` array to restrict it — useful for HUD elements that should only appear on a
+dedicated UI camera:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// This HUD sprite only renders on the UI camera, not on the world camera.
+hudSprite.cameras = new FlixelCamera[]{ uiCamera };
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// This HUD sprite only renders on the UI camera, not on the world camera.
+hudSprite.cameras = arrayOf(uiCamera)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Post-processing shaders
+
+Attach a `FlixelShader` to a camera to apply a full-screen GLSL shader to everything that camera
+renders. The shader runs after the scene is composited into the camera's framebuffer:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelCamera cam = Flixel.cameras.first();
+
+// Load and attach a shader from GLSL source files.
+FlixelShader crtShader = new FlixelShader(
+  Gdx.files.internal("shaders/crt.vert"),
+  Gdx.files.internal("shaders/crt.frag")
+);
+cam.setShader(crtShader);
+
+// Remove the shader later.
+cam.setShader(null);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val cam = Flixel.cameras.first()
+
+// Load and attach a shader from GLSL source files.
+val crtShader = FlixelShader(
+  Gdx.files.internal("shaders/crt.vert"),
+  Gdx.files.internal("shaders/crt.frag")
+)
+cam.setShader(crtShader)
+
+// Remove the shader later.
+cam.setShader(null)
+```
+
+</TabItem>
+</Tabs>
+
+Each camera maintains its own offscreen `FrameBuffer`. When a shader is set, the camera renders the
+scene into that buffer first, then applies the shader when blitting to the screen. Cameras without
+shaders skip the framebuffer entirely and render directly.

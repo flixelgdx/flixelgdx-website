@@ -1,0 +1,372 @@
+---
+id: audio
+title: Sounds and Music
+sidebar_position: 9
+description: Playing sounds and music through Flixel.sound, FlixelSound handles, volume and pitch control, spatial panning, fade in/out, and audio effects.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Sounds and Music
+
+All audio goes through `Flixel.sound`, a `FlixelAudioManager` built on top of
+[miniaudio](https://github.com/mackron/miniaudio) via the
+[gdx-miniaudio](https://github.com/rednblackgames/gdx-miniaudio) wrapper. The system
+separates sound effects from music at the API level: `play()` is for short effects
+(the underlying sound is cached after the first load), while `playMusic()` is for
+background tracks (streamed from disk and not cached).
+
+---
+
+## Playing sound effects
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Play with defaults (full volume, no loop).
+Flixel.sound.play("sfx/jump.wav");
+
+// Play at 80% volume.
+Flixel.sound.play("sfx/jump.wav", 0.8f);
+
+// Play looping (useful for ambient sounds managed as an SFX slot).
+Flixel.sound.play("sfx/rain.wav", 1.0f, true);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Play with defaults (full volume, no loop).
+Flixel.sound.play("sfx/jump.wav")
+
+// Play at 80% volume.
+Flixel.sound.play("sfx/jump.wav", 0.8f)
+
+// Play looping (useful for ambient sounds managed as an SFX slot).
+Flixel.sound.play("sfx/rain.wav", 1.0f, true)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Playing music
+
+`playMusic()` streams the file from disk and stores the active track in `Flixel.sound.music`.
+Calling `playMusic()` again replaces the current track and stops the previous one.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Play at full volume, not looping.
+Flixel.sound.playMusic("music/theme.ogg");
+
+// Play at 60% volume, looping.
+Flixel.sound.playMusic("music/theme.ogg", 0.6f, true);
+
+// Control the current track through the music field.
+Flixel.sound.music.pause();
+Flixel.sound.music.resume();
+Flixel.sound.music.stop();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Play at full volume, not looping.
+Flixel.sound.playMusic("music/theme.ogg")
+
+// Play at 60% volume, looping.
+Flixel.sound.playMusic("music/theme.ogg", 0.6f, true)
+
+// Control the current track through the music field.
+Flixel.sound.music?.pause()
+Flixel.sound.music?.resume()
+Flixel.sound.music?.stop()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Global volume
+
+`setMasterVolume` scales all audio output. Use it for a master volume slider in your settings menu:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Set to 50%.
+Flixel.sound.setMasterVolume(0.5f);
+
+// Adjust by a delta (e.g. from a volume slider).
+Flixel.sound.changeMasterVolume(0.1f);
+
+float vol = Flixel.sound.getMasterVolume();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Set to 50%.
+Flixel.sound.masterVolume = 0.5f
+
+// Adjust by a delta (e.g. from a volume slider).
+Flixel.sound.masterVolume += 0.1f
+
+val vol = Flixel.sound.masterVolume
+```
+
+</TabItem>
+</Tabs>
+
+To pause and resume all audio at once (for a pause menu), call `Flixel.sound.pause()` and
+`Flixel.sound.resume()`.
+
+---
+
+## The FlixelSound handle
+
+Both `play()` and `playMusic()` return a `FlixelSound` handle. Keep a reference to control that
+specific instance independently of everything else playing:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelSound engine = Flixel.sound.play("sfx/engine.wav", 1.0f, true);
+
+// Adjust mid-flight.
+engine.setVolume(0.4f);
+engine.setPitch(1.5f);   // Higher pitch = faster engine.
+engine.setPan(-0.6f);    // Pan left (-1.0 = full left, 0 = center, 1.0 = full right).
+
+// Seek to a specific point (in milliseconds).
+engine.setTime(500f);
+
+// Stop and clean up when done.
+engine.stop();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val engine = Flixel.sound.play("sfx/engine.wav", 1.0f, true)
+
+// Adjust mid-flight.
+engine.volume = 0.4f
+engine.pitch = 1.5f   // Higher pitch = faster engine.
+engine.pan = -0.6f    // Pan left (-1.0 = full left, 0 = center, 1.0 = full right).
+
+// Seek to a specific point (in milliseconds).
+engine.time = 500f
+
+// Stop and clean up when done.
+engine.stop()
+```
+
+</TabItem>
+</Tabs>
+
+### Completion signal
+
+`onComplete` fires once when a non-looping sound finishes playing. Attach a listener before the
+sound reaches the end:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelSound voiceLine = Flixel.sound.play("sfx/intro_line.wav");
+voiceLine.onComplete.addOnce(() -> startCutscene());
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val voiceLine = Flixel.sound.play("sfx/intro_line.wav")
+voiceLine.onComplete.addOnce { startCutscene() }
+```
+
+</TabItem>
+</Tabs>
+
+### Auto-destroy
+
+Set `autoDestroy = true` to have the manager automatically clean up the handle when the sound
+finishes. This is the right choice for fire-and-forget effects where you do not need the handle
+afterwards:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.sound.play("sfx/coin.wav").setAutoDestroy(true);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.sound.play("sfx/coin.wav").setAutoDestroy(true)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Fading
+
+`fadeIn` and `fadeOut` are shorthand methods on `FlixelSound` that drive the volume from one level
+to another using the tween engine internally:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Fade the music in from silence over 2 seconds.
+FlixelSound track = Flixel.sound.playMusic("music/level.ogg", 0f, true);
+track.fadeIn(2.0f);
+
+// Fade out to silence over 1.5 seconds.
+track.fadeOut(1.5f);
+
+// Fade between two specific volume levels.
+track.fadeIn(1.0f, 0.2f, 0.9f);   // From 0.2 to 0.9 over 1 second.
+track.fadeOut(1.0f, 0.1f);        // From current volume to 0.1 over 1 second.
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Fade the music in from silence over 2 seconds.
+val track = Flixel.sound.playMusic("music/level.ogg", 0f, true)
+track.fadeIn(2.0f)
+
+// Fade out to silence over 1.5 seconds.
+track.fadeOut(1.5f)
+
+// Fade between two specific volume levels.
+track.fadeIn(1.0f, 0.2f, 0.9f)   // From 0.2 to 0.9 over 1 second.
+track.fadeOut(1.0f, 0.1f)        // From current volume to 0.1 over 1 second.
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Spatial audio
+
+Call `setPosition(x, y)` on a `FlixelSound` to place it at a world coordinate. The manager
+automatically computes stereo pan and volume attenuation based on the distance from the main
+camera, making sounds appear to come from a specific location in the world:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// This explosion sound will be louder on the left if the player is to the right.
+FlixelSound explosion = Flixel.sound.play("sfx/explosion.wav");
+explosion.setPosition(explosionX, explosionY);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// This explosion sound will be louder on the left if the player is to the right.
+val explosion = Flixel.sound.play("sfx/explosion.wav")
+explosion.setPosition(explosionX, explosionY)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Audio effects
+
+`FlixelSound` exposes a DSP effect chain you can populate with built-in nodes. Effects are applied
+in insertion order before the output reaches the mixer:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelSound cave = Flixel.sound.play("sfx/footstep.wav", 1.0f, true);
+
+// Reverb: wetAmount 0.0 (dry) to 1.0 (fully wet).
+cave.addReverb(0.6f);
+
+// Echo: 0.3s delay, 0.4 decay (each repeat is 40% quieter).
+cave.addEcho(0.3f, 0.4f);
+
+// Low-pass filter: muffle everything above 800 Hz (e.g. for sounds through walls).
+cave.addLowPassMuffle(800.0);
+
+// Remove all effects later.
+cave.clearAudioEffectChain();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val cave = Flixel.sound.play("sfx/footstep.wav", 1.0f, true)
+
+// Reverb: wetAmount 0.0 (dry) to 1.0 (fully wet).
+cave.addReverb(0.6f)
+
+// Echo: 0.3s delay, 0.4 decay (each repeat is 40% quieter).
+cave.addEcho(0.3f, 0.4f)
+
+// Low-pass filter: muffle everything above 800 Hz (e.g. for sounds through walls).
+cave.addLowPassMuffle(800.0)
+
+// Remove all effects later.
+cave.clearAudioEffectChain()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Persistent sounds
+
+By default, `FlixelSound` instances created during a state are destroyed when that state is exited.
+Call `setPersist(true)` to keep a sound alive across state switches — useful for music or ambient
+loops that should continue through a menu transition:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelSound bgm = Flixel.sound.play("ambience/overworld.ogg", 0.8f, true);
+bgm.setPersist(true); // Keep playing when the state changes.
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val bgm = Flixel.sound.play("ambience/overworld.ogg", 0.8f, true)
+bgm.setPersist(true) // Keep playing when the state changes.
+```
+
+</TabItem>
+</Tabs>

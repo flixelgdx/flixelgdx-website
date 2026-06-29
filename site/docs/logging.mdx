@@ -1,0 +1,138 @@
+---
+id: logging
+title: Logging
+sidebar_position: 8
+description: Writing structured log messages, enabling file output, attaching custom log listeners, and controlling log verbosity with log modes.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Logging
+
+`FlixelLogger` is the framework's structured logging system. You write to it through the static
+helpers on `Flixel`, and it delivers each entry to both the console and (optionally) a rolling
+log file. The debugger's Log window listens to it in real time.
+
+---
+
+## Writing log messages
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Three severity levels, each with an optional tag.
+Flixel.info("Spawner", "Spawned enemy at (100, 200)");
+Flixel.warn("Physics", "Velocity clamped: " + obj.getVelocityX());
+Flixel.error("SaveSystem", "Failed to write save file", exception);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Three severity levels, each with an optional tag.
+Flixel.info("Spawner", "Spawned enemy at (100, 200)")
+Flixel.warn("Physics", "Velocity clamped: ${obj.velocityX}")
+Flixel.error("SaveSystem", "Failed to write save file", exception)
+```
+
+</TabItem>
+</Tabs>
+
+The tag is free-form text. Use it as a module or subsystem identifier so you can filter messages
+in the Log window (or grep in a log file) when debugging a specific system.
+
+---
+
+## Enabling file logging
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// In your game's constructor or create():
+Flixel.log.startFileLogging();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// In your game's constructor or create():
+Flixel.log.startFileLogging()
+```
+
+</TabItem>
+</Tabs>
+
+### Log file location
+
+| Context | Default location |
+|---------|-----------------|
+| Running from IDE | `<project root>/logs/` |
+| Running from a JAR | `logs/` next to the JAR |
+| Custom | Set via `Flixel.log.setLogsFolder("path/to/logs")` |
+
+---
+
+## Custom log listeners
+
+Attach a listener to receive every log entry as a `FlixelLogEntry` (a record exposing `level()`,
+`tag()`, and `message()`):
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.log.addLogListener(entry -> {
+  if (entry.level() == FlixelLogLevel.ERROR) {
+    crashReporter.submit(entry.tag(), entry.message());
+  }
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.log.addLogListener { entry ->
+  if (entry.level() == FlixelLogLevel.ERROR) {
+    crashReporter.submit(entry.tag(), entry.message())
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+Listeners receive entries even in `RELEASE` builds where the debug overlay is absent. This makes
+them the right hook for crash reporting, telemetry, or an in-game developer console of your own
+design.
+
+---
+
+## Log modes
+
+| Mode | What it prints |
+|------|----------------|
+| `SIMPLE` | File location + line + message only. |
+| `DETAILED` | Level + timestamp + tag + message. Always used for file output. |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.log.setLogMode(FlixelLogMode.DETAILED);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.log.logMode = FlixelLogMode.DETAILED
+```
+
+</TabItem>
+</Tabs>

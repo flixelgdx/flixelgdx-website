@@ -1,0 +1,80 @@
+---
+id: physics
+title: Physics and Collision
+sidebar_position: 5
+description: Arcade-physics collision with Flixel.collide() and Flixel.overlap(), plus FlixelObject velocity, acceleration, drag, and immovable surfaces.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Physics and Collision
+
+FlixelGDX makes collision detection simple. `Flixel.collide(a, b)` checks for overlap between any two
+objects, groups, or combinations and applies simple arcade physics (separation) to resolve them.
+`Flixel.overlap(a, b)` reports the overlap without moving anything — useful for trigger zones and pickups.
+Pass a notify callback to react to each overlapping pair; the optional fourth argument is a process
+callback that decides whether a pair counts as overlapping (pass `null` for plain AABB overlap).
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+private int score = 0;
+
+// Allocate the callback once so a new lambda isn't created every frame!
+private BiConsumer<FlixelObject, FlixelObject> notifyCallback = (_, coin) -> {
+  score++;
+  coin.destroy();
+};
+
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+
+  // Solid collision: player bounces off walls.
+  Flixel.collide(player, walls);
+
+  // Trigger: collect a coin without physics response.
+  Flixel.overlap(player, coins, notifyCallback, null);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+private val score = 0
+
+// Allocate the callback once so a new lambda isn't created every frame!
+private val notifyCallback = { _: FlixelObject, coin: FlixelObject ->
+  score++
+  coin.destroy()
+}
+
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+
+  // Solid collision: player bounces off walls.
+  Flixel.collide(player, walls)
+
+  // Trigger: collect a coin without physics response.
+  Flixel.overlap(player, coins, notifyCallback, null)
+}
+```
+
+</TabItem>
+</Tabs>
+
+Key physics properties on `FlixelObject` (accessed through getters and setters):
+
+| Property | What it does |
+|----------|-------------|
+| `setVelocity(x, y)` | Current movement speed (pixels per second). |
+| `setAcceleration(x, y)` | Per-frame velocity change (gravity, friction ramps). |
+| `setDrag(x, y)` | Friction-like deceleration applied when no acceleration is active. |
+| `setMaxVelocity(x, y)` | Caps how fast the object can move. |
+| `setImmovable(true)` | Makes the object a solid wall that does not move on collision. |
+
+Calling `setImmovable(true)` on your tilemap or wall group turns it into a one-sided solid surface that
+player objects will bounce off of, without requiring any custom collision code.

@@ -1,0 +1,523 @@
+---
+id: input
+title: Input
+sidebar_position: 6
+description: Raw keyboard, mouse, and gamepad polling via Flixel.keys, Flixel.mouse, and Flixel.gamepads, plus action sets for platform-agnostic bindings.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Input
+
+FlixelGDX exposes two layers of input:
+
+- **Raw input** — direct per-frame queries against `Flixel.keys`, `Flixel.mouse`, and
+  `Flixel.gamepads`. Use these when you need to check a specific physical button immediately.
+- **Action sets** — named logical actions (`Jump`, `Attack`, `Move`) that map to one or more
+  hardware bindings. Your game logic asks "is Jump pressed?" and the framework resolves whether
+  that came from a keyboard, a controller, or a touch screen.
+
+For anything beyond a quick prototype, action sets are the recommended approach. They keep all
+binding logic in one place and make rebinding trivial without touching game code.
+
+---
+
+## Raw input
+
+### Keyboard — `Flixel.keys`
+
+Key codes are plain `int` constants on `FlixelKey` (`FlixelKey.SPACE`, `FlixelKey.LEFT`, etc.).
+The special value `FlixelKey.ANY` matches any key.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// True every frame the key is held down.
+if (Flixel.keys.pressed(FlixelKey.SPACE)) { ... }
+
+// True only on the single frame the key went down.
+if (Flixel.keys.justPressed(FlixelKey.ENTER)) { ... }
+
+// True only on the single frame the key was released.
+if (Flixel.keys.justReleased(FlixelKey.ESCAPE)) { ... }
+
+// True when any of the listed keys is held (OR check, avoids nested ifs).
+if (Flixel.keys.anyPressed(FlixelKey.LEFT, FlixelKey.A)) { ... }
+if (Flixel.keys.anyJustPressed(FlixelKey.SPACE, FlixelKey.W)) { ... }
+if (Flixel.keys.anyJustReleased(FlixelKey.SPACE, FlixelKey.W)) { ... }
+
+// Key held the longest (first chronologically among currently held keys).
+int first = Flixel.keys.firstPressed();
+
+// First key to go down this frame.
+int firstDown = Flixel.keys.firstJustPressed();
+
+// First key released this frame.
+int firstUp = Flixel.keys.firstJustReleased();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// True every frame the key is held down.
+if (Flixel.keys.pressed(FlixelKey.SPACE)) { ... }
+
+// True only on the single frame the key went down.
+if (Flixel.keys.justPressed(FlixelKey.ENTER)) { ... }
+
+// True only on the single frame the key was released.
+if (Flixel.keys.justReleased(FlixelKey.ESCAPE)) { ... }
+
+// True when any of the listed keys is held (OR check, avoids nested ifs).
+if (Flixel.keys.anyPressed(FlixelKey.LEFT, FlixelKey.A)) { ... }
+if (Flixel.keys.anyJustPressed(FlixelKey.SPACE, FlixelKey.W)) { ... }
+if (Flixel.keys.anyJustReleased(FlixelKey.SPACE, FlixelKey.W)) { ... }
+
+// Key held the longest (first chronologically among currently held keys).
+val first = Flixel.keys.firstPressed()
+
+// First key to go down this frame.
+val firstDown = Flixel.keys.firstJustPressed()
+
+// First key released this frame.
+val firstUp = Flixel.keys.firstJustReleased()
+```
+
+</TabItem>
+</Tabs>
+
+`firstPressed()`, `firstJustPressed()`, and `firstJustReleased()` all return `FlixelKey.NONE`
+when no key matches. They are useful for key-rebinding screens where you want to capture
+whatever the player pressed without checking individual codes.
+
+---
+
+### Mouse — `Flixel.mouse`
+
+Mouse buttons are `int` constants from `FlixelMouseButton` (`FlixelMouseButton.LEFT`,
+`FlixelMouseButton.RIGHT`, `FlixelMouseButton.MIDDLE`).
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Button state queries. Same pressed/justPressed/justReleased contract as the keyboard.
+if (Flixel.mouse.pressed(FlixelMouseButton.LEFT)) { ... }
+if (Flixel.mouse.justPressed(FlixelMouseButton.LEFT)) { ... }
+if (Flixel.mouse.justReleased(FlixelMouseButton.RIGHT)) { ... }
+
+// Cursor position in world coordinates (unprojected through the active camera).
+float wx = Flixel.mouse.getWorldX();
+float wy = Flixel.mouse.getWorldY();
+
+// Cursor position in raw screen pixels (top-left origin).
+int sx = Flixel.mouse.getScreenX();
+int sy = Flixel.mouse.getScreenY();
+
+// Scroll deltas accumulated this frame (reset by the framework at end of frame).
+float scrollY = Flixel.mouse.getScrollDeltaY(); // Typical scroll wheel up/down.
+float scrollX = Flixel.mouse.getScrollDeltaX(); // Horizontal scroll (trackpad, etc.).
+
+// Hover check: true when the cursor world position is inside obj's bounding box.
+if (Flixel.mouse.overlap(button)) { ... }
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Button state queries. Same pressed/justPressed/justReleased contract as the keyboard.
+if (Flixel.mouse.pressed(FlixelMouseButton.LEFT)) { ... }
+if (Flixel.mouse.justPressed(FlixelMouseButton.LEFT)) { ... }
+if (Flixel.mouse.justReleased(FlixelMouseButton.RIGHT)) { ... }
+
+// Cursor position in world coordinates (unprojected through the active camera).
+val wx = Flixel.mouse.worldX
+val wy = Flixel.mouse.worldY
+
+// Cursor position in raw screen pixels (top-left origin).
+val sx = Flixel.mouse.screenX
+val sy = Flixel.mouse.screenY
+
+// Scroll deltas accumulated this frame (reset by the framework at end of frame).
+val scrollY = Flixel.mouse.scrollDeltaY // Typical scroll wheel up/down.
+val scrollX = Flixel.mouse.scrollDeltaX // Horizontal scroll (trackpad, etc.).
+
+// Hover check: true when the cursor world position is inside obj's bounding box.
+if (Flixel.mouse.overlap(button)) { ... }
+```
+
+</TabItem>
+</Tabs>
+
+`getScrollDeltaY()` is the primary scroll axis — positive when the wheel scrolls down, negative
+when it scrolls up (exact sign is OS and backend dependent; verify on your target platform).
+Both deltas reset to zero at the end of each frame so you only see movement that happened this
+tick.
+
+---
+
+### Gamepad — `Flixel.gamepads`
+
+The gamepad system is **disabled by default**. Set `enabled = true` once, before your game loop
+starts, to opt in:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Opt in before the game loop starts (e.g. in FlixelGame's constructor).
+Flixel.gamepads.enabled = true;
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Opt in before the game loop starts (e.g. in FlixelGame's constructor).
+Flixel.gamepads.enabled = true
+```
+
+</TabItem>
+</Tabs>
+
+:::tip[Verifying the gamepad system initialized]
+
+After you enable the framework's gamepad system, if you see a log message in the console that reads
+something like `[Controllers] added manager for application, 1 managers active`, then that means the gamepad system
+was successfully installed and is ready to be used.
+
+:::
+
+Button codes are constants on `FlixelGamepadInput` (`FlixelGamepadInput.A`,
+`FlixelGamepadInput.X`, `FlixelGamepadInput.START`, etc.). The first argument is the
+zero-based controller slot index:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Button queries for controller in slot 0.
+if (Flixel.gamepads.pressed(0, FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.justPressed(0, FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.justReleased(0, FlixelGamepadInput.B)) { ... }
+
+// Stick axis value in [-1, 1] for controller 0 (dead zone applied if globalDeadZone is set).
+float lx = Flixel.gamepads.getAxis(0, FlixelGamepadInput.AXIS_LEFT_X);
+float ly = Flixel.gamepads.getAxis(0, FlixelGamepadInput.AXIS_LEFT_Y);
+
+// Any-controller variants: true if any connected controller matches.
+if (Flixel.gamepads.anyPressed(FlixelGamepadInput.START)) { ... }
+if (Flixel.gamepads.anyJustPressed(FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.anyJustReleased(FlixelGamepadInput.A)) { ... }
+
+// Optional global dead zone applied to all getAxis() calls.
+Flixel.gamepads.globalDeadZone = 0.15f;
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Button queries for controller in slot 0.
+if (Flixel.gamepads.pressed(0, FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.justPressed(0, FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.justReleased(0, FlixelGamepadInput.B)) { ... }
+
+// Stick axis value in [-1, 1] for controller 0 (dead zone applied if globalDeadZone is set).
+val lx = Flixel.gamepads.getAxis(0, FlixelGamepadInput.AXIS_LEFT_X)
+val ly = Flixel.gamepads.getAxis(0, FlixelGamepadInput.AXIS_LEFT_Y)
+
+// Any-controller variants: true if any connected controller matches.
+if (Flixel.gamepads.anyPressed(FlixelGamepadInput.START)) { ... }
+if (Flixel.gamepads.anyJustPressed(FlixelGamepadInput.A)) { ... }
+if (Flixel.gamepads.anyJustReleased(FlixelGamepadInput.A)) { ... }
+
+// Optional global dead zone applied to all getAxis() calls.
+Flixel.gamepads.globalDeadZone = 0.15f
+```
+
+</TabItem>
+</Tabs>
+
+Axis constants are `AXIS_LEFT_X`, `AXIS_LEFT_Y`, `AXIS_RIGHT_X`, and `AXIS_RIGHT_Y`. The Y axes
+are already flipped from screen-space to math-space (up = positive) when used through
+`FlixelActionAnalog` axis bindings; raw `getAxis()` returns the hardware value directly.
+
+#### Connection events
+
+Listen to `deviceConnected` and `deviceDisconnected` to react when controllers are plugged or
+unplugged at runtime:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.gamepads.deviceConnected.addListener(event -> {
+  Flixel.info("Controller " + event.gamepadId() + " connected: " + event.model());
+});
+
+Flixel.gamepads.deviceDisconnected.addListener(event -> {
+  showPauseMenu("Controller disconnected!");
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.gamepads.deviceConnected.addListener { event ->
+  Flixel.info("Controller ${event.gamepadId()} connected: ${event.model()}")
+}
+
+Flixel.gamepads.deviceDisconnected.addListener { event ->
+  showPauseMenu("Controller disconnected!")
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Action sets
+
+Action sets decouple game logic from hardware. Instead of checking `FlixelKey.SPACE` directly,
+you define a `Jump` action and let the action set resolve which physical inputs trigger it.
+This makes rebinding a data change rather than a code change, and lets the same logic work across
+keyboard, gamepad, and touch without any branching in your update loop.
+
+### Defining an action set
+
+Extend `FlixelActionSet` and declare each action as a field. In the constructor, register
+bindings using `FlixelInputBinding` (for digital actions) and `FlixelAnalogAxisBinding` (for
+analog actions):
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public class PlayerControls extends FlixelActionSet {
+
+  public final FlixelActionDigital jump;
+  public final FlixelActionDigital attack;
+  public final FlixelActionAnalog move;
+
+  public PlayerControls() {
+    // add(...) registers the action with the set so the framework ticks it each frame.
+    jump = new FlixelActionDigital("jump");
+    jump.addBinding(FlixelInputBinding.key(FlixelKey.SPACE));
+    jump.addBinding(FlixelInputBinding.key(FlixelKey.W));
+    jump.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A));
+    add(jump);
+
+    attack = new FlixelActionDigital("attack");
+    attack.addBinding(FlixelInputBinding.key(FlixelKey.Z));
+    attack.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X));
+    add(attack);
+
+    // Analog actions accumulate key halves and stick axes into a normalized [-1, 1] vector.
+    move = new FlixelActionAnalog("move");
+    move.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT));
+    move.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT));
+    move.addAxisBinding(FlixelAnalogAxisBinding.negYKey(FlixelKey.UP));
+    move.addAxisBinding(FlixelAnalogAxisBinding.posYKey(FlixelKey.DOWN));
+    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X));
+    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y));
+    add(move);
+  }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+class PlayerControls : FlixelActionSet() {
+
+  // add(...) registers the action with the set so the framework ticks it each frame.
+  // also { } keeps the action as the receiver so bindings read naturally.
+  val jump = FlixelActionDigital("jump").also {
+    it.addBinding(FlixelInputBinding.key(FlixelKey.SPACE))
+    it.addBinding(FlixelInputBinding.key(FlixelKey.W))
+    it.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A))
+    add(it)
+  }
+
+  val attack = FlixelActionDigital("attack").also {
+    it.addBinding(FlixelInputBinding.key(FlixelKey.Z))
+    it.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X))
+    add(it)
+  }
+
+  // Analog actions accumulate key halves and stick axes into a normalized [-1, 1] vector.
+  val move = FlixelActionAnalog("move").also {
+    it.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT))
+    it.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT))
+    it.addAxisBinding(FlixelAnalogAxisBinding.negYKey(FlixelKey.UP))
+    it.addAxisBinding(FlixelAnalogAxisBinding.posYKey(FlixelKey.DOWN))
+    it.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X))
+    it.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y))
+    add(it)
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+`FlixelActionSet` is registered with `FlixelActionSets` automatically on construction, so the
+framework calls `update` and `endFrame` on it every game loop tick. Call `destroy()` when the
+set is no longer needed (for example, on state transition) to unregister it and stop stale reads.
+
+---
+
+### Digital action methods
+
+Instantiate the set once (typically in your state's `create`) and poll it in `update`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+private final PlayerControls controls = new PlayerControls();
+
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+
+  // True every frame the action is active.
+  if (controls.jump.pressed()) { ... }
+
+  // True only on the single frame the action became active.
+  if (controls.jump.justPressed()) { ... }
+
+  // True only on the single frame the action was released.
+  if (controls.jump.justReleased()) { ... }
+
+  // True on the initial press, then again after holdDelay seconds, then every holdInterval
+  // seconds while held. Use for navigation or incrementing values that should auto-repeat.
+  if (controls.jump.held()) { ... }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+private val controls = PlayerControls()
+
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+
+  // True every frame the action is active.
+  if (controls.jump.pressed()) { ... }
+
+  // True only on the single frame the action became active.
+  if (controls.jump.justPressed()) { ... }
+
+  // True only on the single frame the action was released.
+  if (controls.jump.justReleased()) { ... }
+
+  // True on the initial press, then again after holdDelay seconds, then every holdInterval
+  // seconds while held. Use for navigation or incrementing values that should auto-repeat.
+  if (controls.jump.held()) { ... }
+}
+```
+
+</TabItem>
+</Tabs>
+
+`held()` fires on the initial press and then continues firing at a fixed interval while held.
+It is intended for UI navigation and similar cases where holding a button should keep triggering
+the action rather than requiring repeated taps.
+
+---
+
+### Analog action methods
+
+Analog actions expose a two-axis normalized vector that combines all active bindings. Key bindings
+contribute exactly `+1` or `-1` per axis; stick bindings contribute smooth hardware values. The
+result is clamped to length 1 so diagonals never exceed unit speed:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Current axis values, each in [-1, 1].
+float x = controls.move.getX();
+float y = controls.move.getY();
+
+// Axis values from the previous frame, available after endFrame().
+float prevX = controls.move.getPrevX();
+float prevY = controls.move.getPrevY();
+
+// True when either axis is non-zero (the vector has any length).
+if (controls.move.moved()) { ... }
+
+// flicked(): true for exactly one frame when the stick crosses the flick threshold
+// from below. Returns false while the stick stays past the threshold. Good for
+// single-action menu navigation where each deflection triggers exactly one move.
+if (controls.navigate.flicked()) {
+  if (controls.navigate.getY() > 0) selectPreviousItem();
+  else if (controls.navigate.getY() < 0) selectNextItem();
+}
+
+// flickedRepeating(): same as flicked() on the initial cross, then fires again after
+// holdDelay seconds if the stick is still past the threshold, and every holdInterval
+// seconds after that. Use this when holding the stick should keep scrolling.
+if (controls.navigate.flickedRepeating()) {
+  if (controls.navigate.getY() > 0) selectPreviousItem();
+  else if (controls.navigate.getY() < 0) selectNextItem();
+}
+
+// Adjust the stick magnitude required to trigger flicked()/flickedRepeating().
+// Default is 0.3 (30% deflection). Key bindings contribute +-1 so they always exceed it.
+controls.navigate.setFlickThreshold(0.5f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Current axis values, each in [-1, 1].
+val x = controls.move.x
+val y = controls.move.y
+
+// Axis values from the previous frame, available after endFrame().
+val prevX = controls.move.prevX
+val prevY = controls.move.prevY
+
+// True when either axis is non-zero (the vector has any length).
+if (controls.move.moved()) { ... }
+
+// flicked(): true for exactly one frame when the stick crosses the flick threshold
+// from below. Returns false while the stick stays past the threshold. Good for
+// single-action menu navigation where each deflection triggers exactly one move.
+if (controls.navigate.flicked()) {
+  if (controls.navigate.y > 0) selectPreviousItem()
+  else if (controls.navigate.y < 0) selectNextItem()
+}
+
+// flickedRepeating(): same as flicked() on the initial cross, then fires again after
+// holdDelay seconds if the stick is still past the threshold, and every holdInterval
+// seconds after that. Use this when holding the stick should keep scrolling.
+if (controls.navigate.flickedRepeating()) {
+  if (controls.navigate.y > 0) selectPreviousItem()
+  else if (controls.navigate.y < 0) selectNextItem()
+}
+
+// Adjust the stick magnitude required to trigger flicked()/flickedRepeating().
+// Default is 0.3 (30% deflection). Key bindings contribute +-1 so they always exceed it.
+controls.navigate.setFlickThreshold(0.5f)
+```
+
+</TabItem>
+</Tabs>
+
+`flicked()` mirrors the single-frame contract of `justPressed()` on a digital action: one
+deflection, one event. `flickedRepeating()` mirrors `repeated()`. Choose whichever matches
+whether your UI should scroll continuously when the stick is held.

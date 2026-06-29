@@ -1,0 +1,600 @@
+---
+id: tweening
+title: Tweening
+sidebar_position: 10
+description: Animating numeric properties, colors, angles, and paths over time with FlixelTween, easing functions, callbacks, looping modes, and motion tweens.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Tweening
+
+The tween engine lets you animate any numeric value over time using easing functions. It is the cleanest
+way to move sprites, fade objects, scale UI elements, or drive any other smooth transition without
+hand-writing lerp logic in `update`. You configure a tween with a `FlixelTweenSettings` object and add
+one or more goals via `addGoal(getter, toValue, setter)` — explicit getter and setter references, which
+keeps tweens fully ahead-of-time compatible (no reflection).
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Tween sprite.x from its current value to 400 over 1 second.
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX));
+
+// Fade out (alpha 1 -> 0) with easing, then destroy.
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(0.5f)
+  .setEase(FlixelEase::quadOut)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setOnComplete(t -> sprite.destroy()));
+
+// Multiple goals in a single tween (all animate simultaneously).
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha));
+
+// Keep the handle to cancel or pause a running tween.
+FlixelTween tween = FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(2.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX));
+tween.cancel();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Tween sprite.x from its current value to 400 over 1 second.
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX))
+
+// Fade out (alpha 1 -> 0) with easing, then destroy.
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(0.5f)
+  .setEase(FlixelEase::quadOut)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setOnComplete { sprite.destroy() })
+
+// Multiple goals in a single tween (all animate simultaneously).
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha))
+
+// Keep the handle to cancel or pause a running tween.
+val tween = FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(2.0f)
+  .addGoal(sprite::getX, 400f, sprite::setX))
+tween.cancel()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Easing
+
+Pass any easer function from `FlixelEase` as a method reference. The full easing library:
+
+| Family | Easers |
+|--------|--------|
+| Linear | `linear` |
+| Quadratic | `quadIn`, `quadOut`, `quadInOut` |
+| Cubic | `cubeIn`, `cubeOut`, `cubeInOut` |
+| Quartic | `quartIn`, `quartOut`, `quartInOut` |
+| Quintic | `quintIn`, `quintOut`, `quintInOut` |
+| Smooth step | `smoothStepIn`, `smoothStepOut`, `smoothStepInOut` |
+| Smoother step | `smootherStepIn`, `smootherStepOut`, `smootherStepInOut` |
+| Sine | `sineIn`, `sineOut`, `sineInOut` |
+| Circular | `circIn`, `circOut`, `circInOut` |
+| Exponential | `expoIn`, `expoOut`, `expoInOut` |
+| Back (overshoot) | `backIn`, `backOut`, `backInOut` |
+| Elastic | `elasticIn`, `elasticOut`, `elasticInOut` |
+| Bounce | `bounceIn`, `bounceOut`, `bounceInOut` |
+
+Common picks by feel:
+
+| Easer | Feel |
+|-------|------|
+| `FlixelEase::quadOut` | Starts fast, decelerates — good for slide-in animations. |
+| `FlixelEase::quadIn` | Starts slow, accelerates — good for falling objects. |
+| `FlixelEase::sineInOut` | Very smooth, minimal pop. |
+| `FlixelEase::backOut` | Overshoots slightly, then snaps back — springy UI buttons. |
+| `FlixelEase::elasticOut` | Big overshoot, oscillates — playful pop-in effects. |
+| `FlixelEase::bounceOut` | Bounces at the end — cartoonish landings. |
+| `FlixelEase::expoOut` | Extremely fast start, very gradual stop. |
+
+---
+
+## Callbacks
+
+`FlixelTweenSettings` lets you attach callbacks for key tween events. Each callback receives the
+running `FlixelTween`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+new FlixelTweenSettings()
+  .setOnStart(t -> Flixel.info("Tween started"))
+  .setOnUpdate(t -> updateUI())
+  .setOnComplete(t -> nextAnimation());
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+FlixelTweenSettings()
+  .setOnStart { Flixel.info("Tween started") }
+  .setOnUpdate { updateUI() }
+  .setOnComplete { nextAnimation() }
+```
+
+</TabItem>
+</Tabs>
+
+If you need the interpolated value itself on every frame, use `FlixelTween.num`, whose update callback
+is handed the current value:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelTween.num(0f, 1f, new FlixelTweenSettings().setDuration(1.0f), value -> updateUI(value));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+FlixelTween.num(0f, 1f, FlixelTweenSettings().setDuration(1.0f)) { value -> updateUI(value) }
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Looping and types
+
+The `FlixelTweenType` controls what happens when a tween reaches the end:
+
+| Type | Behavior |
+|------|----------|
+| `ONESHOT` | Runs once, then removes itself from the manager (default). |
+| `PERSIST` | Runs once, stays registered — resume it later with `tween.restart()`. |
+| `BACKWARD` | Plays once in reverse (from goal back to starting value). |
+| `LOOPING` | Restarts from the beginning immediately on finish. |
+| `PINGPONG` | Alternates direction on each iteration (forward, backward, forward...). |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Loop forever.
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setType(FlixelTweenType.LOOPING)
+  .setDuration(2.0f)
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle));
+
+// Ping-pong (forward then backward, repeating).
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setType(FlixelTweenType.PINGPONG)
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 500f, sprite::setX));
+
+// Play in reverse (goal to starting value).
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setType(FlixelTweenType.BACKWARD)
+  .setDuration(0.5f)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Loop forever.
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setType(FlixelTweenType.LOOPING)
+  .setDuration(2.0f)
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle))
+
+// Ping-pong (forward then backward, repeating).
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setType(FlixelTweenType.PINGPONG)
+  .setDuration(1.0f)
+  .addGoal(sprite::getX, 500f, sprite::setX))
+
+// Play in reverse (goal to starting value).
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setType(FlixelTweenType.BACKWARD)
+  .setDuration(0.5f)
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Timing control
+
+`setStartDelay` waits before the tween begins. `setLoopDelay` inserts a pause between each
+iteration of a looping tween. `setFramerate` snaps the tween's progress to discrete steps —
+useful for animating integer-valued properties or achieving a retro look:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .setDuration(1.0f)
+  .setStartDelay(0.5f)   // Wait 0.5s before starting.
+  .setLoopDelay(0.25f)   // Pause 0.25s between loops.
+  .setFramerate(12f)     // Snap to 12 steps per second.
+  .setType(FlixelTweenType.LOOPING)
+  .addGoal(sprite::getX, 400f, sprite::setX));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+FlixelTween.tween(sprite, FlixelTweenSettings()
+  .setDuration(1.0f)
+  .setStartDelay(0.5f)   // Wait 0.5s before starting.
+  .setLoopDelay(0.25f)   // Pause 0.25s between loops.
+  .setFramerate(12f)     // Snap to 12 steps per second.
+  .setType(FlixelTweenType.LOOPING)
+  .addGoal(sprite::getX, 400f, sprite::setX))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Color tweens
+
+`FlixelTween.color()` interpolates a `FlixelColorable` object between two colors. `FlixelSprite`
+implements `FlixelColorable`, so you can tween any sprite's tint:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Flash the sprite from white back to its original color over 0.2 seconds.
+FlixelTween.color(sprite, FlixelColor.WHITE, FlixelColor.WHITE.withAlpha(0),
+  new FlixelTweenSettings().setDuration(0.2f));
+
+// Cycle the sky background between dawn and day colors.
+FlixelTween.color(sky, FlixelColor.fromRGB(255, 180, 100), FlixelColor.fromRGB(135, 206, 235),
+  new FlixelTweenSettings()
+    .setType(FlixelTweenType.PINGPONG)
+    .setDuration(5.0f));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Flash the sprite from white back to its original color over 0.2 seconds.
+FlixelTween.color(sprite, FlixelColor.WHITE, FlixelColor.WHITE.withAlpha(0),
+  FlixelTweenSettings().setDuration(0.2f))
+
+// Cycle the sky background between dawn and day colors.
+FlixelTween.color(sky, FlixelColor.fromRGB(255, 180, 100), FlixelColor.fromRGB(135, 206, 235),
+  FlixelTweenSettings()
+    .setType(FlixelTweenType.PINGPONG)
+    .setDuration(5.0f))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Angle tweens
+
+`FlixelTween.angle()` rotates a `FlixelAngleable` to a target angle, automatically taking the
+shortest arc. Pass a `from` angle to override the starting value:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Spin the sprite to 90 degrees over 0.4 seconds.
+FlixelTween.angle(sprite, 90f, new FlixelTweenSettings().setDuration(0.4f));
+
+// Spin from 0 to 360 (full rotation) looping forever.
+FlixelTween.angle(sprite, 0f, 360f,
+  new FlixelTweenSettings()
+    .setType(FlixelTweenType.LOOPING)
+    .setDuration(2.0f));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Spin the sprite to 90 degrees over 0.4 seconds.
+FlixelTween.angle(sprite, 90f, FlixelTweenSettings().setDuration(0.4f))
+
+// Spin from 0 to 360 (full rotation) looping forever.
+FlixelTween.angle(sprite, 0f, 360f,
+  FlixelTweenSettings()
+    .setType(FlixelTweenType.LOOPING)
+    .setDuration(2.0f))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Motion tweens
+
+Motion tweens move a `FlixelPositional` along a path without manually setting `x` and `y` goals.
+
+### Linear motion
+
+Move directly from one point to another:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Move sprite from (100, 100) to (400, 300) over 1.5 seconds.
+FlixelTween.linearMotion(sprite, 100f, 100f, 400f, 300f, 1.5f, true,
+  new FlixelTweenSettings().setEase(FlixelEase::quadInOut));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Move sprite from (100, 100) to (400, 300) over 1.5 seconds.
+FlixelTween.linearMotion(sprite, 100f, 100f, 400f, 300f, 1.5f, true,
+  FlixelTweenSettings().setEase(FlixelEase::quadInOut))
+```
+
+</TabItem>
+</Tabs>
+
+### Circular motion
+
+Orbit a center point. Pass `angleDeg` for the starting angle (0 = right, 90 = up in screen space):
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Orbit the center of the screen clockwise, one revolution every 3 seconds.
+FlixelTween.circularMotion(sprite,
+  640f, 360f,    // Center point.
+  120f,          // Orbit radius.
+  0f,            // Starting angle (degrees).
+  true,          // Clockwise.
+  3.0f, true,    // Duration 3 seconds.
+  new FlixelTweenSettings().setType(FlixelTweenType.LOOPING));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Orbit the center of the screen clockwise, one revolution every 3 seconds.
+FlixelTween.circularMotion(sprite,
+  640f, 360f,    // Center point.
+  120f,          // Orbit radius.
+  0f,            // Starting angle (degrees).
+  true,          // Clockwise.
+  3.0f, true,    // Duration 3 seconds.
+  FlixelTweenSettings().setType(FlixelTweenType.LOOPING))
+```
+
+</TabItem>
+</Tabs>
+
+### Quadratic Bezier motion
+
+Curve through a control point for smooth arced movement:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Arc from (100, 400) through control point (400, 50) to (700, 400) over 1 second.
+// The control point pulls the path toward it without the object ever reaching it.
+FlixelTween.quadMotion(sprite,
+  100f, 400f,    // Start.
+  400f, 50f,     // Control point (the arc peak).
+  700f, 400f,    // End.
+  1.0f, true,    // Duration.
+  new FlixelTweenSettings().setEase(FlixelEase::sineInOut));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Arc from (100, 400) through control point (400, 50) to (700, 400) over 1 second.
+// The control point pulls the path toward it without the object ever reaching it.
+FlixelTween.quadMotion(sprite,
+  100f, 400f,    // Start.
+  400f, 50f,     // Control point (the arc peak).
+  700f, 400f,    // End.
+  1.0f, true,    // Duration.
+  FlixelTweenSettings().setEase(FlixelEase::sineInOut))
+```
+
+</TabItem>
+</Tabs>
+
+### Piecewise-linear path
+
+Pass a flat array of `x, y` pairs to move through multiple waypoints in sequence:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Patrol a three-point path over 4 seconds.
+FlixelTween.linearPath(guard, 4.0f, true,
+  new FlixelTweenSettings().setType(FlixelTweenType.PINGPONG),
+  100f, 200f,   // Waypoint 1.
+  400f, 200f,   // Waypoint 2.
+  400f, 500f);  // Waypoint 3.
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Patrol a three-point path over 4 seconds.
+FlixelTween.linearPath(guard, 4.0f, true,
+  FlixelTweenSettings().setType(FlixelTweenType.PINGPONG),
+  100f, 200f,   // Waypoint 1.
+  400f, 200f,   // Waypoint 2.
+  400f, 500f)   // Waypoint 3.
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Flicker and shake tweens
+
+`FlixelTween.flicker()` toggles a sprite's visibility on and off at a given period. It is the
+standard technique for brief invincibility frames after a hit:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Flicker the player for 1.5 seconds (default period and ratio).
+FlixelTween.flicker(player, new FlixelTweenSettings().setDuration(1.5f));
+
+// Flicker with a custom period (0.08s on/off cycle) and 50% duty cycle.
+FlixelTween.flicker(player, 0.08f, 0.5f, true,
+  new FlixelTweenSettings().setDuration(1.5f), null);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Flicker the player for 1.5 seconds (default period and ratio).
+FlixelTween.flicker(player, FlixelTweenSettings().setDuration(1.5f))
+
+// Flicker with a custom period (0.08s on/off cycle) and 50% duty cycle.
+FlixelTween.flicker(player, 0.08f, 0.5f, true,
+  FlixelTweenSettings().setDuration(1.5f), null)
+```
+
+</TabItem>
+</Tabs>
+
+`FlixelTween.shake()` displaces a `FlixelShakeable` object (such as a sprite or group) by a random
+offset on each frame, on the chosen axes:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Shake the player sprite with 4-pixel intensity for 0.3 seconds on both axes.
+FlixelTween.shake(player, FlixelAxes.XY, 4f,
+  new FlixelTweenSettings().setDuration(0.3f));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Shake the player sprite with 4-pixel intensity for 0.3 seconds on both axes.
+FlixelTween.shake(player, FlixelAxes.XY, 4f,
+  FlixelTweenSettings().setDuration(0.3f))
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Pause and resume
+
+Call `pause()` and `resume()` on a tween handle to freeze and unfreeze it mid-animation:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelTween doorTween = FlixelTween.tween(door, new FlixelTweenSettings()
+  .setDuration(0.5f)
+  .addGoal(door::getX, 200f, door::setX));
+
+// Pause it when a cutscene starts.
+doorTween.pause();
+
+// Resume when the cutscene ends.
+doorTween.resume();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val doorTween = FlixelTween.tween(door, FlixelTweenSettings()
+  .setDuration(0.5f)
+  .addGoal(door::getX, 200f, door::setX))
+
+// Pause it when a cutscene starts.
+doorTween.pause()
+
+// Resume when the cutscene ends.
+doorTween.resume()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Canceling tweens in bulk
+
+`FlixelTween.cancelTweensOf(object)` cancels every active tween targeting a given object. Use it
+when destroying an object that may have multiple tweens running:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Cancel all tweens on this enemy before removing it from the scene.
+FlixelTween.cancelTweensOf(enemy);
+enemy.destroy();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Cancel all tweens on this enemy before removing it from the scene.
+FlixelTween.cancelTweensOf(enemy)
+enemy.destroy()
+```
+
+</TabItem>
+</Tabs>
+
+Because each goal uses explicit getter and setter references, any `float` property on any object is
+tweenable — including properties on your own custom classes — with no reflection and no framework coupling.
