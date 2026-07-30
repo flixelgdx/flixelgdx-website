@@ -1,8 +1,8 @@
 ---
 id: physics
 title: Physics and Collision
-sidebar_position: 7
-description: Arcade-physics collision with Flixel.collide() and Flixel.overlap(), plus FlixelObject velocity, acceleration, drag, and immovable surfaces.
+sidebar_position: 8
+description: Arcade-physics collision with Flixel.collide() and Flixel.overlap(), plus FlixelObject velocity, acceleration, drag, elasticity, angular motion, direction flags, and touch detection.
 ---
 
 import Tabs from '@theme/Tabs';
@@ -10,20 +10,76 @@ import TabItem from '@theme/TabItem';
 
 # Physics and Collision
 
-FlixelGDX makes collision detection simple. `Flixel.collide(a, b)` checks for overlap between any two
-objects, groups, or combinations and applies simple arcade physics (separation) to resolve them.
-`Flixel.overlap(a, b)` reports the overlap without moving anything — useful for trigger zones and pickups.
-Pass a notify callback to react to each overlapping pair; the optional fourth argument is a process
-callback that decides whether a pair counts as overlapping (pass `null` for plain AABB overlap).
+FlixelGDX ships an arcade physics system built into every `FlixelObject`. Every sprite, tile
+map, and group you add to a state carries the same kinematic model: velocity, acceleration, drag,
+and a bounding-box collision system. You drive the motion by setting numbers on the object each
+frame; the engine integrates them and resolves collisions when you call `Flixel.collide()`.
+
+---
+
+## collide() and overlap()
+
+These are the two entry points for detecting contact between objects or groups.
+
+**`Flixel.collide(a, b)`** checks every pair of `a`-vs-`b` for AABB overlap, then pushes them
+apart and adjusts their velocities so they do not pass through each other.
+
+**`Flixel.overlap(a, b)`** does the same overlap test but does **not** move anything. Use it
+for trigger zones, collectibles, and damage regions — anything where you want to know that two
+things are touching without applying a physical response.
+
+Both accept individual objects, groups, or `null` (which means the current state):
 
 <Tabs groupId="lang">
 <TabItem value="java" label="Java" default>
 
 ```java
-private int score = 0;
+// Solid collision: player and every member of the walls group push each other apart.
+Flixel.collide(player, walls);
 
-// Allocate the callback once so a new lambda isn't created every frame!
-private BiConsumer<FlixelObject, FlixelObject> notifyCallback = (_, coin) -> {
+// Self-collision inside a group (e.g. enemies bumping each other).
+Flixel.collide(enemies, enemies);
+
+// Overlap trigger: collect a coin without any physical push.
+Flixel.overlap(player, coins, (p, coin) -> {
+  score++;
+  coin.destroy();
+}, null);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Solid collision: player and every member of the walls group push each other apart.
+Flixel.collide(player, walls)
+
+// Self-collision inside a group (e.g. enemies bumping each other).
+Flixel.collide(enemies, enemies)
+
+// Overlap trigger: collect a coin without any physical push.
+Flixel.overlap(player, coins, { p, coin ->
+  score++
+  coin.destroy()
+}, null)
+```
+
+</TabItem>
+</Tabs>
+
+Call both inside `update()`, after `super.update(elapsed)`, once per frame.
+
+:::warning[Allocate callbacks once]
+
+Creating a new lambda inside `update()` causes a heap allocation every frame, which adds
+unnecessary garbage for the GC. Store your notify callback in a field and reuse it:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Field: created once, reused every frame.
+private final BiConsumer<FlixelObject, FlixelObject> onCoinCollect = (player, coin) -> {
   score++;
   coin.destroy();
 };
@@ -31,12 +87,7 @@ private BiConsumer<FlixelObject, FlixelObject> notifyCallback = (_, coin) -> {
 @Override
 public void update(float elapsed) {
   super.update(elapsed);
-
-  // Solid collision: player bounces off walls.
-  Flixel.collide(player, walls);
-
-  // Trigger: collect a coin without physics response.
-  Flixel.overlap(player, coins, notifyCallback, null);
+  Flixel.overlap(player, coins, onCoinCollect, null);
 }
 ```
 
@@ -44,37 +95,593 @@ public void update(float elapsed) {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-private val score = 0
-
-// Allocate the callback once so a new lambda isn't created every frame!
-private val notifyCallback = { _: FlixelObject, coin: FlixelObject ->
+// Field: created once, reused every frame.
+private val onCoinCollect = { player: FlixelObject, coin: FlixelObject ->
   score++
   coin.destroy()
 }
 
 override fun update(elapsed: Float) {
   super.update(elapsed)
-
-  // Solid collision: player bounces off walls.
-  Flixel.collide(player, walls)
-
-  // Trigger: collect a coin without physics response.
-  Flixel.overlap(player, coins, notifyCallback, null)
+  Flixel.overlap(player, coins, onCoinCollect, null)
 }
 ```
 
 </TabItem>
 </Tabs>
 
-Key physics properties on `FlixelObject` (accessed through getters and setters):
+:::
 
-| Property | What it does |
-|----------|-------------|
-| `setVelocity(x, y)` | Current movement speed (pixels per second). |
-| `setAcceleration(x, y)` | Per-frame velocity change (gravity, friction ramps). |
-| `setDrag(x, y)` | Friction-like deceleration applied when no acceleration is active. |
-| `setMaxVelocity(x, y)` | Caps how fast the object can move. |
-| `setImmovable(true)` | Makes the object a solid wall that does not move on collision. |
+---
 
-Calling `setImmovable(true)` on your tilemap or wall group turns it into a one-sided solid surface that
-player objects will bounce off of, without requiring any custom collision code.
+## Process callbacks
+
+Both `collide()` and `overlap()` accept an optional fourth argument: a **process callback**
+that decides whether a specific pair should count as colliding at all. It receives the two
+objects and returns `true` to allow the collision or `false` to ignore it.
+
+`collide()` uses `FlixelObject::separate` internally as its own process callback. Passing your
+own replaces that, so if you want custom filtering while still separating objects, call
+`separate()` yourself inside the callback:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Only collide if the bullet belongs to the enemy team.
+Flixel.overlap(bullets, player, this::onHit, (bullet, target) -> {
+    if (bullet.team != Team.ENEMY) return false;
+    return FlixelObject.separate(bullet, target); // still push apart
+});
+
+// Or with overlap (no separation). Only react if above a height threshold.
+Flixel.overlap(player, hazards, this::onDamage, (p, h) -> p.getY() < h.getY() + 8f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Only collide if the bullet belongs to the enemy team.
+Flixel.overlap(bullets, player, ::onHit) { bullet, target ->
+    if ((bullet as Bullet).team != Team.ENEMY) return@overlap false
+    FlixelObject.separate(bullet, target) // still push apart
+}
+
+// Or with overlap (no separation). Only react if above a height threshold.
+Flixel.overlap(player, hazards, ::onDamage) { p, h -> p.y < h.y + 8f }
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Velocity
+
+Velocity is movement speed in **pixels per second**. Setting it once gives the object a constant
+speed; you only need to set it again to change direction or stop.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Move right at 200 px/s.
+player.setVelocity(200f, 0f);
+
+// Move diagonally.
+player.setVelocity(150f, -150f);
+
+// Stop immediately.
+player.setVelocity(0f, 0f);
+
+// Change only the horizontal component.
+player.setVelocityX(-100f);
+
+// Read back.
+float vx = player.getVelocityX();
+float vy = player.getVelocityY();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Move right at 200 px/s.
+player.setVelocity(200f, 0f)
+
+// Move diagonally.
+player.setVelocity(150f, -150f)
+
+// Stop immediately.
+player.setVelocity(0f, 0f)
+
+// Change only the horizontal component.
+player.velocityX = -100f
+
+// Read back.
+val vx = player.velocityX
+val vy = player.velocityY
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Acceleration
+
+Acceleration changes velocity over time, in **pixels per second squared**. It is applied
+every frame, so the object speeds up continuously while acceleration is non-zero. Set it to `0`
+to let velocity coast (or drag bring it back to rest).
+
+The classic use case is gravity: set `accelerationY` to a negative value (in libGDX Y-up
+coordinates, down is negative) and the object will fall naturally:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Apply gravity: accelerate downward at 980 px/s^2.
+player.setAccelerationY(-980f);
+
+// Horizontal run acceleration (use drag to decelerate, not a negative value).
+if (Flixel.keys.pressed(Keys.RIGHT)) {
+  player.setAccelerationX(800f);
+} else if (Flixel.keys.pressed(Keys.LEFT)) {
+  player.setAccelerationX(-800f);
+} else {
+  player.setAccelerationX(0f); // drag takes over
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Apply gravity: accelerate downward at 980 px/s^2.
+player.accelerationY = -980f
+
+// Horizontal run acceleration (use drag to decelerate, not a negative value).
+when {
+  Flixel.keys.pressed(Keys.RIGHT) -> player.accelerationX = 800f
+  Flixel.keys.pressed(Keys.LEFT) -> player.accelerationX = -800f
+  else -> player.accelerationX = 0f // drag takes over
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Drag
+
+Drag is a **friction-like deceleration** applied to velocity when acceleration on the same axis
+is zero. It brings a moving object to a stop without requiring you to set velocity to `0`
+manually. Drag is expressed in pixels per second squared and only acts in the direction opposite
+to current motion.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Slow the player horizontally when they release the movement keys.
+player.setDrag(600f, 0f);
+
+// Both axes (e.g. a top-down game with friction on all sides).
+player.setDrag(400f, 400f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Slow the player horizontally when they release the movement keys.
+player.setDrag(600f, 0f)
+
+// Both axes (e.g. a top-down game with friction on all sides).
+player.setDrag(400f, 400f)
+```
+
+</TabItem>
+</Tabs>
+
+The rule of thumb: **higher drag = snappier stop, lower drag = slippery feel**. Drag is only
+active when acceleration on that axis is `0`, so it never fights against intentional movement.
+
+---
+
+## Max velocity
+
+Max velocity **caps** how fast an object can move, regardless of how much acceleration or drag
+is applied. The default cap is `10000` pixels per second on each axis, which is effectively
+unlimited for most games.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Cap horizontal and vertical speed independently.
+player.setMaxVelocity(250f, 600f); // run cap 250 px/s, fall cap 600 px/s
+
+// Uniform cap on both axes.
+player.setMaxVelocity(300f, 300f);
+
+// Cap just the vertical (terminal velocity).
+player.setMaxVelocityY(500f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Cap horizontal and vertical speed independently.
+player.setMaxVelocity(250f, 600f) // run cap 250 px/s, fall cap 600 px/s
+
+// Uniform cap on both axes.
+player.setMaxVelocity(300f, 300f)
+
+// Cap just the vertical (terminal velocity).
+player.maxVelocityY = 500f
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Immovable objects
+
+Setting an object **immovable** makes it act as a fixed surface. Other objects that collide
+with it are pushed away normally, but the immovable object itself never moves. Use this for
+walls, floors, ceilings, tilemaps, and any static platform.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// A wall the player bounces off but that never moves.
+FlixelSprite wall = new FlixelSprite(200f, 0f);
+wall.makeGraphic(16, 300, FlixelColor.GRAY);
+wall.setImmovable(true);
+add(wall);
+
+// Check it at runtime.
+boolean fixed = wall.isImmovable();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// A wall the player bounces off but that never moves.
+val wall = FlixelSprite(200f, 0f).apply {
+  makeGraphic(16, 300, FlixelColor.GRAY)
+  isImmovable = true
+}
+add(wall)
+
+// Check it at runtime.
+val fixed = wall.isImmovable
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Elasticity and mass
+
+By default, collisions are completely inelastic: objects stop at the point of contact. Set
+`elasticity` to make objects bounce. `0` is no bounce; `1` is a perfectly elastic bounce that
+conserves kinetic energy. Values between `0` and `1` give a partial bounce that loses energy
+each time.
+
+When two objects with `elasticity > 0` collide, `mass` determines how much each one recoils.
+A heavier object barely moves while a lighter one bounces away at high speed.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// A ball that bounces off the floor (immovable) with 80% energy retained.
+ball.setElasticity(0.8f);
+
+// Two objects with different masses: the heavy crate barely moves.
+crate.setMass(10f);
+crate.setElasticity(0.3f);
+
+ball.setMass(1f);
+ball.setElasticity(0.3f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// A ball that bounces off the floor (immovable) with 80% energy retained.
+ball.elasticity = 0.8f
+
+// Two objects with different masses: the heavy crate barely moves.
+crate.mass = 10f
+crate.elasticity = 0.3f
+
+ball.mass = 1f
+ball.elasticity = 0.3f
+```
+
+</TabItem>
+</Tabs>
+
+:::tip
+
+Mass only matters when **both** objects have `elasticity > 0`. For one-sided bouncing off an
+immovable surface, only the movable object's elasticity matters.
+
+:::
+
+---
+
+## Angular motion
+
+Every `FlixelObject` has a rotation in degrees (`angle`) and a parallel set of angular
+physics properties that work exactly like their linear counterparts.
+
+| Property | Setter | What it does |
+|---|---|---|
+| `angle` | `setAngle(deg)` | Current rotation in degrees |
+| `angularVelocity` | `setAngularVelocity(dps)` | Rotation speed in degrees per second |
+| `angularAcceleration` | `setAngularAcceleration(dpss)` | Rate of change of angular velocity |
+| `angularDrag` | `setAngularDrag(dpss)` | Decelerates spin when angular acceleration is zero |
+| `maxAngularVelocity` | `setMaxAngularVelocity(dps)` | Caps spin speed |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Spin a coin pickup at 90 degrees per second.
+coin.setAngularVelocity(90f);
+
+// Spin up and then coast to a stop.
+debris.setAngularVelocity(0f);
+debris.setAngularAcceleration(200f);
+debris.setAngularDrag(50f);
+debris.setMaxAngularVelocity(360f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Spin a coin pickup at 90 degrees per second.
+coin.angularVelocity = 90f
+
+// Spin up and then coast to a stop.
+debris.angularVelocity = 0f
+debris.angularAcceleration = 200f
+debris.angularDrag = 50f
+debris.maxAngularVelocity = 360f
+```
+
+</TabItem>
+</Tabs>
+
+:::info[Rotation and collision]
+
+`angle` affects how the sprite is drawn but **not** the collision hitbox. Collision is always
+an AABB check against the unrotated bounding box, regardless of the object's visual angle.
+
+:::
+
+---
+
+## Collision direction flags
+
+`allowCollisions` is a bitmask that controls which sides of an object participate in collision
+resolution. The default is `FlixelDirectionFlags.ANY` (all four sides). You can restrict it to
+specific sides to create one-way platforms and other directional surfaces.
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `FlixelDirectionFlags.ANY` | All sides | Default: all sides collide |
+| `FlixelDirectionFlags.NONE` | No sides | Fully passable (no collision) |
+| `FlixelDirectionFlags.LEFT` | Left side only | |
+| `FlixelDirectionFlags.RIGHT` | Right side only | |
+| `FlixelDirectionFlags.UP` | Top side only | |
+| `FlixelDirectionFlags.DOWN` | Bottom side only | |
+| `FlixelDirectionFlags.FLOOR` | Alias for DOWN | Bottom solid surface |
+| `FlixelDirectionFlags.CEILING` | Alias for UP | Top solid surface |
+| `FlixelDirectionFlags.WALL` | LEFT | RIGHT | Left and right sides |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// One-way platform: only solid from the top.
+platform.setAllowCollisions(FlixelDirectionFlags.UP);
+
+// Passthrough object (e.g. a ghost or background decoration).
+ghost.setAllowCollisions(FlixelDirectionFlags.NONE);
+
+// Convenience check: any side allows collision.
+boolean solid = platform.isSolid();
+
+// Disable collision entirely via the shorthand.
+ghost.setSolid(false);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// One-way platform: only solid from the top.
+platform.allowCollisions = FlixelDirectionFlags.UP
+
+// Passthrough object (e.g. a ghost or background decoration).
+ghost.allowCollisions = FlixelDirectionFlags.NONE
+
+// Convenience check: any side allows collision.
+val solid = platform.isSolid
+
+// Disable collision entirely via the shorthand.
+ghost.solid = false
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Detecting touches
+
+`isTouching()` and `justTouched()` tell you which surfaces an object is in contact with after a
+`collide()` call. The `touching` bitmask is set by the separator and cleared at the start of
+each `update()`, so the values are always current for the current frame.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Is the player on the ground right now?
+boolean onGround = player.isTouching(FlixelDirectionFlags.FLOOR); // FLOOR is the same as DOWN.
+
+// Did the player just land this frame (not touching last frame, touching now)?
+boolean justLanded = player.justTouched(FlixelDirectionFlags.FLOOR);
+
+// Touching a wall on either side.
+boolean againstWall = player.isTouching(FlixelDirectionFlags.WALL);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Is the player on the ground right now?
+val onGround = player.isTouching(FlixelDirectionFlags.FLOOR) // FLOOR is the same as DOWN.
+
+// Did the player just land this frame (not touching last frame, touching now)?
+val justLanded = player.justTouched(FlixelDirectionFlags.FLOOR)
+
+// Touching a wall on either side.
+val againstWall = player.isTouching(FlixelDirectionFlags.WALL)
+```
+
+</TabItem>
+</Tabs>
+
+A typical platformer jump uses `isTouching(FLOOR)` as the ground check before allowing the
+player to jump, preventing double-jumps without any extra flag:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+if (Flixel.keys.justPressed(Keys.SPACE) && player.isTouching(FlixelDirectionFlags.FLOOR)) {
+  player.setVelocityY(500f); // impulse jump
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+if (Flixel.keys.justPressed(Keys.SPACE) && player.isTouching(FlixelDirectionFlags.FLOOR)) {
+  player.velocityY = 500f // impulse jump
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Direct overlap checks
+
+If you need a quick overlap test without the overhead of the group-traversal system, call
+`overlaps()` or `overlapsPoint()` directly on the object:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// AABB check against another object.
+if (player.overlaps(hazard)) {
+  takeDamage();
+}
+
+// Point-in-bounds check (e.g. mouse cursor).
+float mx = Flixel.mouse.getWorldX();
+float my = Flixel.mouse.getWorldY();
+if (button.overlapsPoint(mx, my)) {
+  handleClick();
+}
+
+// Check whether the object is still inside the world bounds.
+if (!enemy.inWorldBounds()) {
+    enemy.destroy();
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// AABB check against another object.
+if (player.overlaps(hazard)) {
+  takeDamage()
+}
+
+// Point-in-bounds check (e.g. mouse cursor).
+val mx = Flixel.mouse.worldX.toFloat()
+val my = Flixel.mouse.worldY.toFloat()
+if (button.overlapsPoint(mx, my)) {
+  handleClick()
+}
+
+// Check whether the object is still inside the world bounds.
+if (!enemy.inWorldBounds()) {
+  enemy.destroy()
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Disabling physics motion
+
+Setting `moves` to `false` skips the velocity-verlet integration entirely for that object.
+The object can still participate in collision resolution; it just stops moving on its own.
+Use this for objects that you want to position manually every frame:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Move a projectile manually; skip physics integration.
+projectile.setMoves(false);
+
+@Override
+public void update(float elapsed) {
+  super.update(elapsed);
+  projectile.changeX(speed * elapsed);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Move a projectile manually; skip physics integration.
+projectile.moves = false
+
+override fun update(elapsed: Float) {
+  super.update(elapsed)
+  projectile.x += speed * elapsed
+}
+```
+
+</TabItem>
+</Tabs>

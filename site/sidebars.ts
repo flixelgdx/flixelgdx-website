@@ -5,6 +5,7 @@ const sidebars: SidebarsConfig = {
     'index',
     'your-first-project',
     'core-concepts',
+    'platforms',
     'input',
     'audio',
     'animations',

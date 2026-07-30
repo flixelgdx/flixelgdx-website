@@ -1,0 +1,452 @@
+---
+id: platforms
+title: Compiling and Distributing
+sidebar_position: 4
+description: How to run, package, and ship a FlixelGDX game on desktop, web, and Android.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Compiling and Distributing
+
+FlixelGDX supports three platforms out of the box: **desktop** (Windows, macOS, Linux
+via LWJGL3), **web** (via TeaVM), and **Android**. Each platform has its own Gradle
+subproject and launcher class. This page covers how to run your game during
+development and how to package and distribute it for each target.
+
+---
+
+## Desktop
+
+### Running during development
+
+The `:lwjgl3:run` Gradle task starts the game with the working directory set to
+`assets/` so file paths behave identically in the IDE and in a packaged build:
+
+```sh
+./gradlew :lwjgl3:run
+```
+
+Most IDEs (IntelliJ IDEA, VS Code with the Gradle extension) also list this task in
+their Gradle tool window.
+
+---
+
+### Packaging with Construo
+
+**Construo** is a Gradle plugin that bundles a trimmed JVM runtime with your game into
+a self-contained folder. Users do not need to install Java. The generated
+`lwjgl3/build.gradle` already includes four targets:
+
+| Gradle task | Output |
+|---|---|
+| `:lwjgl3:packageLinuxX64` | Linux x86_64 folder |
+| `:lwjgl3:packageWinX64` | Windows x86_64 folder |
+| `:lwjgl3:packageMacOsX64` | macOS Intel folder |
+| `:lwjgl3:packageMacOsAarch64` | macOS Apple Silicon folder |
+
+All packages land in `dist/` at the root of the project. Zip a folder and upload it
+directly to itch.io, GitHub Releases, or any other platform:
+
+```sh
+./gradlew :lwjgl3:packageLinuxX64
+```
+
+:::info[Cross-compilation]
+
+Construo downloads a Temurin JDK for the target OS during the first build. You can
+produce a Windows package from macOS, or vice versa, with no extra tools installed.
+
+:::
+
+---
+
+### Executable fat JAR
+
+For simple distribution without an embedded runtime, build the self-contained fat JAR:
+
+```sh
+./gradlew :lwjgl3:jar
+```
+
+The JAR is written to `lwjgl3/build/libs/<gameid>-<version>.jar`. It bundles all
+dependencies and assets at the classpath root. Running it requires Java 17 or later on
+the user's machine:
+
+```sh
+java -jar mygame-1.0.jar
+```
+
+:::warning[JARs and macOS]
+
+On macOS, double-clicking a `.jar` only works when the system JRE is installed and
+associated with `.jar` files. The Construo runtime package is a friendlier distribution
+format for most users.
+
+:::
+
+---
+
+### GraalVM native image (advanced)
+
+GraalVM native image compiles the game ahead-of-time into a single native binary with
+no JVM dependency. The binary starts instantly and uses less memory, but the
+compilation step takes a few minutes and requires a GraalVM JDK.
+
+#### 1. Install a GraalVM JDK
+
+Download GraalVM for JDK 21 from [graalvm.io](https://www.graalvm.org/downloads/).
+On GraalVM 21 and later, `native-image` is bundled in the distribution and does not
+need a separate install step. When downloading manually, pick the **GraalVM Community**
+(free) or Oracle GraalVM build for JDK 21.
+
+IntelliJ IDEA also ships a GraalVM vendor option in its JDK downloader (File > Project
+Structure > SDKs > Add JDK from disk, or use the IDE's JDK download wizard).
+
+#### 2. Enable the flag in gradle.properties
+
+```properties
+enableGraalNative=true
+```
+
+The `lwjgl3` module already has the GraalVM build tools plugin applied. This flag
+activates the `nativeimage.gradle` script that configures it.
+
+#### 3. Point Gradle at the GraalVM JDK
+
+Set `GRAALVM_HOME` (or `JAVA_HOME`) to the GraalVM installation directory:
+
+```sh
+export GRAALVM_HOME=/path/to/graalvm-jdk-21
+```
+
+Alternatively, set the project JDK in your IDE to the GraalVM installation.
+
+#### 4. Compile
+
+```sh
+./gradlew :lwjgl3:nativeCompile
+```
+
+The binary lands in `lwjgl3/build/native/nativeCompile/`. Compilation typically takes
+two to five minutes on a modern machine.
+
+:::tip[Libraries that use JNI or reflection]
+
+If you add a library that relies on JNI or reflection, run the config generator after
+enabling `enableGraalNative=true`:
+
+```sh
+./gradlew :lwjgl3:generateNativeConfig
+```
+
+This launches your game with the GraalVM tracing agent attached. Play through every
+feature you want to cover, then close the window. The task writes the recorded
+configuration to `src/main/resources/META-INF/native-image/` automatically so the next
+`nativeCompile` picks it up.
+
+:::
+
+---
+
+## Web (TeaVM)
+
+FlixelGDX compiles to the browser via [TeaVM](https://teavm.org/), a Java-to-JavaScript
+transpiler. Your game runs and compiles seamlessly in any modern browser via the framework's custom plugin.
+
+### Running during development
+
+```sh
+./gradlew :teavm:run
+```
+
+This starts a local development server, with the URL opening automatically. If it doesn't open, you can do it
+manually by clicking the URL printed in the terminal (typically `http://localhost:8080`) to play the game in
+your browser.
+
+### Build output
+
+A production build writes static files to `build/generated/teavm/`:
+
+```
+build/generated/teavm/
+  assets/             -- copied from assets/
+  js/                 -- the compiled JavaScript bundle
+  scripts/            -- extracted native library scripts
+  index.html          -- the game entry page
+```
+
+The JavaScript bundle name comes from the `gameId` property in `gradle.properties`. To
+produce a production build without starting the dev server:
+
+```sh
+./gradlew :teavm:build
+```
+
+### Hosting a web game
+
+Copy the contents of `build/generated/teavm/` to any static web host:
+
+- **itch.io** — zip the output and upload it as an HTML game. Select "This file will
+  be played in the browser" in the upload settings.
+- **newgrounds.com** — zip the output, navigate to "Upload Your Creations", choose "Game",
+  enter your game's details and drag your `.zip` output into the uploader slot.
+- **GitHub Pages** — push the folder to a `gh-pages` branch and enable Pages in your
+  repository settings.
+
+:::warning[CORS headers for multi-threaded features]
+
+Some browsers require `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` headers to enable features like shared
+memory. itch.io sets these automatically. If you are self-hosting and the game fails to
+start, configure your server to send both headers on every response.
+
+:::
+
+---
+
+## Android
+
+Android is the most involved target because it requires the Android Gradle plugin and
+its own toolchain.
+
+**Android Studio is strongly recommended.** It bundles the Android SDK and NDK, manages
+emulators, installs APKs to physical devices over USB, and provides a guided release
+signing wizard. Using the command line alone is possible but tedious compared to the
+IDE workflow.
+
+### Setting up the android subproject
+
+:::info[Project generator]
+
+The project generator does not yet produce Android files automatically. Add the
+`android/` subproject manually alongside `core/`, `lwjgl3/`, and `teavm/`.
+
+:::
+
+#### settings.gradle
+
+Add `"android"` to the include list in your root `settings.gradle`:
+
+```groovy
+include "core"
+include "lwjgl3"  // if you have desktop
+include "teavm"   // if you have web
+include "android"
+```
+
+#### android/build.gradle
+
+```groovy
+plugins {
+  id 'com.android.application'
+}
+
+android {
+  compileSdk 35
+
+  sourceSets {
+    main {
+      manifest.srcFile 'AndroidManifest.xml'
+      java.srcDirs = ['src/main/java']
+      assets.srcDirs = [rootProject.file('assets')]
+      res.srcDirs = ['res']
+    }
+  }
+
+  defaultConfig {
+    applicationId "<your.package.name>"
+    minSdk 24
+    targetSdk 35
+    versionCode 1
+    versionName "1.0"
+    multiDexEnabled true
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+configurations { natives }
+
+dependencies {
+  implementation project(":core")
+  implementation "org.flixelgdx:flixelgdx-android:${flixelVersion}"
+  implementation "com.badlogicgames.gdx:gdx-backend-android:${gdxVersion}"
+
+  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-armeabi-v7a"
+  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-arm64-v8a"
+  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-x86"
+  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-x86_64"
+}
+```
+
+Replace `<your.package.name>` with your actual package name (e.g.
+`com.example.mygame`). The `gdxVersion` property is defined in `gradle.properties`.
+
+#### android/AndroidManifest.xml
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-feature android:glEsVersion="0x00020000" android:required="true"/>
+
+  <application
+    android:label="@string/app_name"
+    android:icon="@drawable/ic_launcher">
+
+    <activity
+      android:name=".android.MyGameAndroidLauncher"
+      android:label="@string/app_name"
+      android:screenOrientation="landscape"
+      android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+
+  </application>
+
+</manifest>
+```
+
+Replace `MyGameAndroidLauncher` with the actual class name of your Android launcher.
+
+#### The AndroidLauncher class
+
+Create the launcher class in `android/src/main/java/<package>/android/`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public class MyGameAndroidLauncher extends AndroidApplication {
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    FlixelAndroidLauncher.launch(new MyGame(), this);
+  }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+class MyGameAndroidLauncher : AndroidApplication() {
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    FlixelAndroidLauncher.launch(MyGame(), this)
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+`AndroidApplication` comes from the libGDX Android backend. `FlixelAndroidLauncher` is
+provided by the `flixelgdx-android` module and configures the libGDX application object
+with FlixelGDX defaults.
+
+---
+
+### Testing on an emulator
+
+1. Open **Android Studio** and open your project root.
+2. Open the **Device Manager** (View > Tool Windows > Device Manager).
+3. Click **Create Virtual Device**. A Pixel phone with the API 35 (Android 15) system
+   image is a sensible default. Download the system image if prompted.
+4. Start the emulator by clicking the green play button next to the device entry.
+5. Select the `android` run configuration from the run toolbar and click **Run**
+   (the green play arrow). Android Studio builds the debug APK, installs it on the
+   emulator, and starts the activity.
+
+:::tip[GPU acceleration on the emulator]
+
+The software renderer is slow. In the AVD settings set **Graphics** to
+**Hardware - GLES 2.0** for a large speed improvement. If the emulator is still too
+slow to be useful, test on a physical device instead.
+
+:::
+
+---
+
+### Testing on a physical device
+
+1. On your Android device, go to **Settings > About Phone** and tap **Build number**
+   seven times to unlock Developer Options.
+2. Go to **Settings > Developer Options** and enable **USB Debugging**.
+3. Connect the device to your computer with a USB cable. When prompted on the device,
+   tap **Allow** to authorize the RSA fingerprint.
+4. In Android Studio, the device appears in the run target dropdown. Select it and
+   click **Run**.
+
+You can also deploy and launch from Gradle once USB debugging is authorized:
+
+```sh
+./gradlew :android:installDebug
+adb shell am start -n com.example.mygame/.android.MyGameAndroidLauncher
+```
+
+---
+
+### Generating a release build
+
+Debug builds are fine for development, but distributing publicly or uploading to the
+Play Store requires a **signed release build**.
+
+#### Creating a keystore
+
+A keystore holds the private key used to sign your app. Create one once and store it
+somewhere safe — any future update to your app on the Play Store must be signed with
+the same key. A lost keystore means you cannot update an existing listing.
+
+**Never commit the keystore or its passwords to version control.**
+
+In Android Studio:
+1. Go to **Build > Generate Signed Bundle / APK**.
+2. Choose **Android App Bundle (AAB)** if you are publishing to the Play Store, or
+   **APK** for direct distribution.
+3. Click **Create new keystore** and fill in the alias, passwords, and validity period.
+   Save the `.jks` file outside of your project directory.
+4. Complete the wizard. The signed file appears in `android/release/`.
+
+#### APK vs AAB
+
+| Format | Best for |
+|---|---|
+| APK | Direct download, sideloading, Amazon Appstore |
+| AAB | Google Play Store (required for new apps since 2021) |
+
+The Play Store re-signs and optimizes AABs per device architecture, which reduces
+download sizes. For any distribution path outside the Play Store, an APK is simpler.
+
+---
+
+### Publishing to Google Play
+
+1. Create a **Google Play Console** account at
+   [play.google.com/console](https://play.google.com/console).
+2. Create a new app and fill in the store listing (description, screenshots, content
+   rating).
+3. Upload your signed AAB in the **Production** release track. The **Internal testing**
+   track is useful for sharing the build with a small group before going public.
+4. Submit for review. Google typically reviews new apps within a few hours to a few
+   days.
+
+:::info[Choosing a minimum SDK version]
+
+`minSdk 24` in the example targets Android 7.0, which covers over 97% of active
+devices as of 2026. Lowering it increases compatibility but may require workarounds for
+older Android APIs. Raising it simplifies your code at the cost of excluding older
+hardware. Choose based on your target audience.
+
+:::
