@@ -1,7 +1,7 @@
 ---
 id: input
 title: Input
-sidebar_position: 6
+sidebar_position: 4
 description: Raw keyboard, mouse, and gamepad polling via Flixel.keys, Flixel.mouse, and Flixel.gamepads, plus action sets for platform-agnostic bindings.
 ---
 
@@ -256,11 +256,11 @@ unplugged at runtime:
 <TabItem value="java" label="Java" default>
 
 ```java
-Flixel.gamepads.deviceConnected.addListener(event -> {
+Flixel.gamepads.deviceConnected.add(event -> {
   Flixel.info("Controller " + event.gamepadId() + " connected: " + event.model());
 });
 
-Flixel.gamepads.deviceDisconnected.addListener(event -> {
+Flixel.gamepads.deviceDisconnected.add(event -> {
   showPauseMenu("Controller disconnected!");
 });
 ```
@@ -269,17 +269,22 @@ Flixel.gamepads.deviceDisconnected.addListener(event -> {
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-Flixel.gamepads.deviceConnected.addListener { event ->
-  Flixel.info("Controller ${event.gamepadId()} connected: ${event.model()}")
+Flixel.gamepads.deviceConnected.add {
+  Flixel.info("Controller ${it.gamepadId()} connected: ${it.model()}")
 }
 
-Flixel.gamepads.deviceDisconnected.addListener { event ->
+Flixel.gamepads.deviceDisconnected.add {
   showPauseMenu("Controller disconnected!")
 }
 ```
 
 </TabItem>
 </Tabs>
+
+### Touchscreen — `Flixel.touches`
+
+If you plan to add mobile support for your game, the `touches` manager is the way to do it.
+You can access the
 
 ---
 
@@ -309,24 +314,26 @@ public class PlayerControls extends FlixelActionSet {
   public PlayerControls() {
     // add(...) registers the action with the set so the framework ticks it each frame.
     jump = new FlixelActionDigital("jump");
-    jump.addBinding(FlixelInputBinding.key(FlixelKey.SPACE));
-    jump.addBinding(FlixelInputBinding.key(FlixelKey.W));
-    jump.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A));
+    jump.addBinding(FlixelDigitalBinding.key(FlixelKey.SPACE));
+    jump.addBinding(FlixelDigitalBinding.key(FlixelKey.W));
+    jump.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.A));
     add(jump);
 
     attack = new FlixelActionDigital("attack");
-    attack.addBinding(FlixelInputBinding.key(FlixelKey.Z));
-    attack.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X));
+    attack.addBinding(FlixelDigitalBinding.key(FlixelKey.Z));
+    attack.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.X));
+    attack.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.R2));
+    attack.addBinding(FlixelDigitalBinding.touch(0)); // First finger touching the screen.
     add(attack);
 
     // Analog actions accumulate key halves and stick axes into a normalized [-1, 1] vector.
     move = new FlixelActionAnalog("move");
-    move.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT));
-    move.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT));
-    move.addAxisBinding(FlixelAnalogAxisBinding.negYKey(FlixelKey.UP));
-    move.addAxisBinding(FlixelAnalogAxisBinding.posYKey(FlixelKey.DOWN));
-    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X));
-    move.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y));
+    move.addAxisBinding(FlixelAnalogBinding.negXKey(FlixelKey.LEFT));
+    move.addAxisBinding(FlixelAnalogBinding.posXKey(FlixelKey.RIGHT));
+    move.addAxisBinding(FlixelAnalogBinding.negYKey(FlixelKey.UP));
+    move.addAxisBinding(FlixelAnalogBinding.posYKey(FlixelKey.DOWN));
+    move.addAxisBinding(FlixelAnalogBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X));
+    move.addAxisBinding(FlixelAnalogBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y));
     add(move);
   }
 }
@@ -341,26 +348,28 @@ class PlayerControls : FlixelActionSet() {
   // add(...) registers the action with the set so the framework ticks it each frame.
   // also { } keeps the action as the receiver so bindings read naturally.
   val jump = FlixelActionDigital("jump").also {
-    it.addBinding(FlixelInputBinding.key(FlixelKey.SPACE))
-    it.addBinding(FlixelInputBinding.key(FlixelKey.W))
-    it.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.A))
+    it.addBinding(FlixelDigitalBinding.key(FlixelKey.SPACE))
+    it.addBinding(FlixelDigitalBinding.key(FlixelKey.W))
+    it.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.A))
     add(it)
   }
 
   val attack = FlixelActionDigital("attack").also {
-    it.addBinding(FlixelInputBinding.key(FlixelKey.Z))
-    it.addBinding(FlixelInputBinding.gamepadButton(0, FlixelGamepadInput.X))
+    it.addBinding(FlixelDigitalBinding.key(FlixelKey.Z))
+    it.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.X))
+    it.addBinding(FlixelDigitalBinding.gamepadButton(0, FlixelGamepadInput.R2))
+    it.addBinding(FlixelDigitalBinding.touch(0)) // First finger touching the screen.
     add(it)
   }
 
   // Analog actions accumulate key halves and stick axes into a normalized [-1, 1] vector.
   val move = FlixelActionAnalog("move").also {
-    it.addAxisBinding(FlixelAnalogAxisBinding.negXKey(FlixelKey.LEFT))
-    it.addAxisBinding(FlixelAnalogAxisBinding.posXKey(FlixelKey.RIGHT))
-    it.addAxisBinding(FlixelAnalogAxisBinding.negYKey(FlixelKey.UP))
-    it.addAxisBinding(FlixelAnalogAxisBinding.posYKey(FlixelKey.DOWN))
-    it.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X))
-    it.addAxisBinding(FlixelAnalogAxisBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y))
+    it.addAxisBinding(FlixelAnalogBinding.negXKey(FlixelKey.LEFT))
+    it.addAxisBinding(FlixelAnalogBinding.posXKey(FlixelKey.RIGHT))
+    it.addAxisBinding(FlixelAnalogBinding.negYKey(FlixelKey.UP))
+    it.addAxisBinding(FlixelAnalogBinding.posYKey(FlixelKey.DOWN))
+    it.addAxisBinding(FlixelAnalogBinding.gamepadAxisX(0, FlixelGamepadInput.AXIS_LEFT_X))
+    it.addAxisBinding(FlixelAnalogBinding.gamepadAxisY(0, FlixelGamepadInput.AXIS_LEFT_Y))
     add(it)
   }
 }
@@ -498,21 +507,25 @@ if (controls.move.moved()) { ... }
 // from below. Returns false while the stick stays past the threshold. Good for
 // single-action menu navigation where each deflection triggers exactly one move.
 if (controls.navigate.flicked()) {
-  if (controls.navigate.y > 0) selectPreviousItem()
-  else if (controls.navigate.y < 0) selectNextItem()
+  when {
+    controls.navigate.y > 0 -> selectPreviousItem()
+    controls.navigate.y < 0 -> selectNextItem()
+  }
 }
 
 // flickedRepeating(): same as flicked() on the initial cross, then fires again after
 // holdDelay seconds if the stick is still past the threshold, and every holdInterval
 // seconds after that. Use this when holding the stick should keep scrolling.
 if (controls.navigate.flickedRepeating()) {
-  if (controls.navigate.y > 0) selectPreviousItem()
-  else if (controls.navigate.y < 0) selectNextItem()
+  when {
+    controls.navigate.y > 0 -> selectPreviousItem()
+    controls.navigate.y < 0 -> selectNextItem()
+  }
 }
 
 // Adjust the stick magnitude required to trigger flicked()/flickedRepeating().
 // Default is 0.3 (30% deflection). Key bindings contribute +-1 so they always exceed it.
-controls.navigate.setFlickThreshold(0.5f)
+controls.navigate.flickThreshold = 0.5f
 ```
 
 </TabItem>
@@ -521,3 +534,106 @@ controls.navigate.setFlickThreshold(0.5f)
 `flicked()` mirrors the single-frame contract of `justPressed()` on a digital action: one
 deflection, one event. `flickedRepeating()` mirrors `repeated()`. Choose whichever matches
 whether your UI should scroll continuously when the stick is held.
+
+### Custom input actions
+
+Let's say you want your game to support input types other than keyboard, mouse, gamepad or touchscreen.
+But what if you don't *want* the defaults? What if you wanted an action to be triggered by something completely
+different?
+
+Well, here's the good news: all those bindings you saw before? **Those are just functional interfaces**.
+
+When you write something like:
+
+<Tabs>
+<TabItem value="java" label="Java">
+
+```java
+jump.addBinding(FlixelDigitalBinding.key(FlixelKey.SPACE));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+jump.addBinding(FlixelDigitalBinding.key(FlixelKey.SPACE))
+```
+
+</TabItem>
+</Tabs>
+
+It's just secretly a translation for:
+
+<Tabs>
+<TabItem value="java" label="Java">
+
+```java
+jump.addBinding(() -> Flixel.keys != null && Flixel.keys.enabled && Flixel.keys.pressed(FlixelKey.SPACE));
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+jump.addBinding { Flixel.keys != null && Flixel.keys.enabled && Flixel.keys.pressed(FlixelKey.SPACE)) }
+```
+
+</TabItem>
+</Tabs>
+
+So if you wanted to add something else — let's say a Twitch chat controlling the game via commands — you can simply
+do something like this:
+
+<Tabs>
+<TabItem value="java" label="Java">
+
+```java
+jump.addBinding(() -> {
+  // Could be from a socket or from a library like Twitch4J. It's all up to you!
+  String latestMessage = getLatestChatMessage();
+  return latestMessage.equals("!jump");
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+jump.addBinding {
+  // Could be from a socket or from a library like Twitch4J. It's all up to you!
+  val latestMessage = getLatestChatMessage()
+  latestMessage == "!jump"
+});
+```
+
+</TabItem>
+</Tabs>
+
+For analog actions, you just need to modify the provided libGDX `Vector2` object:
+
+<Tabs>
+<TabItem value="java" label="Java">
+
+```java
+// Example of an AI controlling the movement of the player.
+move.addBinding(vector -> {
+  if (ai.wantsToMoveLeft()) {
+    vector.x = -1f;
+  }
+});
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Example of an AI controlling the movement of the player.
+move.addBinding { vector ->
+  if (ai.wantsToMoveLeft()) {
+    vector.x = -1f
+  }
+});
+```
+
+</TabItem>
+</Tabs>

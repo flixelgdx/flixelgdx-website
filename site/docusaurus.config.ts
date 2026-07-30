@@ -9,7 +9,7 @@ const devTemplateEditorPlugins: PluginConfig[] =
 const config: Config = {
   title: 'FlixelGDX',
   tagline:
-    'The most powerful Java game development framework, designed for beginners and experts alike.',
+    'A faithful and improved port of the beloved HaxeFlixel framework for the Java ecosystem.',
   favicon: 'img/favicon.ico',
 
   future: {

@@ -1,0 +1,597 @@
+---
+id: videos
+title: Videos
+sidebar_position: 13
+description: Cross-platform video playback using the flixelgdx-video extension.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Videos
+
+FlixelGDX includes a first-party video extension that lets you play video files directly inside
+your game. It works on desktop (via libvlc), Android (via the platform `MediaPlayer`), and web
+(via the browser's built-in decoder). The video object behaves like any other `FlixelBasic`:
+you add it to a state, it updates and draws itself, and you call `destroy()` when you are done.
+
+---
+
+## Installation
+
+The extension is split into a platform-agnostic core and one backend per platform. Add the core
+to your `core` subproject so the shared API is available to all your game code, then add the
+matching backend to each platform subproject.
+
+### core/build.gradle
+
+```groovy
+dependencies {
+  api "org.flixelgdx:flixelgdx-core:${flixelVersion}"
+  api "org.flixelgdx:flixelgdx-video-core:${flixelVersion}" // add this
+}
+```
+
+### lwjgl3/build.gradle (desktop)
+
+```groovy
+dependencies {
+  implementation project(":core")
+  implementation "org.flixelgdx:flixelgdx-lwjgl3:${flixelVersion}"
+  implementation "org.flixelgdx:flixelgdx-video-lwjgl3:${flixelVersion}" // add this
+}
+```
+
+For the other platforms the pattern is the same: add `flixelgdx-video-android` to your Android
+subproject and `flixelgdx-video-teavm` to your web (TeaVM) subproject.
+
+:::info[JitPack users]
+
+If you are pulling FlixelGDX from JitPack instead of Maven Central, replace `org.flixelgdx`
+with `com.github.flixelgdx.flixelgdx` in the dependency coordinates above.
+
+:::
+
+---
+
+## Registering the backend
+
+Each platform backend must be installed once in its launcher, before the game starts. The
+install call is a no-op if called more than once, so it is safe to leave it unconditionally.
+
+### Desktop (lwjgl3)
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public static void main(String[] args) {
+  FlixelVlcVideoHandler.install(); // register the desktop video backend
+  FlixelLwjgl3Launcher.launch(new MyGame());
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+fun main() {
+  FlixelVlcVideoHandler.install() // register the desktop video backend
+  FlixelLwjgl3Launcher.launch(MyGame())
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Android
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public class MyAndroidLauncher extends AndroidApplication {
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    FlixelAndroidVideoHandler.install(); // register the Android video backend
+    FlixelAndroidLauncher.launch(new MyGame(), this);
+  }
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+class MyAndroidLauncher : AndroidApplication() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    FlixelAndroidVideoHandler.install() // register the Android video backend
+    FlixelAndroidLauncher.launch(MyGame(), this)
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Web (TeaVM)
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+public static void main(String[] args) {
+  FlixelTeaVMVideoHandler.install(); // register the web video backend
+  FlixelTeaVMLauncher.launch(new MyGame());
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+fun main() {
+  FlixelTeaVMVideoHandler.install() // register the web video backend
+  FlixelTeaVMLauncher.launch(MyGame())
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Creating and playing a video
+
+Create a video through `FlixelVideos.create()`, configure it, add it to the state, then call
+`play()`. The video starts decoding immediately and the first frame appears within a few
+milliseconds.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+@Override
+public void create() {
+  FlixelVideo cutscene = FlixelVideos.create("videos/intro.mp4");
+  cutscene.setSize(Flixel.getWidth(), Flixel.getHeight());
+  cutscene.setLooped(false);
+  cutscene.onComplete.add(() -> Flixel.switchState(new MenuState()));
+  add(cutscene);
+  cutscene.play();
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+override fun create() {
+  val cutscene = FlixelVideos.create("videos/intro.mp4")
+  cutscene.setSize(Flixel.getWidth().toFloat(), Flixel.getHeight().toFloat())
+  cutscene.looped = false
+  cutscene.onComplete.add { Flixel.switchState(MenuState()) }
+  add(cutscene)
+  cutscene.play()
+}
+```
+
+</TabItem>
+</Tabs>
+
+The path is relative to your `assets/` folder. The extension supports any container and codec
+that the underlying platform decoder handles (MP4 and WebM are the safest cross-platform choices).
+
+---
+
+## Playback controls
+
+`FlixelVideo` has four basic transport methods, all of which return `this` for chaining.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+video.play();         // start from the beginning (default)
+video.play(false);    // resume without restarting if already playing
+video.play(true, 5000f); // restart and begin at 5 000 ms
+
+video.pause();        // freeze at the current position
+video.resume();       // continue from where it was paused
+video.stop();         // stop and reset to the beginning
+
+boolean playing = video.isPlaying();
+boolean ready = video.isReady(); // true once the first frame is decoded
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+video.play()              // start from the beginning (default)
+video.play(false)         // resume without restarting if already playing
+video.play(true, 5000f)   // restart and begin at 5 000 ms
+
+video.pause()             // freeze at the current position
+video.resume()            // continue from where it was paused
+video.stop()              // stop and reset to the beginning
+
+val playing = video.isPlaying
+val ready = video.isReady // true once the first frame is decoded
+```
+
+</TabItem>
+</Tabs>
+
+:::tip[isReady()]
+
+`width`, `height`, `getLength()`, `getVideoWidth()`, and `getVideoHeight()` all return `0`
+until `isReady()` returns `true`. If you need the native dimensions at the start of your state,
+check `isReady()` in `update()` before reading them.
+
+:::
+
+---
+
+## Position and size
+
+Set `x` and `y` directly, or use `setPosition()`. Set the draw size with `setSize()`. If width
+or height is left at `0`, the decoded frame dimensions are used instead.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Place the video at (100, 50) and draw it at 640x360.
+video.setPosition(100f, 50f);
+video.setSize(640f, 360f);
+
+// Stretch to fill the entire screen.
+video.setSize(Flixel.game.getWidth(), Flixel.game.getHeight());
+
+// Use the decoded frame dimensions (the default).
+video.setSize(0f, 0f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Place the video at (100, 50) and draw it at 640x360.
+video.setPosition(100f, 50f)
+video.setSize(640f, 360f)
+
+// Stretch to fill the entire screen.
+video.setSize(Flixel.game.width.toFloat(), Flixel.game.height.toFloat())
+
+// Use the decoded frame dimensions (the default).
+video.setSize(0f, 0f)
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Volume
+
+Volume ranges from `0` (silent) to `1` (full). Values outside the range are clamped by the
+backend.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+video.setVolume(0.5f);        // 50% volume
+video.setVolume(0f);          // muted
+float vol = video.getVolume();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+video.volume = 0.5f         // 50% volume
+video.volume = 0f           // muted
+val vol = video.volume
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Playback rate
+
+The rate multiplier controls playback speed. `1` is normal, `2` is double speed, `0.5` is half
+speed. All values must be greater than `0`.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+video.setRate(2f);    // double speed
+video.setRate(0.5f);  // half speed
+video.setRate(1f);    // normal speed
+
+float rate = video.getRate();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+video.rate = 2f     // double speed
+video.rate = 0.5f   // half speed
+video.rate = 1f     // normal speed
+
+val rate = video.getRate()
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Looping and seeking
+
+`setLooped(true)` makes the video restart automatically when it ends. Seeking with `setTime()`
+works on both playing and paused videos.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Loop a background video indefinitely.
+video.setLooped(true);
+
+// Seek to 3 seconds in.
+video.setTime(3000f);
+
+// Read the current position and total duration (both in milliseconds).
+float position = video.getTime();
+float duration = video.getLength();
+
+// Jump to 80% through the video.
+video.setTime(video.getLength() * 0.8f);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Loop a background video indefinitely.
+video.setLooped(true)
+
+// Seek to 3 seconds in.
+video.time = 3000f
+
+// Read the current position and total duration (both in milliseconds).
+val position = video.time
+val duration = video.length
+
+// Jump to 80% through the video.
+video.time = video.length * 0.8f
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Decode quality
+
+`FlixelVideoQuality` trades visual sharpness for CPU and memory cost. The draw size on screen
+never changes; only the resolution the decoder produces internally does.
+
+| Preset | Decode resolution | Best for |
+|---|---|---|
+| `FULL` | Source resolution (default) | Cutscenes, HD content |
+| `HALF` | 1/2 width and height (1/4 pixels) | Background loops, low-end devices |
+| `QUARTER` | 1/4 width and height (1/16 pixels) | Heavily stylized or very blurry content |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Use half-resolution decode for a looping background.
+video.setQuality(FlixelVideoQuality.HALF);
+
+FlixelVideoQuality q = video.getQuality();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Use half-resolution decode for a looping background.
+video.setQuality(FlixelVideoQuality.HALF)
+
+val q = video.getQuality()
+```
+
+</TabItem>
+</Tabs>
+
+:::info[Desktop quality changes]
+
+On desktop the decoder pipeline is rebuilt when the quality changes. If the video is already
+playing, the backend automatically restarts it and seeks back to where it was. On web the change
+applies immediately without interrupting playback.
+
+:::
+
+---
+
+## Scroll factor
+
+The scroll factor controls how much a video moves when the camera scrolls, using the same
+contract as sprites. `1` (the default) means the video moves with the world; `0` pins it to the
+screen regardless of camera position, which is the right choice for fullscreen cutscenes.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Pin to the screen (cutscene or UI layer).
+video.setScrollFactor(0f, 0f);
+
+// Parallax: move at half the camera speed (background layer).
+video.setScrollFactor(0.5f, 0.5f);
+
+// Default: follows the world like a normal sprite.
+video.setScrollFactor(1f, 1f);
+
+float sx = video.getScrollX();
+float sy = video.getScrollY();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Pin to the screen (cutscene or UI layer).
+video.setScrollFactor(0f, 0f)
+
+// Parallax: move at half the camera speed (background layer).
+video.setScrollFactor(0.5f, 0.5f)
+
+// Default: follows the world like a normal sprite.
+video.setScrollFactor(1f, 1f)
+
+val sx = video.scrollX
+val sy = video.scrollY
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Lifecycle signals
+
+`FlixelVideo` exposes four signals you can listen to for playback events.
+
+| Signal | Fires when |
+|---|---|
+| `onPlay` | `play()` is called |
+| `onPause` | `pause()` is called |
+| `onResume` | `resume()` is called |
+| `onComplete` | A non-looping video reaches its end |
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Switch to the menu after the intro cutscene finishes.
+video.onComplete.add(() -> Flixel.switchState(new MenuState()));
+
+// Log when the video is paused (e.g. for debugging).
+video.onPause.add(() -> Flixel.info("CutsceneState", "Video paused."));
+
+// Use addOnce() to fire a listener only one time.
+video.onPlay.addOnce(() -> showSkipHint());
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Switch to the menu after the intro cutscene finishes.
+video.onComplete.add { Flixel.switchState(MenuState()) }
+
+// Log when the video is paused (e.g. for debugging).
+video.onPause.add { Flixel.info("CutsceneState", "Video paused.") }
+
+// Use addOnce() to fire a listener only one time.
+video.onPlay.addOnce { showSkipHint() }
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Auto-destroy
+
+Set `autoDestroy = true` to have the video clean itself up automatically when playback
+completes. This is the right choice for one-shot cutscenes where you do not need to reuse the
+object:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelVideo intro = FlixelVideos.create("videos/intro.mp4");
+intro.setAutoDestroy(true);
+intro.onComplete.add(() -> Flixel.switchState(new MenuState()));
+add(intro);
+intro.play();
+// No need to call destroy() manually; it is called when playback ends.
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val intro = FlixelVideos.create("videos/intro.mp4")
+intro.autoDestroy = true
+intro.onComplete.add { Flixel.switchState(MenuState()) }
+add(intro)
+intro.play()
+// No need to call destroy() manually; it is called when playback ends.
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Using the raw texture
+
+`getTexture()` returns the `Texture` holding the most recently decoded frame. Use this when you
+want to feed the video into your own drawing code — a custom shader, a sprite's texture region,
+or a 3D mesh — instead of relying on the default draw:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Texture frame = video.getTexture();
+if (frame != null) {
+  // Draw using your own batch call or shader.
+  batch.draw(frame, 0, 0);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val frame = video.getTexture()
+if (frame != null) {
+  // Draw using your own batch call or shader.
+  batch.draw(frame, 0f, 0f)
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::warning[Do not dispose the texture]
+
+The backend owns the frame texture and replaces it every frame. Do not call `dispose()` on it
+yourself, or you will corrupt the decoder pipeline.
+
+:::
+
+---
+
+## Auto-pause on focus loss
+
+When `FlixelGame.autoPause` is `true` (the default), videos pause automatically when the OS
+suspends or backgrounds the application and resume when it comes back to the foreground. On
+desktop the focus hooks are wired up by `FlixelVlcVideoHandler.install()`. No extra setup is
+needed.

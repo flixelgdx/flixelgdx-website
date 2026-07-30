@@ -148,10 +148,18 @@ function teavmLangDeps(lang: Language): string {
   return '';
 }
 
-function jvmArgString(o: GeneratorOptions): string {
-  const baseFlags = `-Xms${Math.max(8, Math.floor(o.heapMb / 2))}m -Xmx${o.heapMb}m`;
-  const userFlags = o.expert && o.jvmFlags.trim() ? ` ${o.jvmFlags.trim()}` : '';
-  return `${baseFlags}${userFlags}`;
+/**
+ * Renders the desktop launcher's JVM args as the comma-separated, quoted contents of a Groovy
+ * list literal (e.g. `"-Xms8M", "-Xmx16M", "-ea"`), so a single {{JVM_ARG_LIST}} substitution
+ * can be dropped into `[{{JVM_ARG_LIST}}]` anywhere a `List<String>` is expected: `run.jvmArgs`,
+ * `application.applicationDefaultJvmArgs`, and construo's `roast.vmArgs`.
+ */
+function jvmArgList(o: GeneratorOptions): string {
+  const args = [`-Xms${Math.max(8, Math.floor(o.heapMb / 2))}M`, `-Xmx${o.heapMb}M`];
+  if (o.expert && o.jvmFlags.trim()) {
+    args.push(...o.jvmFlags.trim().split(/\s+/));
+  }
+  return args.map((arg) => `"${arg.replace(/"/g, '\\"')}"`).join(', ');
 }
 
 // --- Repository / dependency-source wiring --------------------------------
@@ -349,7 +357,7 @@ export async function buildSubstitutionMap(
     LWJGL3_MAIN_CLASS: `${pkg}.lwjgl3.${game}Lwjgl3Launcher${o.language === 'kotlin' ? 'Kt' : ''}`,
     TEAVM_MAIN_CLASS: teavmMain,
     TEAVM_JS_BUNDLE: jsBundle,
-    JVM_ARG_STRING: jvmArgString(o),
+    JVM_ARG_LIST: jvmArgList(o),
     NATIVE_IMAGE_NAME: nativeImageName,
     CONSTRUO_IDENTIFIER: `${pkg}.desktop`,
     LWJGL3_PLUGINS: lwjgl3PluginsBlock(o.language),

@@ -24,9 +24,14 @@ configurations {
 }
 
 def isMacOs = System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contains('mac')
+// Shared between the dev run task, the installDist/distZip start scripts (via
+// applicationDefaultJvmArgs), and construo's packaged runtime image, so all three respect the
+// same heap budget instead of only the dev loop being capped.
+def heapJvmArgs = [{{JVM_ARG_LIST}}]
 
 application {
   mainClass = "{{LWJGL3_MAIN_CLASS}}"
+  applicationDefaultJvmArgs = heapJvmArgs
 }
 
 run {
@@ -34,7 +39,7 @@ run {
   // You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
   // setIgnoreExitValue(true)
 
-  jvmArgs = ["-Xms8M", "-Xmx{{HEAP_MB}}M"]
+  jvmArgs = heapJvmArgs
   if (isMacOs) jvmArgs += "-XstartOnFirstThread"
 
   // Always re-run even when no sources changed; without this Gradle marks the
@@ -113,7 +118,7 @@ construo {
     // entirely at launch prevents the crash.
     // UnlockExperimentalVMOptions must precede EnableJVMCI because Temurin 21
     // treats it as an experimental flag even when disabling it.
-    vmArgs.addAll(["-XX:+UnlockExperimentalVMOptions", "-XX:-EnableJVMCI"])
+    vmArgs.addAll(heapJvmArgs + ["-XX:+UnlockExperimentalVMOptions", "-XX:-EnableJVMCI"])
   }
   targets.configure {
     create("linuxX64", Target.Linux) {

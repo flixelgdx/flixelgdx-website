@@ -761,7 +761,7 @@ class PlayState : FlixelState() {
 ## 6. Score! — using `FlixelText`
 
 A Pong game with no score is just an animation. Let's add two big white
-numbers at the top using **`FlixelText`**, the framework's text widget.
+numbers at the bottom using **`FlixelText`**, the framework's text widget.
 
 :::tip
 
@@ -963,14 +963,17 @@ framework's log file. We'll lean on it again in the next step to debug.
 
 ## 7. A pause substate
 
-Finally, let's wire up a **pause screen** as a `FlixelSubState`. Press
+Let's wire up a **pause screen** as a `FlixelSubState`. Press
 **SPACE** to toggle pause; while paused, the gameplay freezes and a big
 "PAUSED" label appears over the top.
 
-> Remember the **commercial break** analogy? That is
-> exactly what a substate is. The current state stays mounted *behind*
-> the substate, so when the substate closes everything continues from
-> where it stopped.
+:::tip[Remember the commercial break analogy?]
+
+That is exactly what a substate is. The current state stays mounted *behind*
+the substate, so when the substate closes everything continues from
+where it stopped.
+
+:::
 
 Create a new file `PauseSubState.java` (or `.kt`) next to
 `PlayState`:

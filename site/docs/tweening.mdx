@@ -1,7 +1,7 @@
 ---
 id: tweening
 title: Tweening
-sidebar_position: 10
+sidebar_position: 8
 description: Animating numeric properties, colors, angles, and paths over time with FlixelTween, easing functions, callbacks, looping modes, and motion tweens.
 ---
 
@@ -220,13 +220,13 @@ FlixelTween.tween(sprite, new FlixelTweenSettings()
 FlixelTween.tween(sprite, FlixelTweenSettings()
   .setType(FlixelTweenType.ONESHOT)
   .setDuration(0.5f)
-  .addGoal(sprite::getY, sprite.getY() - 20f, sprite::setY))
+  .addGoal(sprite::getY, sprite.y - 20f, sprite::setY))
 
 // PERSIST: runs once and stays registered so it can be restarted later.
 val doorOpen = FlixelTween.tween(door, FlixelTweenSettings()
   .setType(FlixelTweenType.PERSIST)
   .setDuration(0.3f)
-  .addGoal(door::getX, door.getX() + 64f, door::setX))
+  .addGoal(door::getX, door.x + 64f, door::setX))
 // ... later, after the player re-enters:
 doorOpen.restart()
 
