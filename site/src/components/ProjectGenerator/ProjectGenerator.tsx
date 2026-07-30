@@ -1,13 +1,8 @@
 import {useEffect, useMemo, useState, type JSX, type ReactNode} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Hint from '../Hint';
 import styles from './ProjectGenerator.module.css';
-import {
-  buildZipFromTemplates,
-  loadTemplateCatalog,
-  type TemplateCatalog,
-} from './fileBasedGenerator';
+import {buildZip} from './fileBasedGenerator';
 import {
   type DependencySource,
   type GeneratorOptions,
@@ -17,10 +12,7 @@ import {
   stripVersionPrefix,
   validateOptions,
 } from './generatorOptions';
-import {GRADLE_WRAPPER_JAR_BASE64} from './gradleWrapperJar';
-import {GRADLEW_SH, GRADLEW_BAT} from './gradleWrapperScripts';
 import JdkSetupGuide from './JdkSetupGuide';
-
 
 const HINTS = {
   expert:
@@ -36,9 +28,9 @@ const HINTS = {
       'Azul Zulu. Broad coverage of JDK versions, including older LTS releases. Handy when you need to match a legacy environment.',
   },
   gameName:
-    "The name shown on the Window title bar when your game is running. Spaces are fine.",
+    "The name shown on the window title bar when your game is running. Spaces are fine.",
   gameId:
-    'A short, lowercase identifier used in Gradle and as the artifact name. Letters, numbers, dashes only.',
+    'A short, lowercase identifier used in Gradle and as the artifact name. Letters, numbers, dashes or underscores only.',
   packageName:
     'The Java/Kotlin package your code lives in. Convention: reversed domain, e.g. com.you.game.',
   language: {
@@ -52,10 +44,8 @@ const HINTS = {
     'The Java source/target version. FlixelGDX requires Java 17 as a minimum — older versions are blocked.',
   flixelVersion:
     'The framework version Gradle will resolve through Maven Central.',
-  languageDisabled: 'Pick a template first.',
-  templateFallback: 'Starter layouts are loaded from the templates folder on the site.',
   platformsLabel:
-    'Pick the launcher modules to scaffold. Android and iOS are coming soon and are currently disabled.',
+    'Pick the launcher modules to scaffold. iOS is coming soon and is currently disabled.',
   heap:
     'Default max heap in megabytes. FlixelGDX games can comfortably run in 16 MB on most hardware.',
   jvmFlags:
@@ -72,21 +62,31 @@ const HINTS = {
     desktop:
       'LWJGL3 desktop launcher (Windows / macOS / Linux). The default and most polished target.',
     web: 'TeaVM browser launcher. Compiles your JVM bytecode to JavaScript for the web.',
-    android: 'Android backend — not supported yet. Coming soon.',
+    android:
+      'Android backend. Requires Android Studio.',
     ios: 'iOS backend — not supported yet. Coming soon.',
+  },
+  extensions: {
+    video:
+      'Adds the flixelgdx-video extension: plays video files (MP4, WebM, etc.) inside your game. Pick at least one platform below.',
+    videoDesktop:
+      'Add the desktop video backend (flixelgdx-video-lwjgl3) to your lwjgl3 subproject.',
+    videoWeb:
+      'Add the web video backend (flixelgdx-video-teavm) to your teavm subproject.',
+    videoAndroid:
+      'Add the Android video backend (flixelgdx-video-android) to your android subproject.',
+    basisuPlugin:
+      'Automatically compresses PNG assets to KTX2/Basis Universal at build time, reducing GPU memory and load times. WARNING: compression can be extremely slow depending on your settings and the number of assets in your project.',
+    basisuDesktop:
+      'Apply the plugin to the desktop (lwjgl3) subproject.',
+    basisuAndroid:
+      'Apply the plugin to the Android subproject.',
   },
 } as const;
 
-// Oldest release the generator offers. Everything before v0.4.0 (and the old
-// `master-SNAPSHOT`) is wire-incompatible with v0.4.0+ and is hidden.
 const MIN_SUPPORTED_VERSION = [0, 4, 0] as const;
 const FALLBACK_VERSIONS = ['v0.4.0'];
 
-/**
- * True when a release tag is FlixelGDX v0.4.0 or newer. A leading `v` and any
- * prerelease suffix are ignored; non-numeric tags (e.g. `master-SNAPSHOT`) are
- * rejected.
- */
 function isSupportedVersion(tag: string): boolean {
   const m = stripVersionPrefix(tag).match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!m) return false;
@@ -94,14 +94,9 @@ function isSupportedVersion(tag: string): boolean {
   for (let i = 0; i < parts.length; i++) {
     if (parts[i] !== MIN_SUPPORTED_VERSION[i]) return parts[i] > MIN_SUPPORTED_VERSION[i];
   }
-  return true; // exactly the minimum supported version
+  return true;
 }
 
-/**
- * Fetches selectable framework versions from the GitHub releases API, keeping
- * only v0.4.0+. Falls back to {@link FALLBACK_VERSIONS} when the request fails,
- * is rate-limited, or returns no supported releases.
- */
 async function fetchVersions(): Promise<string[]> {
   try {
     const res = await fetch(
@@ -125,7 +120,6 @@ const VENDOR_LABELS: Record<JdkVendor, string> = {
   zulu: 'Azul Zulu',
 };
 
-/** The hoverable circular `?` badge used next to most form labels. */
 function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   return (
     <Hint tip={tip}>
@@ -136,7 +130,6 @@ function HelpIcon({tip}: {tip: ReactNode}): JSX.Element {
   );
 }
 
-/** A numbered settings section (e.g. "1. Identity"). `title` may include a HelpIcon. */
 function Panel({title, children}: {title: ReactNode; children: ReactNode}): JSX.Element {
   return (
     <div className={styles.panel}>
@@ -154,7 +147,6 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   javaVersion: 17,
   flixelVersion: '',
   projectVersion: '1.0.0',
-  template: '',
   platforms: ['desktop'],
   jdkVendor: 'temurin',
   expert: false,
@@ -164,25 +156,18 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   dependencySource: 'mavenCentral',
   jitpackRef: '',
   compositeBuildPath: '',
+  videoDesktop: false,
+  videoWeb: false,
+  videoAndroid: false,
+  basisuDesktop: false,
+  basisuAndroid: false,
 };
 
-/** Decodes the base64-embedded Gradle wrapper JAR into raw bytes for the zip. */
-function decodeWrapperJar(): Uint8Array {
-  const binary = atob(GRADLE_WRAPPER_JAR_BASE64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
 function GeneratorBody(): JSX.Element {
-  const {siteConfig} = useDocusaurusContext();
-  const baseUrl = siteConfig.baseUrl;
   const [opts, setOpts] = useState<GeneratorOptions>(DEFAULT_OPTIONS);
   const [versions, setVersions] = useState<string[]>(FALLBACK_VERSIONS);
   const [versionPickedByUser, setVersionPickedByUser] = useState(false);
   const [status, setStatus] = useState<string>('');
-  const [catalog, setCatalog] = useState<TemplateCatalog | null>(null);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -194,8 +179,6 @@ function GeneratorBody(): JSX.Element {
     };
   }, []);
 
-  // When the version list changes, always snap to the newest unless the user
-  // has already made a manual selection that still exists in the new list.
   useEffect(() => {
     if (!versions.length) return;
     setOpts((p) => {
@@ -203,41 +186,6 @@ function GeneratorBody(): JSX.Element {
       return {...p, flixelVersion: versions[0]};
     });
   }, [versions, versionPickedByUser]);
-
-  useEffect(() => {
-    let alive = true;
-    loadTemplateCatalog(baseUrl)
-      .then((c) => {
-        if (!alive) return;
-        setCatalog(c);
-        setCatalogError(null);
-      })
-      .catch((e: Error) => {
-        if (!alive) return;
-        setCatalogError(e.message ?? String(e));
-        setCatalog(null);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [baseUrl]);
-
-  useEffect(() => {
-    if (!catalog?.templates.length) return;
-    setOpts((p) => {
-      if (p.template && catalog.templates.some((t) => t.id === p.template)) return p;
-      return {...p, template: catalog.templates[0].id};
-    });
-  }, [catalog]);
-
-  useEffect(() => {
-    if (!catalog) return;
-    const t = catalog.templates.find((x) => x.id === opts.template);
-    if (!t?.languages.length) return;
-    if (!t.languages.includes(opts.language)) {
-      setOpts((p) => ({...p, language: t.languages[0] as Language}));
-    }
-  }, [catalog, opts.template, opts.language]);
 
   const set = <K extends keyof GeneratorOptions>(k: K, v: GeneratorOptions[K]) =>
     setOpts((prev) => ({...prev, [k]: v}));
@@ -254,51 +202,36 @@ function GeneratorBody(): JSX.Element {
 
   const error = useMemo(() => validateOptions(opts), [opts]);
 
-  const selectedTemplate = catalog?.templates.find((t) => t.id === opts.template);
-
-  // Builds the project zip from the selected templates, injects the Gradle
-  // wrapper (jar + scripts), triggers the browser download, and reports run
-  // hints (or any error) back through the status line.
   async function download() {
-    if (error || !catalog) return;
+    if (error) return;
     setStatus('Bundling your project…');
     try {
-      const blob = await buildZipFromTemplates(baseUrl, opts, catalog);
-      const {default: JSZip} = await import('jszip');
+      const blob = await buildZip(opts);
       const {saveAs} = await import('file-saver');
-      const zip = new JSZip();
-      const outer = await JSZip.loadAsync(blob);
-      for (const [relPath, file] of Object.entries(outer.files)) {
-        if (file.dir) continue;
-        const content = await file.async('uint8array');
-        zip.file(relPath, content);
-      }
-      zip.file('gradle/wrapper/gradle-wrapper.jar', decodeWrapperJar());
-      zip.file('gradlew', GRADLEW_SH, {unixPermissions: 0o755});
-      zip.file('gradlew.bat', GRADLEW_BAT);
-      const outBlob = await zip.generateAsync({type: 'blob', platform: 'UNIX'});
-      saveAs(outBlob, `${opts.gameId}.zip`);
+      saveAs(blob, `${opts.gameId}.zip`);
       const runHints: string[] = [];
       if (opts.platforms.includes('desktop'))
         runHints.push('./gradlew :lwjgl3:run for desktop');
       if (opts.platforms.includes('web'))
         runHints.push('./gradlew :teavm:run for web');
+      const androidNote = opts.platforms.includes('android')
+        ? ' Open the project in Android Studio for Android builds — see README.md for setup.'
+        : '';
       setStatus(
-        `Downloaded! Unzip then run ${runHints.join('; ')} — Gradle installs the toolchain on first build.`
+        `Downloaded! Unzip then run ${runHints.join('; ')}${runHints.length ? ' — Gradle installs the toolchain on first build.' : ''}${androidNote}`
       );
     } catch (e) {
       setStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
+  const hasDesktop = opts.platforms.includes('desktop');
+  const hasWeb = opts.platforms.includes('web');
+  const hasAndroid = opts.platforms.includes('android');
+
   return (
     <div className={`${styles.wrap} flx-generator-boundary`}>
       <div>
-        {catalogError && (
-          <div className={styles.error} role="alert">
-            Could not load project templates ({catalogError}). Try refreshing the page.
-          </div>
-        )}
         <Panel title="1. Identity">
           <div className={styles.row}>
             <div className={styles.field}>
@@ -343,26 +276,15 @@ function GeneratorBody(): JSX.Element {
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>
-                Language{' '}
-                <HelpIcon
-                  tip={
-                    selectedTemplate
-                      ? HINTS.language[opts.language]
-                      : HINTS.languageDisabled
-                  }
-                />
+                Language <HelpIcon tip={HINTS.language[opts.language]} />
               </label>
               <select
                 className={styles.select}
                 value={opts.language}
                 onChange={(e) => set('language', e.target.value as Language)}
-                disabled={!selectedTemplate}
               >
-                {(selectedTemplate?.languages ?? ['java', 'kotlin']).map((lang) => (
-                  <option key={lang} value={lang}>
-                    {lang === 'java' ? 'Java' : 'Kotlin'}
-                  </option>
-                ))}
+                <option value="java">Java</option>
+                <option value="kotlin">Kotlin</option>
               </select>
             </div>
             <div className={styles.field}>
@@ -438,30 +360,8 @@ function GeneratorBody(): JSX.Element {
           </div>
         </Panel>
 
-        <Panel title="3. Template & platforms">
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label className={styles.label}>
-                Template{' '}
-                <HelpIcon
-                  tip={selectedTemplate?.description ?? HINTS.templateFallback}
-                />
-              </label>
-              <select
-                className={styles.select}
-                value={opts.template}
-                onChange={(e) => set('template', e.target.value)}
-                disabled={!catalog?.templates.length}
-              >
-                {(catalog?.templates ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className={styles.field} style={{marginTop: '1rem'}}>
+        <Panel title="3. Platforms">
+          <div className={styles.field}>
             <span className={styles.label}>
               Platforms{' '}
               <HelpIcon tip={HINTS.platformsLabel} />
@@ -471,7 +371,7 @@ function GeneratorBody(): JSX.Element {
                 [
                   {id: 'desktop', label: 'Desktop (LWJGL3)', disabled: false},
                   {id: 'web', label: 'Web (TeaVM)', disabled: false},
-                  {id: 'android', label: 'Android — coming soon', disabled: true},
+                  {id: 'android', label: 'Android', disabled: false},
                   {id: 'ios', label: 'iOS — coming soon', disabled: true},
                 ] as const
               ).map((p) => (
@@ -491,6 +391,14 @@ function GeneratorBody(): JSX.Element {
               ))}
             </div>
           </div>
+          {hasAndroid && (
+            <div className={styles.subnote} style={{marginTop: '0.75rem'}}>
+              Android Studio is required for Android builds. The generated project
+              includes <code>local.properties</code> with <code>includeAndroid=false</code>{' '}
+              so that desktop and web builds work without an Android SDK installed.
+              See the README for setup instructions.
+            </div>
+          )}
         </Panel>
 
         <Panel title="4. JDK setup">
@@ -502,7 +410,67 @@ function GeneratorBody(): JSX.Element {
           <JdkSetupGuide vendor={opts.jdkVendor} vendorLabel={VENDOR_LABELS[opts.jdkVendor]} />
         </Panel>
 
-        <Panel title={<>5. Expert mode <HelpIcon tip={HINTS.expert} /></>}>
+        <Panel title="5. Extensions & Plugins">
+          <div className={styles.field}>
+            <span className={styles.extensionName}>
+              flixelgdx-video <HelpIcon tip={HINTS.extensions.video} />
+            </span>
+            <div className={styles.subChecks}>
+              {(
+                [
+                  {key: 'videoDesktop', label: 'Desktop', tip: HINTS.extensions.videoDesktop, active: hasDesktop},
+                  {key: 'videoWeb',     label: 'Web',     tip: HINTS.extensions.videoWeb,     active: hasWeb},
+                  {key: 'videoAndroid', label: 'Android', tip: HINTS.extensions.videoAndroid,  active: hasAndroid},
+                ] as const
+              ).map(({key, label, tip, active}) => (
+                <Hint key={key} tip={active ? tip : 'Enable this platform in section 3 first.'}>
+                  <label className={`${styles.check} ${!active ? styles.disabled : ''}`}>
+                    <input
+                      type="checkbox"
+                      disabled={!active}
+                      checked={opts[key]}
+                      onChange={(e) => set(key, e.target.checked)}
+                    />
+                    {label}
+                  </label>
+                </Hint>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.field} style={{marginTop: '1.25rem'}}>
+            <span className={styles.extensionName}>
+              flixelgdx-basisu-plugin <HelpIcon tip={HINTS.extensions.basisuPlugin} />
+            </span>
+            <div className={styles.subChecks}>
+              {(
+                [
+                  {key: 'basisuDesktop', label: 'Desktop', tip: HINTS.extensions.basisuDesktop, active: hasDesktop},
+                  {key: 'basisuAndroid', label: 'Android', tip: HINTS.extensions.basisuAndroid, active: hasAndroid},
+                ] as const
+              ).map(({key, label, tip, active}) => (
+                <Hint key={key} tip={active ? tip : 'Enable this platform in section 3 first.'}>
+                  <label className={`${styles.check} ${!active ? styles.disabled : ''}`}>
+                    <input
+                      type="checkbox"
+                      disabled={!active}
+                      checked={opts[key]}
+                      onChange={(e) => set(key, e.target.checked)}
+                    />
+                    {label}
+                  </label>
+                </Hint>
+              ))}
+            </div>
+            {(opts.basisuDesktop || opts.basisuAndroid) && (
+              <div className={styles.warning} style={{marginTop: '0.5rem'}}>
+                Warning: Basis Universal compression can be extremely slow depending on your compression settings and the number of assets in your project.
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel title={<>6. Expert mode <HelpIcon tip={HINTS.expert} /></>}>
           <label className={styles.toggle}>
             <input
               type="checkbox"
@@ -619,19 +587,42 @@ function GeneratorBody(): JSX.Element {
           <dd>{opts.flixelVersion}</dd>
           <dt>Version</dt>
           <dd>{opts.projectVersion}</dd>
-          <dt>Source</dt>
-          <dd>{opts.expert && opts.dependencySource === 'jitpack' ? 'JitPack' : 'Maven Central'}</dd>
-          <dt>Template</dt>
-          <dd>{selectedTemplate?.name || opts.template || '—'}</dd>
           <dt>Heap</dt>
           <dd>{opts.heapMb} MB</dd>
           <dt>Platforms</dt>
           <dd>{opts.platforms.join(', ') || '—'}</dd>
+          {(opts.videoDesktop || opts.videoWeb || opts.videoAndroid) && (
+            <>
+              <dt>Video</dt>
+              <dd>
+                {[
+                  opts.videoDesktop && hasDesktop ? 'desktop' : null,
+                  opts.videoWeb && hasWeb ? 'web' : null,
+                  opts.videoAndroid && hasAndroid ? 'android' : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ') || '—'}
+              </dd>
+            </>
+          )}
+          {(opts.basisuDesktop || opts.basisuAndroid) && (
+            <>
+              <dt>Basisu</dt>
+              <dd>
+                {[
+                  opts.basisuDesktop && hasDesktop ? 'desktop' : null,
+                  opts.basisuAndroid && hasAndroid ? 'android' : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+              </dd>
+            </>
+          )}
         </dl>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{display: 'flex', justifyContent: 'center'}}>
           <button
             className="flx-btn flx-btn--primary flx-btn--tall margin-top--lg"
-            disabled={!!error || !catalog || !!catalogError}
+            disabled={!!error}
             onClick={download}
           >
             Download project

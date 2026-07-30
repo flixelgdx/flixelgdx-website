@@ -260,3 +260,41 @@
   line-height: 1.45;
   margin-top: 0.25rem;
 }
+
+.extensionName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+[data-theme='dark'] .extensionName {
+  color: #d6dae3;
+}
+
+.subChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--flx-border);
+}
+
+.warning {
+  font-size: 0.8rem;
+  color: #b08000;
+  background: rgba(176, 128, 0, 0.08);
+  border: 1px solid rgba(176, 128, 0, 0.25);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  line-height: 1.45;
+}
+
+[data-theme='dark'] .warning {
+  color: #f0c040;
+  background: rgba(240, 192, 64, 0.08);
+  border-color: rgba(240, 192, 64, 0.2);
+}

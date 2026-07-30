@@ -15,6 +15,14 @@ via LWJGL3), **web** (via TeaVM), and **Android**. Each platform has its own Gra
 subproject and launcher class. This page covers how to run your game during
 development and how to package and distribute it for each target.
 
+:::info[Project generator]
+
+It's highly advised you use the [project generator](/getting-started). It automatically generates
+all of the configurations, plugins and modules of each platform for you. Refer to the project's
+generated `README.md` file for more info on how to set everything up with your project.
+
+:::
+
 ---
 
 ## Desktop
@@ -167,7 +175,7 @@ your browser.
 
 ### Build output
 
-A production build writes static files to `build/generated/teavm/`:
+Every `:teavm:run` writes static files to `build/generated/teavm/`:
 
 ```
 build/generated/teavm/
@@ -177,12 +185,7 @@ build/generated/teavm/
   index.html          -- the game entry page
 ```
 
-The JavaScript bundle name comes from the `gameId` property in `gradle.properties`. To
-produce a production build without starting the dev server:
-
-```sh
-./gradlew :teavm:build
-```
+The JavaScript bundle name comes from the `gameId` property in `gradle.properties`.
 
 ### Hosting a web game
 
@@ -215,146 +218,6 @@ its own toolchain.
 emulators, installs APKs to physical devices over USB, and provides a guided release
 signing wizard. Using the command line alone is possible but tedious compared to the
 IDE workflow.
-
-### Setting up the android subproject
-
-:::info[Project generator]
-
-The project generator does not yet produce Android files automatically. Add the
-`android/` subproject manually alongside `core/`, `lwjgl3/`, and `teavm/`.
-
-:::
-
-#### settings.gradle
-
-Add `"android"` to the include list in your root `settings.gradle`:
-
-```groovy
-include "core"
-include "lwjgl3"  // if you have desktop
-include "teavm"   // if you have web
-include "android"
-```
-
-#### android/build.gradle
-
-```groovy
-plugins {
-  id 'com.android.application'
-}
-
-android {
-  compileSdk 35
-
-  sourceSets {
-    main {
-      manifest.srcFile 'AndroidManifest.xml'
-      java.srcDirs = ['src/main/java']
-      assets.srcDirs = [rootProject.file('assets')]
-      res.srcDirs = ['res']
-    }
-  }
-
-  defaultConfig {
-    applicationId "<your.package.name>"
-    minSdk 24
-    targetSdk 35
-    versionCode 1
-    versionName "1.0"
-    multiDexEnabled true
-  }
-
-  compileOptions {
-    sourceCompatibility JavaVersion.VERSION_17
-    targetCompatibility JavaVersion.VERSION_17
-  }
-}
-
-configurations { natives }
-
-dependencies {
-  implementation project(":core")
-  implementation "org.flixelgdx:flixelgdx-android:${flixelVersion}"
-  implementation "com.badlogicgames.gdx:gdx-backend-android:${gdxVersion}"
-
-  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-armeabi-v7a"
-  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-arm64-v8a"
-  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-x86"
-  natives "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-x86_64"
-}
-```
-
-Replace `<your.package.name>` with your actual package name (e.g.
-`com.example.mygame`). The `gdxVersion` property is defined in `gradle.properties`.
-
-#### android/AndroidManifest.xml
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-  <uses-feature android:glEsVersion="0x00020000" android:required="true"/>
-
-  <application
-    android:label="@string/app_name"
-    android:icon="@drawable/ic_launcher">
-
-    <activity
-      android:name=".android.MyGameAndroidLauncher"
-      android:label="@string/app_name"
-      android:screenOrientation="landscape"
-      android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
-      android:exported="true">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
-    </activity>
-
-  </application>
-
-</manifest>
-```
-
-Replace `MyGameAndroidLauncher` with the actual class name of your Android launcher.
-
-#### The AndroidLauncher class
-
-Create the launcher class in `android/src/main/java/<package>/android/`:
-
-<Tabs groupId="lang">
-<TabItem value="java" label="Java" default>
-
-```java
-public class MyGameAndroidLauncher extends AndroidApplication {
-
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    FlixelAndroidLauncher.launch(new MyGame(), this);
-  }
-}
-```
-
-</TabItem>
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-class MyGameAndroidLauncher : AndroidApplication() {
-
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    FlixelAndroidLauncher.launch(MyGame(), this)
-  }
-}
-```
-
-</TabItem>
-</Tabs>
-
-`AndroidApplication` comes from the libGDX Android backend. `FlixelAndroidLauncher` is
-provided by the `flixelgdx-android` module and configures the libGDX application object
-with FlixelGDX defaults.
 
 ---
 
@@ -403,21 +266,35 @@ adb shell am start -n com.example.mygame/.android.MyGameAndroidLauncher
 Debug builds are fine for development, but distributing publicly or uploading to the
 Play Store requires a **signed release build**.
 
-#### Creating a keystore
+#### Google Play App Signing and the upload key
 
-A keystore holds the private key used to sign your app. Create one once and store it
-somewhere safe — any future update to your app on the Play Store must be signed with
-the same key. A lost keystore means you cannot update an existing listing.
+Google Play uses a two-key model for all new apps. Google holds the **app signing key**
+(the key actually used to sign APKs delivered to users) and you sign your bundle locally
+with an **upload key** before sending it to Play Console. Google verifies the upload key,
+strips it, and re-signs with the app signing key before distribution.
 
-**Never commit the keystore or its passwords to version control.**
+This means:
+- Losing your upload key is **recoverable** — you can request an upload key reset from
+  Google Play support.
+- The app signing key is managed by Google and is never exposed to you.
 
-In Android Studio:
+:::warning[Never commit your upload key or its passwords to version control.]
+:::
+
+**Create an upload key in Android Studio:**
+
 1. Go to **Build > Generate Signed Bundle / APK**.
-2. Choose **Android App Bundle (AAB)** if you are publishing to the Play Store, or
-   **APK** for direct distribution.
+2. Choose **Android App Bundle (AAB)** (required for Play Store).
 3. Click **Create new keystore** and fill in the alias, passwords, and validity period.
    Save the `.jks` file outside of your project directory.
-4. Complete the wizard. The signed file appears in `android/release/`.
+4. Complete the wizard. The signed AAB appears in `android/release/`.
+
+**Enable Play App Signing in Play Console:**
+
+The first time you upload an AAB to a new app in Play Console, you will be prompted to
+opt into Play App Signing. Accept the prompt — Google generates and stores the app
+signing key for you. All subsequent uploads use your upload key; Google handles the
+rest.
 
 #### APK vs AAB
 

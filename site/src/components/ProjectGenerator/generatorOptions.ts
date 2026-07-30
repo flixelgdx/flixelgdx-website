@@ -39,8 +39,6 @@ export type GeneratorOptions = {
   javaVersion: number;
   flixelVersion: string;
   projectVersion: string;
-  /** Matches `template.json` `id` under `static/templates/<id>/`. */
-  template: string;
   platforms: Platform[];
   jdkVendor: JdkVendor;
   expert: boolean;
@@ -61,6 +59,20 @@ export type GeneratorOptions = {
    * generated `settings.gradle` adds `includeBuild '<path>'`.
    */
   compositeBuildPath: string;
+
+  // --- Extensions & Plugins ---
+
+  /** Add the desktop (lwjgl3) video backend (flixelgdx-video-lwjgl3). */
+  videoDesktop: boolean;
+  /** Add the web (TeaVM) video backend (flixelgdx-video-teavm). */
+  videoWeb: boolean;
+  /** Add the Android video backend (flixelgdx-video-android). */
+  videoAndroid: boolean;
+
+  /** Apply the flixelgdx-basisu-plugin to compress assets via Basis Universal. */
+  basisuDesktop: boolean;
+  /** Apply the basisu plugin to the Android subproject. */
+  basisuAndroid: boolean;
 };
 
 /**

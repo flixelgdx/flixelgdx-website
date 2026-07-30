@@ -283,8 +283,324 @@ Flixel.gamepads.deviceDisconnected.add {
 
 ### Touchscreen — `Flixel.touches`
 
-If you plan to add mobile support for your game, the `touches` manager is the way to do it.
-You can access the
+If you plan to add mobile support for your game, `Flixel.touches` is the `FlixelTouchManager`
+that tracks up to 10 simultaneous pointers by default. It is disabled on desktop and web
+(where there is no touch hardware), and is enabled automatically by the Android backend.
+
+You can still check `Flixel.touches.enabled` in shared `core` code to safely gate touch logic.
+
+#### Checking individual pointers
+
+Each pointer slot is a `FlixelTouch` accessible via `Flixel.touches.list[pointer]` where
+`pointer` is a zero-based index. Slots that have never been touched are non-null but report
+all buttons as not pressed.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+FlixelTouch first = Flixel.touches.list[0];
+
+// Position in world coordinates (bottom-left origin, same as sprites).
+float wx = first.worldX;
+float wy = first.worldY;
+
+// Position in raw screen pixels (top-left origin, same as libGDX Input).
+float sx = first.screenX;
+float sy = first.screenY;
+
+// Per-pointer state checks.
+if (first.justPressed()) {
+  // Finger just touched the screen this frame.
+}
+if (first.pressed()) {
+  // Finger is currently held down.
+}
+if (first.justReleased()) {
+  // Finger lifted this frame.
+}
+if (first.dragging()) {
+  // Finger moved since last justPressed.
+}
+if (first.justCancelled()) {
+  // Touch event was cancelled by the OS (e.g. incoming call).
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+val first = Flixel.touches.list[0]
+
+// Position in world coordinates (bottom-left origin, same as sprites).
+val wx = first.worldX
+val wy = first.worldY
+
+// Position in raw screen pixels (top-left origin, same as libGDX Input).
+val sx = first.screenX
+val sy = first.screenY
+
+// Per-pointer state checks.
+if (first.justPressed()) {
+  // Finger just touched the screen this frame.
+}
+if (first.pressed()) {
+  // Finger is currently held down.
+}
+if (first.justReleased()) {
+  // Finger lifted this frame.
+}
+if (first.dragging()) {
+  // Finger moved since last justPressed.
+}
+if (first.justCancelled()) {
+  // Touch event was cancelled by the OS (e.g. incoming call).
+}
+```
+
+</TabItem>
+</Tabs>
+
+You can also query pointer state directly on the manager without going through `list[]`:
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+Flixel.touches.pressed(0)       // pointer 0 is held
+Flixel.touches.justPressed(1)   // pointer 1 just touched
+Flixel.touches.justReleased(2)  // pointer 2 just lifted
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+Flixel.touches.pressed(0)       // pointer 0 is held
+Flixel.touches.justPressed(1)   // pointer 1 just touched
+Flixel.touches.justReleased(2)  // pointer 2 just lifted
+```
+
+</TabItem>
+</Tabs>
+
+#### Aggregate checks
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+if (Flixel.touches.anyPressed()) {
+  // At least one finger is on the screen.
+}
+if (Flixel.touches.anyJustPressed()) {
+  // At least one finger touched this frame.
+}
+if (Flixel.touches.anyJustReleased()) {
+  // At least one finger lifted this frame.
+}
+
+// How many pointers are currently down.
+int active = Flixel.touches.count();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+if (Flixel.touches.anyPressed()) {
+  // At least one finger is on the screen.
+}
+if (Flixel.touches.anyJustPressed()) {
+  // At least one finger touched this frame.
+}
+if (Flixel.touches.anyJustReleased()) {
+  // At least one finger lifted this frame.
+}
+
+// How many pointers are currently down.
+val active = Flixel.touches.count()
+```
+
+</TabItem>
+</Tabs>
+
+#### Area queries
+
+Check whether any touch falls inside a rectangle. World queries unproject through the active
+camera (bottom-left origin); screen queries use raw screen pixels (top-left origin).
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Is any finger inside this world-space rectangle right now?
+if (Flixel.touches.touchingWorld(buttonX, buttonY, buttonW, buttonH)) {
+  highlightButton();
+}
+
+// Did any finger first touch inside this world-space rectangle this frame?
+if (Flixel.touches.justTouchedWorld(buttonX, buttonY, buttonW, buttonH)) {
+  activateButton();
+}
+
+// Same queries but in raw screen pixels.
+Flixel.touches.touchingScreen(sx, sy, sw, sh);
+Flixel.touches.justTouchedScreen(sx, sy, sw, sh);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Is any finger inside this world-space rectangle right now?
+if (Flixel.touches.touchingWorld(buttonX, buttonY, buttonW, buttonH)) {
+  highlightButton()
+}
+
+// Did any finger first touch inside this world-space rectangle this frame?
+if (Flixel.touches.justTouchedWorld(buttonX, buttonY, buttonW, buttonH)) {
+  activateButton()
+}
+
+// Same queries but in raw screen pixels.
+Flixel.touches.touchingScreen(sx, sy, sw, sh)
+Flixel.touches.justTouchedScreen(sx, sy, sw, sh)
+```
+
+</TabItem>
+</Tabs>
+
+#### Configuration
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Change the number of tracked pointers (default 10, max depends on device).
+Flixel.touches.setMaxPointers(5);
+int max = Flixel.touches.getMaxPointers();
+
+// Override the camera used to unproject world coordinates.
+// Defaults to the camera on FlixelGame; override if you use a separate HUD camera.
+Flixel.touches.setWorldCamera(hudCamera);
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Change the number of tracked pointers (default 10, max depends on device).
+Flixel.touches.setMaxPointers(5)
+val max = Flixel.touches.getMaxPointers()
+
+// Override the camera used to unproject world coordinates.
+// Defaults to the camera on FlixelGame; override if you use a separate HUD camera.
+Flixel.touches.setWorldCamera(hudCamera)
+```
+
+</TabItem>
+</Tabs>
+
+:::tip[Coordinate origins]
+
+`worldX` / `worldY` use a bottom-left Y-up origin (same as sprites and the game world). Use
+these when checking whether a touch overlaps a sprite or game object.
+
+`screenX` / `screenY` use a top-left Y-down origin (same as libGDX `Gdx.input`). Use these for
+UI elements that are drawn in screen space.
+
+:::
+
+---
+
+### Haptics — `Flixel.haptics`
+
+`Flixel.haptics` gives you access to device vibration. On desktop and web it is a silent no-op,
+so you can call it from shared `core` code without any platform guards. The Android backend wires
+it to the system `Vibrator` service.
+
+:::info[Android permission]
+
+Haptics require `android.permission.VIBRATE` in your `AndroidManifest.xml`. Projects generated
+by the [project generator](/getting-started) include this permission automatically.
+
+:::
+
+#### Basic vibration
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Vibrate for 250 milliseconds.
+Flixel.haptics.vibrate(250);
+
+// Stop an ongoing vibration early.
+Flixel.haptics.cancel();
+
+// Check whether haptics are supported on this device/platform.
+if (Flixel.haptics.isSupported()) {
+  Flixel.haptics.vibrate(100);
+}
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Vibrate for 250 milliseconds.
+Flixel.haptics.vibrate(250)
+
+// Stop an ongoing vibration early.
+Flixel.haptics.cancel()
+
+// Check whether haptics are supported on this device/platform.
+if (Flixel.haptics.isSupported()) {
+  Flixel.haptics.vibrate(100)
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Pattern vibration
+
+Pass a `long[]` pattern where entries alternate between off-time and on-time in milliseconds
+(the first entry is always off). Pass `repeat = -1` to play the pattern once, or a zero-based
+index into the pattern array to loop from that position.
+
+<Tabs groupId="lang">
+<TabItem value="java" label="Java" default>
+
+```java
+// Off 0ms, on 100ms, off 50ms, on 200ms -- play once.
+Flixel.haptics.vibrate(new long[]{0, 100, 50, 200}, -1);
+
+// Same pattern but loop from index 0 until cancel() is called.
+Flixel.haptics.vibrate(new long[]{0, 100, 50, 200}, 0);
+
+// Stop the looping vibration when the button is released.
+Flixel.haptics.cancel();
+```
+
+</TabItem>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Off 0ms, on 100ms, off 50ms, on 200ms -- play once.
+Flixel.haptics.vibrate(longArrayOf(0, 100, 50, 200), -1)
+
+// Same pattern but loop from index 0 until cancel() is called.
+Flixel.haptics.vibrate(longArrayOf(0, 100, 50, 200), 0)
+
+// Stop the looping vibration when the button is released.
+Flixel.haptics.cancel()
+```
+
+</TabItem>
+</Tabs>
 
 ---
 

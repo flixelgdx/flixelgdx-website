@@ -1,10 +1,7 @@
-import type {Config, PluginConfig} from '@docusaurus/types';
+import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {githubLight, githubDark} from './src/prismThemes';
 import remarkDocletmdColors from './plugins/remark-docletmd-colors';
-
-const devTemplateEditorPlugins: PluginConfig[] =
-  process.env.NODE_ENV === 'development' ? [['./plugins/dev-template-editor-api', {}]] : [];
 
 const config: Config = {
   title: 'FlixelGDX',
@@ -39,7 +36,6 @@ const config: Config = {
     },
   },
 
-  clientModules: ['./src/clientModules/devTemplateEditorNav.ts'],
 
   presets: [
     [
@@ -76,7 +72,6 @@ const config: Config = {
   ],
 
   plugins: [
-    ...devTemplateEditorPlugins,
     // Single docs plugin for the entire API reference (welcome page +
     // every module's generated content). Per-module sidebars are still
     // distinct because each top-level module folder (core / lwjgl3 /
