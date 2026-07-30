@@ -792,3 +792,78 @@ nav[class*="docsBreadcrumbs"] {
   text-decoration: underline;
   color: var(--ifm-color-primary);
 }
+
+/* ----------------------------- Footer ----------------------------------- */
+
+/* Pixel-art accent stripe at the very top of the footer, mirroring the
+ * hero pixel rule. Uses the same four HaxeFlixel logo colors. */
+.footer {
+  position: relative;
+  border-top: none !important;
+  padding-top: calc(var(--ifm-footer-padding-vertical) + 10px);
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-image:
+    linear-gradient(
+      90deg,
+      var(--hxflx-red)    0    12px,
+      transparent         12px 20px,
+      var(--hxflx-yellow) 20px 32px,
+      transparent         32px 40px,
+      var(--hxflx-green)  40px 52px,
+      transparent         52px 60px,
+      var(--hxflx-blue)   60px 72px,
+      transparent         72px 80px
+    );
+  background-repeat: repeat-x;
+  background-size: 80px 10px;
+  image-rendering: pixelated;
+  opacity: 0.9;
+}
+
+[data-theme='dark'] .footer {
+  background: linear-gradient(180deg, #0e0208 0%, #060608 30%);
+}
+
+[data-theme='light'] .footer {
+  background: linear-gradient(180deg, #f5f0f0 0%, #f0f0f0 30%);
+}
+
+/* Brand column: logo + name + tagline stacked vertically. */
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footer__brand-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+}
+
+.footer__brand-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+[data-theme='light'] .footer__brand-name {
+  color: #111;
+}
+
+.footer__brand-tagline {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-width: 200px;
+  margin: 0;
+  opacity: 0.6;
+}

@@ -2,6 +2,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {githubLight, githubDark} from './src/prismThemes';
 import remarkDocletmdColors from './plugins/remark-docletmd-colors';
+import pluginLlmsTxt from './plugins/plugin-llms-txt';
 
 const config: Config = {
   title: 'FlixelGDX',
@@ -72,6 +73,14 @@ const config: Config = {
   ],
 
   plugins: [
+    [
+      pluginLlmsTxt,
+      {
+        title: 'FlixelGDX',
+        description:
+          'A faithful and improved port of the beloved HaxeFlixel framework for the Java ecosystem.',
+      },
+    ],
     // Single docs plugin for the entire API reference (welcome page +
     // every module's generated content). Per-module sidebars are still
     // distinct because each top-level module folder (core / lwjgl3 /
@@ -135,6 +144,11 @@ const config: Config = {
           ],
         },
         {
+          href: 'https://discord.gg/ZUsrZpUCYz',
+          label: 'Discord',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/flixelgdx/flixelgdx',
           label: 'View source',
           position: 'right',
@@ -144,6 +158,20 @@ const config: Config = {
     footer: {
       style: 'dark',
       links: [
+        {
+          title: null,
+          items: [
+            {
+              html: `
+                <div class="footer__brand">
+                  <img src="/img/logo-square.png" alt="FlixelGDX" class="footer__brand-logo" />
+                  <strong class="footer__brand-name">FlixelGDX</strong>
+                  <p class="footer__brand-tagline">A faithful and improved port of HaxeFlixel for the Java ecosystem.</p>
+                </div>
+              `,
+            },
+          ],
+        },
         {
           title: 'Docs',
           items: [
@@ -155,31 +183,17 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            {
-              label: 'Framework on GitHub',
-              href: 'https://github.com/flixelgdx/flixelgdx',
-            },
-            {
-              label: 'JitPack',
-              href: 'https://jitpack.io/#flixelgdx/flixelgdx',
-            },
-            {
-              label: 'Releases',
-              href: 'https://github.com/flixelgdx/flixelgdx/releases',
-            },
+            {label: 'Framework on GitHub', href: 'https://github.com/flixelgdx/flixelgdx'},
+            {label: 'JitPack', href: 'https://jitpack.io/#flixelgdx/flixelgdx'},
+            {label: 'Releases', href: 'https://github.com/flixelgdx/flixelgdx/releases'},
           ],
         },
         {
           title: 'Community',
           items: [
-            {
-              label: 'Issues',
-              href: 'https://github.com/flixelgdx/flixelgdx/issues',
-            },
-            {
-              label: 'Discussions',
-              href: 'https://github.com/flixelgdx/flixelgdx/discussions',
-            },
+            {label: 'Discord', href: 'https://discord.gg/ZUsrZpUCYz'},
+            {label: 'Issues', href: 'https://github.com/flixelgdx/flixelgdx/issues'},
+            {label: 'Discussions', href: 'https://github.com/flixelgdx/flixelgdx/discussions'},
           ],
         },
       ],
