@@ -10,14 +10,14 @@ import styles from './index.module.css';
 
 const FEATURES = [
   {
-    icon: '🚀',
-    title: 'Beginner friendly, expert powerful',
-    body: 'Familiar Flixel-shaped states, sprites, groups, tweens and timers, plus the full power of libGDX when you need it. No magic, no walls.',
+    icon: '⚙️',
+    title: 'Simple API with flexible modularity',
+    body: 'Familiar Flixel-shaped states, sprites, groups, tweens and timers, plus the full power of libGDX when you need it.',
   },
   {
     icon: '⚡',
     title: 'Featherweight & fast',
-    body: 'Designed to bring the features of modern game engines to low-end hardware. A FlixelGDX game runs happily inside a 16 MB JVM heap.',
+    body: 'Designed to bring the features of modern game engines to low-end hardware so you don\'t have to fight your system to make an amazing game.',
   },
   {
     icon: '🎯',
@@ -27,7 +27,7 @@ const FEATURES = [
   {
     icon: '🌐',
     title: 'Multiplatform',
-    body: 'Ship to LWJGL3 desktop and to the browser via TeaVM. Mobile (Android & iOS) backends are on the way.',
+    body: 'Ship to desktop via LWJGL3, browser via TeaVM and Android. iOS is on the way.',
   },
   {
     icon: '🧰',
@@ -35,14 +35,14 @@ const FEATURES = [
     body: 'Tweens, timers, animations, bitmap text, audio helpers, saves, input actions, powerful debugging tools and more — all out of the box just for you.',
   },
   {
-    icon: '☕',
-    title: 'Java 17 + Gradle',
-    body: 'Modern Java, records, switches, lambdas. A clean Gradle multi-module split that grows with your project.',
+    icon: '📖',
+    title: 'Rich Javadoc, zero hand-waving',
+    body: 'The framework provides comprehensive documentation, with the source code being filled with Javadocs to help you get started right away.',
   },
   {
     icon: '🐞',
     title: 'Debug-friendly',
-    body: 'In-game watches, a logger that captures file + line, and an optional ImGui-powered overlay so you can see what your game is doing.',
+    body: 'Out-of-the-box debug overlay that includes real time stats, graphs, a command line, watch panel, log window and much more.',
   },
   {
     icon: '📦',
@@ -73,7 +73,8 @@ function HeroBadges(): JSX.Element {
       <span className={styles.heroBadge}>Java 17+</span>
       <span className={styles.heroBadge}>libGDX under the hood</span>
       <span className={styles.heroBadge}>MIT licensed</span>
-      <span className={styles.heroBadge}>Runs in 4-8 MB average heap</span>
+      <span className={styles.heroBadge}>Beginner friendly</span>
+      <span className={styles.heroBadge}>Code first</span>
     </div>
   );
 }
@@ -88,8 +89,7 @@ function Hero(): JSX.Element {
           <img className={styles.heroLogo} src={logo} alt="FlixelGDX logo" />
           <h1 className={styles.heroTitle}>FlixelGDX</h1>
           <p className={styles.heroTag}>
-            The most powerful game development framework for Java, designed for
-            beginners and experts alike.
+            A faithful and improved port of the original HaxeFlixel framework, brought to the robust Java ecosystem.
           </p>
           <div className={styles.heroButtons}>
             <Link className="flx-btn flx-btn--primary" to="/getting-started">

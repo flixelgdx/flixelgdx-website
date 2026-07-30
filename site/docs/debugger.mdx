@@ -187,8 +187,8 @@ debugger keeps the needle updated for you.
 
 ```java
 // Register any supplier. It is re-evaluated several times a second while the overlay is visible.
-Flixel.watch.add("Player X", () -> player.getX());
-Flixel.watch.add("Player Y", () -> player.getY());
+Flixel.watch.add("Player X", player::getX);
+Flixel.watch.add("Player Y", player::getY);
 Flixel.watch.add("Speed", () -> Math.hypot(player.getVelocityX(), player.getVelocityY()));
 
 // Convenience helper: adds a "Mouse" entry with the cursor's position.
@@ -200,8 +200,8 @@ Flixel.watch.addMouse();
 
 ```kotlin
 // Register any supplier. It is re-evaluated several times a second while the overlay is visible.
-Flixel.watch.add("Player X", FloatSupplier { player.x })
-Flixel.watch.add("Player Y", FloatSupplier { player.y })
+Flixel.watch.add("Player X", player::getX)
+Flixel.watch.add("Player Y", player::getY)
 Flixel.watch.add("Speed", DoubleSupplier { Math.hypot(player.velocityX.toDouble(), player.velocityY.toDouble()) })
 
 // Convenience helper: adds a "Mouse" entry with the cursor's position.

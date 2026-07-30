@@ -95,21 +95,30 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.10), transparent 60%),
-    radial-gradient(900px 500px at -10% 30%, rgba(107, 15, 21, 0.18), transparent 60%),
-    var(--ifm-background-color);
-  background-attachment: fixed, fixed, scroll;
-  background-repeat: no-repeat, no-repeat, repeat;
+  background: var(--ifm-background-color);
 }
 
 [data-theme='light'] body {
+  background: #ffffff;
+}
+
+/* Fixed glow overlay: position:fixed guarantees the gradient never scrolls
+ * regardless of which element is the scroll container. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(107, 15, 21, 0.18), transparent 60%);
+}
+
+[data-theme='light'] body::before {
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(255, 42, 60, 0.06), transparent 60%),
-    radial-gradient(900px 500px at -10% 30%, rgba(255, 42, 60, 0.04), transparent 60%),
-    #ffffff;
-  background-attachment: fixed, fixed, scroll;
-  background-repeat: no-repeat, no-repeat, repeat;
+    radial-gradient(900px 500px at -10% 30%, rgba(255, 42, 60, 0.04), transparent 60%);
 }
 
 .navbar {
@@ -128,7 +137,6 @@ body {
 }
 
 .navbar__logo img {
-  image-rendering: pixelated;
   border-radius: 6px;
 }
 

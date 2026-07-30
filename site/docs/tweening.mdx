@@ -22,26 +22,27 @@ keeps tweens fully ahead-of-time compatible (no reflection).
 ```java
 // Tween sprite.x from its current value to 400 over 1 second.
 FlixelTween.tween(sprite, new FlixelTweenSettings()
-  .setDuration(1.0f)
-  .addGoal(sprite::getX, 400f, sprite::setX));
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .setDuration(1.0f));
 
 // Fade out (alpha 1 -> 0) with easing, then destroy.
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setDuration(0.5f)
   .setEase(FlixelEase::quadOut)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setOnComplete(t -> sprite.destroy()));
 
 // Multiple goals in a single tween (all animate simultaneously).
 FlixelTween.tween(sprite, new FlixelTweenSettings()
-  .setDuration(1.0f)
   .addGoal(sprite::getX, 400f, sprite::setX)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha));
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setDuration(1.0f));
 
 // Keep the handle to cancel or pause a running tween.
 FlixelTween tween = FlixelTween.tween(sprite, new FlixelTweenSettings()
-  .setDuration(2.0f)
-  .addGoal(sprite::getX, 400f, sprite::setX));
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .setType(FlixelTweenType.PERSIST)
+  .setDuration(2.0f));
 tween.cancel();
 ```
 
@@ -51,26 +52,27 @@ tween.cancel();
 ```kotlin
 // Tween sprite.x from its current value to 400 over 1 second.
 FlixelTween.tween(sprite, FlixelTweenSettings()
-  .setDuration(1.0f)
-  .addGoal(sprite::getX, 400f, sprite::setX))
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .setDuration(1.0f))
 
 // Fade out (alpha 1 -> 0) with easing, then destroy.
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setDuration(0.5f)
   .setEase(FlixelEase::quadOut)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setOnComplete { sprite.destroy() })
 
 // Multiple goals in a single tween (all animate simultaneously).
 FlixelTween.tween(sprite, FlixelTweenSettings()
-  .setDuration(1.0f)
   .addGoal(sprite::getX, 400f, sprite::setX)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha))
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
+  .setDuration(1.0f))
 
 // Keep the handle to cancel or pause a running tween.
 val tween = FlixelTween.tween(sprite, FlixelTweenSettings()
-  .setDuration(2.0f)
-  .addGoal(sprite::getX, 400f, sprite::setX))
+  .addGoal(sprite::getX, 400f, sprite::setX)
+  .setType(FlixelTweenType.PERSIST)
+  .setDuration(2.0f))
 tween.cancel()
 ```
 
@@ -181,35 +183,35 @@ The `FlixelTweenType` controls what happens when a tween reaches the end:
 ```java
 // ONESHOT: runs once and removes itself (the default, shown explicitly).
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getY, sprite.getY() - 20f, sprite::setY)
   .setType(FlixelTweenType.ONESHOT)
-  .setDuration(0.5f)
-  .addGoal(sprite::getY, sprite.getY() - 20f, sprite::setY));
+  .setDuration(0.5f));
 
 // PERSIST: runs once and stays registered so it can be restarted later.
 FlixelTween doorOpen = FlixelTween.tween(door, new FlixelTweenSettings()
+  .addGoal(door::getX, door.getX() + 64f, door::setX)
   .setType(FlixelTweenType.PERSIST)
-  .setDuration(0.3f)
-  .addGoal(door::getX, door.getX() + 64f, door::setX));
+  .setDuration(0.3f));
 // ... later, after the player re-enters:
 doorOpen.restart();
 
 // BACKWARD: plays once in reverse (animates from the goal back to the starting value).
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setType(FlixelTweenType.BACKWARD)
-  .setDuration(0.5f)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha));
+  .setDuration(0.5f));
 
 // LOOPING: restarts from the beginning immediately on finish.
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle)
   .setType(FlixelTweenType.LOOPING)
-  .setDuration(2.0f)
-  .addGoal(sprite::getAngle, 360f, sprite::setAngle));
+  .setDuration(2.0f));
 
 // PINGPONG: alternates direction on each iteration (forward, backward, forward...).
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getX, 500f, sprite::setX)
   .setType(FlixelTweenType.PINGPONG)
-  .setDuration(1.0f)
-  .addGoal(sprite::getX, 500f, sprite::setX));
+  .setDuration(1.0f));
 ```
 
 </TabItem>
@@ -218,35 +220,35 @@ FlixelTween.tween(sprite, new FlixelTweenSettings()
 ```kotlin
 // ONESHOT: runs once and removes itself (the default, shown explicitly).
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getY, sprite.y - 20f, sprite::setY)
   .setType(FlixelTweenType.ONESHOT)
-  .setDuration(0.5f)
-  .addGoal(sprite::getY, sprite.y - 20f, sprite::setY))
+  .setDuration(0.5f))
 
 // PERSIST: runs once and stays registered so it can be restarted later.
 val doorOpen = FlixelTween.tween(door, FlixelTweenSettings()
+  .addGoal(door::getX, door.x + 64f, door::setX)
   .setType(FlixelTweenType.PERSIST)
-  .setDuration(0.3f)
-  .addGoal(door::getX, door.x + 64f, door::setX))
+  .setDuration(0.3f))
 // ... later, after the player re-enters:
 doorOpen.restart()
 
 // BACKWARD: plays once in reverse (animates from the goal back to the starting value).
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha)
   .setType(FlixelTweenType.BACKWARD)
-  .setDuration(0.5f)
-  .addGoal(sprite::getAlpha, 0f, sprite::setAlpha))
+  .setDuration(0.5f))
 
 // LOOPING: restarts from the beginning immediately on finish.
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getAngle, 360f, sprite::setAngle)
   .setType(FlixelTweenType.LOOPING)
-  .setDuration(2.0f)
-  .addGoal(sprite::getAngle, 360f, sprite::setAngle))
+  .setDuration(2.0f))
 
 // PINGPONG: alternates direction on each iteration (forward, backward, forward...).
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getX, 500f, sprite::setX)
   .setType(FlixelTweenType.PINGPONG)
-  .setDuration(1.0f)
-  .addGoal(sprite::getX, 500f, sprite::setX))
+  .setDuration(1.0f))
 ```
 
 </TabItem>
@@ -265,12 +267,12 @@ useful for animating integer-valued properties or achieving a retro look:
 
 ```java
 FlixelTween.tween(sprite, new FlixelTweenSettings()
+  .addGoal(sprite::getX, 400f, sprite::setX)
   .setDuration(1.0f)
   .setStartDelay(0.5f)   // Wait 0.5s before starting.
   .setLoopDelay(0.25f)   // Pause 0.25s between loops.
   .setFramerate(12f)     // Snap to 12 steps per second.
-  .setType(FlixelTweenType.LOOPING)
-  .addGoal(sprite::getX, 400f, sprite::setX));
+  .setType(FlixelTweenType.LOOPING));
 ```
 
 </TabItem>
@@ -278,12 +280,12 @@ FlixelTween.tween(sprite, new FlixelTweenSettings()
 
 ```kotlin
 FlixelTween.tween(sprite, FlixelTweenSettings()
+  .addGoal(sprite::getX, 400f, sprite::setX)
   .setDuration(1.0f)
   .setStartDelay(0.5f)   // Wait 0.5s before starting.
   .setLoopDelay(0.25f)   // Pause 0.25s between loops.
   .setFramerate(12f)     // Snap to 12 steps per second.
-  .setType(FlixelTweenType.LOOPING)
-  .addGoal(sprite::getX, 400f, sprite::setX))
+  .setType(FlixelTweenType.LOOPING))
 ```
 
 </TabItem>
@@ -646,8 +648,8 @@ Call `pause()` and `resume()` on a tween handle to freeze and unfreeze it mid-an
 
 ```java
 FlixelTween doorTween = FlixelTween.tween(door, new FlixelTweenSettings()
-    .setDuration(0.5f)
-    .addGoal(door::getX, 200f, door::setX));
+    .addGoal(door::getX, 200f, door::setX)
+    .setDuration(0.5f));
 
 // Pause it when a cutscene starts.
 doorTween.pause();
@@ -661,8 +663,8 @@ doorTween.resume();
 
 ```kotlin
 val doorTween = FlixelTween.tween(door, FlixelTweenSettings()
-    .setDuration(0.5f)
-    .addGoal(door::getX, 200f, door::setX))
+    .addGoal(door::getX, 200f, door::setX)
+    .setDuration(0.5f))
 
 // Pause it when a cutscene starts.
 doorTween.pause()
