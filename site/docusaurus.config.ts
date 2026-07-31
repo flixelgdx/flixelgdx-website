@@ -137,8 +137,8 @@ const config: Config = {
             {to: '/api/category/core/', label: 'Core'},
             {to: '/api/category/desktop-lwjgl3/', label: 'Desktop (LWJGL3)'},
             {to: '/api/category/web-teavm', label: 'Web (TeaVM)'},
-            // TODO: Uncomment when Android and iOS backends are released.
-            // {to: '/api/android/', label: 'Android'},
+            {to: '/api/category/android/', label: 'Android'},
+            // TODO: Uncomment when iOS backend is released.
             // {to: '/api/ios/', label: 'iOS (MobiVM)'},
             {to: '/api/', label: 'About the reference'},
           ],

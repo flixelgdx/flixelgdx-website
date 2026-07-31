@@ -31,8 +31,25 @@ FRAMEWORK_REPO="${FLIXELGDX_REPO:-https://github.com/flixelgdx/flixelgdx.git}"
 FRAMEWORK_BRANCH="${FLIXELGDX_BRANCH:-master}"
 FRAMEWORK_REF="${FLIXELGDX_REF:-}"
 
+# Detect whether to include the Android module.
+# Auto-detection checks for an Android SDK; override with FLIXELGDX_INCLUDE_ANDROID=true|false.
+ANDROID_SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-${HOME}/Android/Sdk}}"
+INCLUDE_ANDROID="${FLIXELGDX_INCLUDE_ANDROID:-}"
+if [ -z "${INCLUDE_ANDROID}" ]; then
+  if [ -d "${ANDROID_SDK_DIR}/platforms" ]; then
+    INCLUDE_ANDROID=true
+  else
+    INCLUDE_ANDROID=false
+  fi
+fi
+
 echo "==> Preparing build directories"
 mkdir -p "${BUILD_DIR}"
+if [ "${INCLUDE_ANDROID}" = "true" ]; then
+  echo "==> Android SDK detected -- android module will be included"
+else
+  echo "==> No Android SDK found -- skipping android module (set FLIXELGDX_INCLUDE_ANDROID=true to override)"
+fi
 
 # ----------------------------------------------------------------------------
 # 1. Shallow clone -- depth 1, full working tree so Gradle files are present.
@@ -59,6 +76,13 @@ if [ -n "${FRAMEWORK_REF}" ]; then
   git -C "${SRC_DIR}" checkout --quiet "FETCH_HEAD"
 fi
 
+# Write local.properties into the cloned source so AGP can find the SDK and
+# includeAndroid is enabled without relying on environment variables.
+if [ "${INCLUDE_ANDROID}" = "true" ]; then
+  printf 'sdk.dir=%s\nincludeAndroid=true\n' "${ANDROID_SDK_DIR}" \
+    > "${SRC_DIR}/local.properties"
+fi
+
 echo "==> Working tree size:"
 du -sh "${SRC_DIR}" 2>/dev/null || true
 
@@ -69,13 +93,24 @@ du -sh "${SRC_DIR}" 2>/dev/null || true
 echo "==> Running DocletMD via framework Gradle wrapper"
 rm -rf "${OUT_DIR}"
 chmod +x "${SRC_DIR}/gradlew"
+
+GRADLE_ANDROID_FLAGS=""
+GRADLE_ANDROID_TASK=""
+if [ "${INCLUDE_ANDROID}" = "true" ]; then
+  GRADLE_ANDROID_FLAGS="-PincludeAndroid=true"
+  GRADLE_ANDROID_TASK=":flixelgdx-android:generateDocletMD"
+fi
+
+# shellcheck disable=SC2086
 (cd "${SRC_DIR}" && ./gradlew \
     -I "${ROOT}/scripts/docletmd-init.gradle" \
     -PdocletmdOutDir="${OUT_DIR}" \
     --no-daemon -q \
+    ${GRADLE_ANDROID_FLAGS} \
     :flixelgdx-core:generateDocletMD \
     :flixelgdx-lwjgl3:generateDocletMD \
-    :flixelgdx-teavm:generateDocletMD)
+    :flixelgdx-teavm:generateDocletMD \
+    ${GRADLE_ANDROID_TASK})
 
 if [ ! -d "${OUT_DIR}" ]; then
   echo "!! DocletMD did not produce output at ${OUT_DIR}" >&2
@@ -116,7 +151,7 @@ mkdir -p "${SITE_API_DIR}"
 # Wipe per-module subtrees so stale classes from a previous run are removed.
 find "${SITE_API_DIR}" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 
-for slug in core lwjgl3 teavm; do
+for slug in core lwjgl3 teavm android; do
   src="${OUT_DIR}/${slug}"
   if [ -d "${src}" ]; then
     prefix=$(strip_prefix_of "${src}")

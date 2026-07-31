@@ -3,9 +3,11 @@
  *
  * Run this from inside the framework repo directory, e.g.:
  *
- *   ./gradlew :flixelgdx-core:generateDocletMD   \
- *             :flixelgdx-lwjgl3:generateDocletMD  \
- *             :flixelgdx-teavm:generateDocletMD   \
+ *   ./gradlew :flixelgdx-core:generateDocletMD     \
+ *             :flixelgdx-lwjgl3:generateDocletMD    \
+ *             :flixelgdx-teavm:generateDocletMD     \
+ *             :flixelgdx-android:generateDocletMD   \
+ *             -PincludeAndroid=true                 \
  *             -I /abs/path/to/scripts/docletmd-init.gradle \
  *             -PdocletmdOutDir=/abs/path/to/output
  *
@@ -14,10 +16,11 @@
  * resolved compile classpath (libGDX, etc.), so no manual dependency
  * configuration is needed here.
  *
- * Android and iOS modules are intentionally excluded: they require platform
- * SDKs (Android SDK, RoboVM) that are not available in a standard CI
- * environment. The framework's settings.gradle already gates Android behind
- * -PincludeAndroid=true, so it will not appear as a subproject by default.
+ * Java modules (core, lwjgl3, teavm) are wired via plugins.withId('java').
+ * The Android module is wired via plugins.withId('com.android.library') and
+ * uses the releaseCompileClasspath configuration for type resolution.
+ * The iOS module is excluded; it requires RoboVM which is not available in
+ * standard build environments.
  *
  * Knobs:
  *   docletmdOutDir  Absolute path for the output root directory. Per-module
@@ -52,22 +55,22 @@ import org.flixelgdx.docletmd.DocletMDPlugin
 import org.flixelgdx.docletmd.DocletMDTask
 
 def moduleSlugs = [
-    'flixelgdx-core'  : 'core',
-    'flixelgdx-lwjgl3': 'lwjgl3',
-    'flixelgdx-teavm' : 'teavm',
+    'flixelgdx-core'   : 'core',
+    'flixelgdx-lwjgl3' : 'lwjgl3',
+    'flixelgdx-teavm'  : 'teavm',
+    'flixelgdx-android': 'android',
 ]
 
 allprojects { proj ->
     def slug = moduleSlugs[proj.name]
     if (slug == null) return
 
-    // Wait for the java plugin so DocletMD's auto-wiring picks up the source
-    // set and compile classpath that are registered by the java plugin.
+    def outBase = (rootProject.findProperty('docletmdOutDir') as String)
+        ?: new File(rootProject.buildDir, 'docletmd-out').absolutePath
+
+    // Java modules (core, lwjgl3, teavm): auto-wire via the java plugin source set and classpath.
     proj.plugins.withId('java') {
         proj.apply plugin: DocletMDPlugin
-
-        def outBase = (rootProject.findProperty('docletmdOutDir') as String)
-            ?: new File(rootProject.buildDir, 'docletmd-out').absolutePath
 
         proj.tasks.named('generateDocletMD', DocletMDTask) { task ->
             task.outputDir.set(new File(outBase, slug))
@@ -85,6 +88,38 @@ allprojects { proj ->
                 def sourceBase = "https://github.com/flixelgdx/flixelgdx/blob/master/${proj.name}/src/main/java/"
                 jnigenArgs + ['-sourceBase', sourceBase]
             })
+        }
+    }
+
+    // Android module: AGP does not apply the java plugin, so wire sources and classpath manually.
+    // afterEvaluate is required so that AGP has finished registering its variants and tasks.
+    proj.plugins.withId('com.android.library') {
+        proj.apply plugin: DocletMDPlugin
+
+        proj.afterEvaluate {
+            proj.tasks.named('generateDocletMD', DocletMDTask) { task ->
+                task.outputDir.set(new File(outBase, slug))
+
+                task.sourceDirs.from(proj.android.sourceSets.getByName('main').java.srcDirs)
+
+                // android.jar lives on AGP's bootClasspath, not the regular compile classpath.
+                task.classpath.from(proj.android.bootClasspath)
+
+                // For library dependencies (gdx-backend-android, etc.), borrow the classpath
+                // that AGP has already configured on the release Javac task. AGP populates it
+                // with extracted AAR contents, which resolving releaseCompileClasspath directly
+                // would not provide because the AAR->JAR artifact transform does not fire
+                // without the proper variant context.
+                def javacTask = proj.tasks.findByName('compileReleaseJavaWithJavac')
+                if (javacTask != null) {
+                    task.classpath.from(javacTask.classpath)
+                }
+
+                task.additionalArgs.set(proj.provider {
+                    def sourceBase = "https://github.com/flixelgdx/flixelgdx/blob/master/${proj.name}/src/main/java/"
+                    ['-sourceBase', sourceBase]
+                })
+            }
         }
     }
 }
